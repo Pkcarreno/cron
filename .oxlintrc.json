@@ -8,6 +8,7 @@
     { "name": "react-native", "specifier": "oxlint-plugin-react-native" }
   ],
   "rules": {
+    "jest/require-hook": "off",
     "typescript/no-use-before-define": ["error", { "variables": false }],
     "react-native/no-color-literals": "error",
     "react-native/no-inline-styles": "warn",
@@ -15,5 +16,19 @@
     "react-native/no-single-element-style-arrays": "error",
     "react-native/no-unused-styles": "warn",
     "react-native/sort-styles": "warn"
-  }
+  },
+  "overrides": [
+    {
+      "files": [
+        "*.test.ts",
+        "*.test.tsx",
+        "*.spec.ts",
+        "*.spec.tsx",
+        "**/__tests__/**/*"
+      ],
+      "rules": {
+        "jest/require-hook": "error"
+      }
+    }
+  ]
 }

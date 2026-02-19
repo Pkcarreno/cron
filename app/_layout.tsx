@@ -5,7 +5,6 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 
-/* oxlint-disable jest/require-hook */
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
