@@ -2,6 +2,7 @@
   "expo": {
     "name": "cron",
     "slug": "cron",
+    "scheme": "crn",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -37,6 +38,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "expo-router",
       [
         "expo-font",
         {
@@ -83,7 +85,10 @@
               {
                 "fontFamily": "Geist",
                 "fontDefinitions": [
-                  { "path": "./assets/fonts/Geist-Thin.ttf", "weight": 100 },
+                  {
+                    "path": "./assets/fonts/Geist-Thin.ttf",
+                    "weight": 100
+                  },
                   {
                     "path": "./assets/fonts/Geist-ThinItalic.ttf",
                     "weight": 100,
@@ -98,19 +103,28 @@
                     "weight": 200,
                     "style": "italic"
                   },
-                  { "path": "./assets/fonts/Geist-Light.ttf", "weight": 300 },
+                  {
+                    "path": "./assets/fonts/Geist-Light.ttf",
+                    "weight": 300
+                  },
                   {
                     "path": "./assets/fonts/Geist-LightItalic.ttf",
                     "weight": 300,
                     "style": "italic"
                   },
-                  { "path": "./assets/fonts/Geist-Regular.ttf", "weight": 400 },
+                  {
+                    "path": "./assets/fonts/Geist-Regular.ttf",
+                    "weight": 400
+                  },
                   {
                     "path": "./assets/fonts/Geist-Italic.ttf",
                     "weight": 400,
                     "style": "italic"
                   },
-                  { "path": "./assets/fonts/Geist-Medium.ttf", "weight": 500 },
+                  {
+                    "path": "./assets/fonts/Geist-Medium.ttf",
+                    "weight": 500
+                  },
                   {
                     "path": "./assets/fonts/Geist-MediumItalic.ttf",
                     "weight": 500,
@@ -125,7 +139,10 @@
                     "weight": 600,
                     "style": "italic"
                   },
-                  { "path": "./assets/fonts/Geist-Bold.ttf", "weight": 700 },
+                  {
+                    "path": "./assets/fonts/Geist-Bold.ttf",
+                    "weight": 700
+                  },
                   {
                     "path": "./assets/fonts/Geist-BoldItalic.ttf",
                     "weight": 700,
@@ -140,7 +157,10 @@
                     "weight": 800,
                     "style": "italic"
                   },
-                  { "path": "./assets/fonts/Geist-Black.ttf", "weight": 900 },
+                  {
+                    "path": "./assets/fonts/Geist-Black.ttf",
+                    "weight": 900
+                  },
                   {
                     "path": "./assets/fonts/Geist-BlackItalic.ttf",
                     "weight": 900,
@@ -237,7 +257,8 @@
             ]
           }
         }
-      ]
+      ],
+      "expo-router"
     ]
   }
 }
