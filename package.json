@@ -11,6 +11,7 @@
     "lint": "ultracite check",
     "lint:fix": "ultracite fix",
     "commitlint": "commitlint",
+    "preinstall": "npx only-allow pnpm",
     "prepare": "lefthook install"
   },
   "dependencies": {
