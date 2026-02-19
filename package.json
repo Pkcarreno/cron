@@ -9,7 +9,9 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "ultracite check",
-    "lint:fix": "ultracite fix"
+    "lint:fix": "ultracite fix",
+    "commitlint": "commitlint",
+    "prepare": "lefthook install"
   },
   "dependencies": {
     "expo": "~54.0.33",
@@ -20,11 +22,19 @@
     "react-native": "0.81.5"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.4.2",
+    "@commitlint/config-conventional": "^20.4.2",
     "@types/react": "~19.1.0",
+    "lefthook": "^2.1.1",
     "oxfmt": "^0.33.0",
     "oxlint": "^1.47.0",
     "oxlint-plugin-react-native": "^0.2.1",
     "typescript": "~5.9.2",
     "ultracite": "^7.2.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "lefthook"
+    ]
   }
 }
