@@ -10,18 +10,25 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000000"
     },
     "ios": {
-      "supportsTablet": true
+      "icon": {
+        "dark": "./assets/ios-dark.png",
+        "light": "./assets/ios-light.png",
+        "tinted": "./assets/ios-tinted.png"
+      },
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pkcarreno.cron"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.pkcarreno.cron"
     },
     "web": {
       "favicon": "./assets/favicon.png"
