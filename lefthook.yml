@@ -1,8 +1,8 @@
 pre-commit:
   parallel: true
   jobs:
-    # - run: pnpm tsc
-    #   glob: "*.{js,jsx,ts,tsx,json,jsonc,css}"
+    - run: pnpm tsc
+      glob: "*.{js,jsx,ts,tsx,json,jsonc,css}"
     - run: pnpm lint:fix {staged_files}
       glob: "*.{js,jsx,ts,tsx,json,jsonc,css}"
       stage_fixed: true
