@@ -265,9 +265,9 @@
       "eas": {
         "projectId": "db7b2cae-63b8-458a-b91c-e4c9a596b7b1"
       }
+    },
+    "experiments": {
+      "typedRoutes": true
     }
-  },
-  "experiments": {
-    "typedRoutes": true
   }
 }
