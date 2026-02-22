@@ -8,6 +8,7 @@ export enum TimerEventType {
   PAUSE = 'PAUSE',
   RESET = 'RESET',
   FINISH = 'FINISH',
+  GO = 'GO',
   PHASE_CHANGE = 'PHASE_CHANGE',
   ROUND_CHANGE = 'ROUND_CHANGE',
   BEEP = 'BEEP',
@@ -19,6 +20,7 @@ export interface TimerEventMap {
   [TimerEventType.PAUSE]: [];
   [TimerEventType.RESET]: [];
   [TimerEventType.FINISH]: [];
+  [TimerEventType.GO]: [];
   [TimerEventType.PHASE_CHANGE]: [newPhase: TimerPhase];
   [TimerEventType.ROUND_CHANGE]: [newRound: number];
   [TimerEventType.BEEP]: [secondRemaining: number];
@@ -42,6 +44,7 @@ export class TimerController {
     [TimerEventType.PAUSE]: [],
     [TimerEventType.RESET]: [],
     [TimerEventType.FINISH]: [],
+    [TimerEventType.GO]: [],
     [TimerEventType.PHASE_CHANGE]: [],
     [TimerEventType.ROUND_CHANGE]: [],
     [TimerEventType.BEEP]: [],
@@ -97,6 +100,14 @@ export class TimerController {
     if (!oldState.isFinished && newState.isFinished) {
       this.emit(TimerEventType.FINISH);
       return;
+    }
+
+    // detect workout start
+    if (
+      oldState.phase === TimerPhase.PREPARATION &&
+      newState.phase === TimerPhase.WORK
+    ) {
+      this.emit(TimerEventType.GO);
     }
 
     this.detectRoundAndPhase(oldState, newState);

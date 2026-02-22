@@ -45,13 +45,16 @@ describe('timerController', () => {
     });
   });
 
-  describe('preparation phase and beeps', () => {
+  describe('preparation phase, beeps and go', () => {
     it('emits beeps only during the last 3 seconds of preparation', () => {
       const strategy = new UpStrategy(10_000);
       const controller = new TimerController(strategy, 5000);
 
       const beepSpy = jest.fn();
+      const goSpy = jest.fn();
+
       controller.on(TimerEventType.BEEP, beepSpy);
+      controller.on(TimerEventType.GO, goSpy);
 
       controller.start();
 
@@ -75,6 +78,7 @@ describe('timerController', () => {
       jest.advanceTimersByTime(2000);
 
       expect(beepSpy).toHaveBeenCalledTimes(3);
+      expect(goSpy).toHaveBeenCalledTimes(1);
     });
 
     it('does not emit beeps during the work phase even in the last 3 seconds', () => {
