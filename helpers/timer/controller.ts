@@ -108,6 +108,7 @@ export class TimerController {
       newState.phase === TimerPhase.WORK
     ) {
       this.emit(TimerEventType.GO);
+      return;
     }
 
     this.detectRoundAndPhase(oldState, newState);
