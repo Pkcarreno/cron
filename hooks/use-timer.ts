@@ -63,6 +63,9 @@ const useTimerController = (
     controller.on(TimerEventType.BEEP, (second: number) =>
       console.log(`beep on ${second} left`)
     );
+    controller.on(TimerEventType.GO, () => {
+      console.log('Go');
+    });
     controller.on(TimerEventType.PHASE_CHANGE, (newPhase: TimerPhase) =>
       console.log('on phase change:', newPhase)
     );
