@@ -4,6 +4,7 @@ import { Link, useLocalSearchParams } from 'expo-router';
 import { TimerStatus, useTimer } from '@/hooks/use-timer';
 import type { TimerRouteParams } from '@/helpers/timer/utils/config-serializer';
 import { deserializeTimerConfig } from '@/helpers/timer/utils/config-serializer';
+import { useKeepAwake } from 'expo-keep-awake';
 
 export default function TimerScreen() {
   const rawConfigParams = useLocalSearchParams<TimerRouteParams>();
@@ -21,6 +22,8 @@ export default function TimerScreen() {
     pause,
     reset,
   } = useTimer(deserializeTimerConfig(rawConfigParams));
+
+  useKeepAwake();
 
   return (
     <View style={styles.container}>
