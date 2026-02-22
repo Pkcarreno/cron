@@ -15,8 +15,7 @@
     "lint:fix": "ultracite fix",
     "commitlint": "commitlint",
     "preinstall": "npx only-allow pnpm",
-    "prepare": "lefthook install",
-    "version": "node scripts/sync-version.js && git add app.json"
+    "prepare": "lefthook install"
   },
   "dependencies": {
     "expo": "~54.0.33",
