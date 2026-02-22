@@ -2,7 +2,9 @@ import type { ConfigContext, ExpoConfig } from '@expo/config';
 import 'tsx/cjs';
 import Env from './env';
 
-const getAppIconsData = (): {
+const getAppIconsData = (
+  appEnv: typeof Env.EXPO_PUBLIC_APP_ENV
+): {
   icon: string;
   ios: {
     icon: {
@@ -19,26 +21,70 @@ const getAppIconsData = (): {
   web: {
     favicon: string;
   };
-} => ({
-  android: {
-    adaptiveIcon: {
-      backgroundColor: '#000000',
-    },
-  },
-  icon: './assets/icon.png',
-  ios: {
-    icon: {
-      dark: './assets/ios-dark.png',
-      light: './assets/ios-light.png',
-      tinted: './assets/ios-tinted.png',
-    },
-  },
-  web: {
-    favicon: './assets/favicon.png',
-  },
-});
+} => {
+  if (appEnv === 'production') {
+    return {
+      android: {
+        adaptiveIcon: {
+          backgroundColor: '#000000',
+        },
+      },
+      icon: './assets/icon.png',
+      ios: {
+        icon: {
+          dark: './assets/ios-dark.png',
+          light: './assets/ios-light.png',
+          tinted: './assets/ios-tinted.png',
+        },
+      },
+      web: {
+        favicon: './assets/favicon.png',
+      },
+    };
+  }
 
-const appIconsData = getAppIconsData();
+  if (appEnv === 'preview') {
+    return {
+      android: {
+        adaptiveIcon: {
+          backgroundColor: '#E7801F',
+        },
+      },
+      icon: './assets/icon-preview.png',
+      ios: {
+        icon: {
+          dark: './assets/ios-dark-preview.png',
+          light: './assets/ios-light-preview.png',
+          tinted: './assets/ios-tinted-preview.png',
+        },
+      },
+      web: {
+        favicon: './assets/favicon-preview.png',
+      },
+    };
+  }
+
+  return {
+    android: {
+      adaptiveIcon: {
+        backgroundColor: '#008153',
+      },
+    },
+    icon: './assets/icon-dev.png',
+    ios: {
+      icon: {
+        dark: './assets/ios-dark-dev.png',
+        light: './assets/ios-light-dev.png',
+        tinted: './assets/ios-tinted-dev.png',
+      },
+    },
+    web: {
+      favicon: './assets/favicon-dev.png',
+    },
+  };
+};
+
+const appIconsData = getAppIconsData(Env.EXPO_PUBLIC_APP_ENV);
 
 const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
