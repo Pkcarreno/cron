@@ -29,7 +29,8 @@
     "react": "19.1.0",
     "react-native": "0.81.5",
     "react-native-safe-area-context": "~5.6.2",
-    "react-native-screens": "~4.16.0"
+    "react-native-screens": "~4.16.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.4.2",
@@ -42,6 +43,7 @@
     "oxfmt": "^0.33.0",
     "oxlint": "^1.49.0",
     "oxlint-plugin-react-native": "^0.2.1",
+    "tsx": "^4.21.0",
     "typescript": "~5.9.2",
     "ultracite": "^7.2.3"
   },
