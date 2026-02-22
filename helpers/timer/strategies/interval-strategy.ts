@@ -4,13 +4,15 @@ import { TimerPhase } from '@/helpers/timer/strategy';
 
 export class IntervalStrategy implements TimerStrategy {
   private cycleTimeMs: number;
+  private workTimeMs: number;
+  // private restTimeMs: number;
+  private totalRounds: number;
 
-  constructor(
-    private workTimeMs: number,
-    private restTimeMs: number,
-    private totalRounds: number
-  ) {
-    this.cycleTimeMs = this.workTimeMs + this.restTimeMs;
+  constructor(workTimeMs: number, restTimeMs: number, totalRounds: number) {
+    this.cycleTimeMs = workTimeMs + restTimeMs;
+    this.workTimeMs = workTimeMs;
+    // this.restTimeMs = restTimeMs;
+    this.totalRounds = totalRounds;
   }
 
   calculateState(event: TickEvent): TimerState {

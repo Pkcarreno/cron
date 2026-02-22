@@ -3,10 +3,13 @@ import type { TimerState, TimerStrategy } from '@/helpers/timer/strategy';
 import { TimerPhase } from '@/helpers/timer/strategy';
 
 export class RoundStrategy implements TimerStrategy {
-  constructor(
-    private roundTimeMs: number,
-    private totalRounds: number
-  ) {}
+  private roundTimeMs: number;
+  private totalRounds: number;
+
+  constructor(roundTimeMs: number, totalRounds: number) {
+    this.roundTimeMs = roundTimeMs;
+    this.totalRounds = totalRounds;
+  }
 
   calculateState(event: TickEvent): TimerState {
     const totalDuration = this.roundTimeMs * this.totalRounds;

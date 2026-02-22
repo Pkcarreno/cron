@@ -4,6 +4,14 @@ import { RoundStrategy } from '@/helpers/timer/strategies/round-strategy';
 import { UpStrategy } from '@/helpers/timer/strategies/up-strategy';
 import type { TimerStrategy } from '@/helpers/timer/strategy';
 
+export enum TimerMode {
+  AMRAP = 'AMRAP',
+  FOR_TIME = 'FOR_TIME',
+  EMOM = 'EMOM',
+  TABATA = 'TABATA',
+  ON_OFF = 'ON_OFF',
+}
+
 export const createTimerStrategy = (config: TimerConfig): TimerStrategy => {
   switch (config.mode) {
     case TimerMode.AMRAP: {
@@ -35,14 +43,6 @@ export const createTimerStrategy = (config: TimerConfig): TimerStrategy => {
     }
   }
 };
-
-export enum TimerMode {
-  AMRAP = 'AMRAP',
-  FOR_TIME = 'FOR_TIME',
-  EMOM = 'EMOM',
-  TABATA = 'TABATA',
-  ON_OFF = 'ON_OFF',
-}
 
 interface BaseTimerConfig {
   preparationMs: number;

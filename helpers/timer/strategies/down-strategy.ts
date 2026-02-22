@@ -3,7 +3,11 @@ import type { TimerState, TimerStrategy } from '@/helpers/timer/strategy';
 import { TimerPhase } from '@/helpers/timer/strategy';
 
 export class DownStrategy implements TimerStrategy {
-  constructor(private targetTimeMs: number) {}
+  private targetTimeMs: number;
+
+  constructor(targetTimeMs: number) {
+    this.targetTimeMs = targetTimeMs;
+  }
 
   calculateState(event: TickEvent): TimerState {
     const isFinished = event.totalElapsedMs >= this.targetTimeMs;
