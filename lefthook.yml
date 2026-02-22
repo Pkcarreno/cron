@@ -3,14 +3,17 @@ pre-commit:
   jobs:
     - run: pnpm tsc
       glob: '*.{js,jsx,ts,tsx,json,jsonc,css}'
-    - run: pnpm lint:fix {staged_files}
+    - run: pnpm test
       glob: '*.{js,jsx,ts,tsx,json,jsonc,css}'
+    - run: pnpm lint:fix {staged_files}
       stage_fixed: true
 
 pre-push:
+  parallel: true
   jobs:
     - run: pnpm lint {push_files}
       glob: '*.{js,jsx,ts,tsx,json,jsonc,css}'
+    - run: pnpm test
 
 post-merge:
   jobs:
