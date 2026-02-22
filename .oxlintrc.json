@@ -9,6 +9,7 @@
   ],
   "rules": {
     "jest/require-hook": "off",
+    "vitest/prefer-called-once": "off",
     "typescript/no-use-before-define": ["error", { "variables": false }],
     "react-native/no-color-literals": "error",
     "react-native/no-inline-styles": "warn",
@@ -19,15 +20,13 @@
   },
   "overrides": [
     {
-      "files": [
-        "*.test.ts",
-        "*.test.tsx",
-        "*.spec.ts",
-        "*.spec.tsx",
-        "**/__tests__/**/*"
-      ],
+      "files": ["**/*.test.ts"],
       "rules": {
-        "jest/require-hook": "error"
+        "jest/require-hook": "error",
+        "jest/no-confusing-set-timeout": "off",
+        "jest/no-hooks": "off",
+        "max-statements": "off",
+        "jest/max-expects": "off"
       }
     }
   ]
