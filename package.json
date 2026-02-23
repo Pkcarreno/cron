@@ -17,7 +17,6 @@
     "build:development:android:local": "eas build --profile development --platform android --local",
     "build:preview:android:local": "eas build --profile preview --platform android --local",
     "build:production:android:local": "eas build --profile production --platform android --local",
-    "commitlint": "commitlint",
     "preinstall": "npx only-allow pnpm",
     "prepare": "lefthook install"
   },
