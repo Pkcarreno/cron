@@ -10,7 +10,7 @@
     "web": "expo start --web",
     "prebuild": "expo prebuild",
     "expo:doctor": "pnpm dlx expo-doctor@latest",
-    "tsc": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
     "test": "jest",
     "lint": "ultracite check",
     "lint:fix": "ultracite fix",
