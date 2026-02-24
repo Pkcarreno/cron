@@ -58,32 +58,60 @@ export default function TimerScreen() {
         <View style={dataBoxStyles.container}>
           <Text style={dataBoxStyles.heading}>state</Text>
           <View style={dataBoxStyles.dataWrapper}>
-            <Text style={dataBoxStyles.text}>mode {modeAbbr}</Text>
-            <Text style={dataBoxStyles.text}>status {status}</Text>
-            <Text style={dataBoxStyles.text}>phase {phase}</Text>
-            <Text style={dataBoxStyles.text}>totalRounds {totalRounds}</Text>
-            <Text style={dataBoxStyles.text}>currentRound {currentRound}</Text>
-            <Text style={dataBoxStyles.text}>
-              displayTimeMs {displayTimeMs}
-            </Text>
+            <View style={dataBoxStyles.dataElementWrapper}>
+              <Text style={dataBoxStyles.dataKeyText}>mode</Text>
+              <Text style={dataBoxStyles.dataValueText}>{modeAbbr}</Text>
+            </View>
+            <View style={dataBoxStyles.dataElementWrapper}>
+              <Text style={dataBoxStyles.dataKeyText}>status</Text>
+              <Text style={dataBoxStyles.dataValueText}>{status}</Text>
+            </View>
+            <View style={dataBoxStyles.dataElementWrapper}>
+              <Text style={dataBoxStyles.dataKeyText}>phase</Text>
+              <Text style={dataBoxStyles.dataValueText}>{phase}</Text>
+            </View>
+            <View style={dataBoxStyles.dataElementWrapper}>
+              <Text style={dataBoxStyles.dataKeyText}>totalRounds</Text>
+              <Text style={dataBoxStyles.dataValueText}>{totalRounds}</Text>
+            </View>
+            <View style={dataBoxStyles.dataElementWrapper}>
+              <Text style={dataBoxStyles.dataKeyText}>currentRound</Text>
+              <Text style={dataBoxStyles.dataValueText}>{currentRound}</Text>
+            </View>
+            <View style={dataBoxStyles.dataElementWrapper}>
+              <Text style={dataBoxStyles.dataKeyText}>displayTimeMs</Text>
+              <Text style={dataBoxStyles.dataValueText}>{displayTimeMs}</Text>
+            </View>
           </View>
         </View>
 
         <View style={dataBoxStyles.container}>
           <Text style={dataBoxStyles.heading}>flags</Text>
           <View style={dataBoxStyles.dataWrapper}>
-            <Text style={dataBoxStyles.text}>
-              isPreparing {JSON.stringify(flags.isPreparing)}
-            </Text>
-            <Text style={dataBoxStyles.text}>
-              showsPhaseIndicator {JSON.stringify(flags.showsPhaseIndicator)}
-            </Text>
-            <Text style={dataBoxStyles.text}>
-              showsRoundCounter {JSON.stringify(flags.showsRoundCounter)}
-            </Text>
-            <Text style={dataBoxStyles.text}>
-              showsTimeControls {JSON.stringify(flags.showsTimeControls)}
-            </Text>
+            <View style={dataBoxStyles.dataElementWrapper}>
+              <Text style={dataBoxStyles.dataKeyText}>isPreparing</Text>
+              <Text style={dataBoxStyles.dataValueText}>
+                {flags.isPreparing.toString()}
+              </Text>
+            </View>
+            <View style={dataBoxStyles.dataElementWrapper}>
+              <Text style={dataBoxStyles.dataKeyText}>showsPhaseIndicator</Text>
+              <Text style={dataBoxStyles.dataValueText}>
+                {flags.showsPhaseIndicator.toString()}
+              </Text>
+            </View>
+            <View style={dataBoxStyles.dataElementWrapper}>
+              <Text style={dataBoxStyles.dataKeyText}>showsRoundCounter</Text>
+              <Text style={dataBoxStyles.dataValueText}>
+                {flags.showsRoundCounter.toString()}
+              </Text>
+            </View>
+            <View style={dataBoxStyles.dataElementWrapper}>
+              <Text style={dataBoxStyles.dataKeyText}>showsTimeControls</Text>
+              <Text style={dataBoxStyles.dataValueText}>
+                {flags.showsTimeControls.toString()}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -186,6 +214,20 @@ const dataBoxStyles = StyleSheet.create({
   container: {
     paddingVertical: 4,
   },
+  dataElementWrapper: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  dataKeyText: {
+    color: colors.neutral[600],
+    fontFamily: 'Geist Mono',
+    fontWeight: '400',
+  },
+  dataValueText: {
+    color: colors.neutral[400],
+    fontFamily: 'Geist Mono',
+    fontWeight: '400',
+  },
   dataWrapper: {
     paddingHorizontal: 8,
   },
@@ -193,11 +235,6 @@ const dataBoxStyles = StyleSheet.create({
     color: colors.neutral[400],
     fontFamily: 'Geist',
     fontSize: 16,
-    fontWeight: '400',
-  },
-  text: {
-    color: colors.neutral[400],
-    fontFamily: 'Geist Mono',
     fontWeight: '400',
   },
 });
