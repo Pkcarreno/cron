@@ -7,6 +7,7 @@ import { deserializeTimerConfig } from '@/helpers/timer/utils/config-serializer'
 import { useKeepAwake } from 'expo-keep-awake';
 import type { TimerPhase } from '@/helpers/timer/strategy';
 import { useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function TimerScreen() {
   const rawConfigParams = useLocalSearchParams<TimerRouteParams>();
@@ -44,57 +45,61 @@ export default function TimerScreen() {
   useKeepAwake();
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.text}>Timer Screen</Text>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.contentWrapper}>
+        <Text style={styles.text}>Timer Screen</Text>
 
-      <View style={timerStyles.container}>
-        <Text style={timerStyles.text}>{minutes}</Text>
-        <Text style={timerStyles.text}>:</Text>
-        <Text style={timerStyles.text}>{seconds}</Text>
-      </View>
-
-      <View style={dataBoxStyles.container}>
-        <Text style={dataBoxStyles.heading}>state</Text>
-        <View style={dataBoxStyles.dataWrapper}>
-          <Text style={dataBoxStyles.text}>mode {modeAbbr}</Text>
-          <Text style={dataBoxStyles.text}>status {status}</Text>
-          <Text style={dataBoxStyles.text}>phase {phase}</Text>
-          <Text style={dataBoxStyles.text}>totalRounds {totalRounds}</Text>
-          <Text style={dataBoxStyles.text}>currentRound {currentRound}</Text>
-          <Text style={dataBoxStyles.text}>displayTimeMs {displayTimeMs}</Text>
+        <View style={timerStyles.container}>
+          <Text style={timerStyles.text}>{minutes}</Text>
+          <Text style={timerStyles.text}>:</Text>
+          <Text style={timerStyles.text}>{seconds}</Text>
         </View>
-      </View>
 
-      <View style={dataBoxStyles.container}>
-        <Text style={dataBoxStyles.heading}>flags</Text>
-        <View style={dataBoxStyles.dataWrapper}>
-          <Text style={dataBoxStyles.text}>
-            isPreparing {JSON.stringify(flags.isPreparing)}
-          </Text>
-          <Text style={dataBoxStyles.text}>
-            showsPhaseIndicator {JSON.stringify(flags.showsPhaseIndicator)}
-          </Text>
-          <Text style={dataBoxStyles.text}>
-            showsRoundCounter {JSON.stringify(flags.showsRoundCounter)}
-          </Text>
-          <Text style={dataBoxStyles.text}>
-            showsTimeControls {JSON.stringify(flags.showsTimeControls)}
-          </Text>
-        </View>
-      </View>
-
-      <View style={logStyles.container}>
-        <Text style={logStyles.heading}>logs</Text>
-        <ScrollView style={logStyles.logWrapper}>
-          {eventLogs.map((log) => (
-            <Text key={log} style={logStyles.text}>
-              {log}
+        <View style={dataBoxStyles.container}>
+          <Text style={dataBoxStyles.heading}>state</Text>
+          <View style={dataBoxStyles.dataWrapper}>
+            <Text style={dataBoxStyles.text}>mode {modeAbbr}</Text>
+            <Text style={dataBoxStyles.text}>status {status}</Text>
+            <Text style={dataBoxStyles.text}>phase {phase}</Text>
+            <Text style={dataBoxStyles.text}>totalRounds {totalRounds}</Text>
+            <Text style={dataBoxStyles.text}>currentRound {currentRound}</Text>
+            <Text style={dataBoxStyles.text}>
+              displayTimeMs {displayTimeMs}
             </Text>
-          ))}
-          {eventLogs.length === 0 && (
-            <Text style={logStyles.text}>No log yet</Text>
-          )}
-        </ScrollView>
+          </View>
+        </View>
+
+        <View style={dataBoxStyles.container}>
+          <Text style={dataBoxStyles.heading}>flags</Text>
+          <View style={dataBoxStyles.dataWrapper}>
+            <Text style={dataBoxStyles.text}>
+              isPreparing {JSON.stringify(flags.isPreparing)}
+            </Text>
+            <Text style={dataBoxStyles.text}>
+              showsPhaseIndicator {JSON.stringify(flags.showsPhaseIndicator)}
+            </Text>
+            <Text style={dataBoxStyles.text}>
+              showsRoundCounter {JSON.stringify(flags.showsRoundCounter)}
+            </Text>
+            <Text style={dataBoxStyles.text}>
+              showsTimeControls {JSON.stringify(flags.showsTimeControls)}
+            </Text>
+          </View>
+        </View>
+
+        <View style={logStyles.container}>
+          <Text style={logStyles.heading}>logs</Text>
+          <ScrollView style={logStyles.logWrapper}>
+            {eventLogs.map((log) => (
+              <Text key={log} style={logStyles.text}>
+                {log}
+              </Text>
+            ))}
+            {eventLogs.length === 0 && (
+              <Text style={logStyles.text}>No log yet</Text>
+            )}
+          </ScrollView>
+        </View>
       </View>
 
       <View style={buttonsStyles.container}>
@@ -144,16 +149,19 @@ export default function TimerScreen() {
           Back to Index
         </Link>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    gap: 8,
-    justifyContent: 'center',
+    gap: 12,
     paddingHorizontal: 16,
+  },
+  contentWrapper: {
+    flex: 1,
+    gap: 8,
   },
   text: {
     color: colors.neutral[400],
