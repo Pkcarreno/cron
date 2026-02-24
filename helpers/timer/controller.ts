@@ -141,6 +141,25 @@ export class TimerController {
     }
   }
 
+  public removeAllListeners() {
+    this.listeners = {
+      [TimerEventType.START]: [],
+      [TimerEventType.PAUSE]: [],
+      [TimerEventType.RESET]: [],
+      [TimerEventType.FINISH]: [],
+      [TimerEventType.GO]: [],
+      [TimerEventType.PHASE_CHANGE]: [],
+      [TimerEventType.ROUND_CHANGE]: [],
+      [TimerEventType.BEEP]: [],
+      [TimerEventType.TICK]: [],
+    };
+  }
+
+  public dispose() {
+    this.engine.pause();
+    this.removeAllListeners();
+  }
+
   public on<K extends keyof TimerEventMap>(
     event: K,
     listener: TimerEventCallback<K>

@@ -213,4 +213,65 @@ describe('timerController', () => {
       expect(ticksAfterRestart).not.toBe(ticksAfterPause);
     });
   });
+
+  describe('resource Management & Cleanup', () => {
+    it('removes all listeners preventing zombie callbacks', () => {
+      const strategy = new UpStrategy(10_000);
+      const controller = new TimerController(strategy, 0);
+
+      const tickSpy = jest.fn();
+      const startSpy = jest.fn();
+
+      controller.on(TimerEventType.TICK, tickSpy);
+      controller.on(TimerEventType.START, startSpy);
+
+      controller.removeAllListeners();
+
+      controller.start();
+      jest.advanceTimersByTime(100);
+
+      expect(startSpy).not.toHaveBeenCalled();
+      expect(tickSpy).not.toHaveBeenCalled();
+    });
+
+    it('dispose() stops the engine AND clears listeners simultaneously', () => {
+      const strategy = new UpStrategy(10_000);
+      const controller = new TimerController(strategy, 0);
+
+      const tickSpy = jest.fn();
+      controller.on(TimerEventType.TICK, tickSpy);
+
+      controller.start();
+      jest.advanceTimersByTime(100);
+      expect(tickSpy).toHaveBeenCalledTimes(101);
+
+      const callsBeforeDispose = tickSpy.mock.calls.length;
+
+      controller.dispose();
+
+      jest.advanceTimersByTime(5000);
+
+      const callsAfterDispose = tickSpy.mock.calls.length;
+
+      expect(callsAfterDispose).toBe(callsBeforeDispose);
+    });
+
+    it('allows re-subscribing after cleaning listeners', () => {
+      const strategy = new UpStrategy(10_000);
+      const controller = new TimerController(strategy, 0);
+      const spy1 = jest.fn();
+      const spy2 = jest.fn();
+
+      controller.on(TimerEventType.TICK, spy1);
+      controller.removeAllListeners();
+
+      controller.on(TimerEventType.TICK, spy2);
+
+      controller.start();
+      jest.advanceTimersByTime(100);
+
+      expect(spy1).not.toHaveBeenCalled();
+      expect(spy2).toHaveBeenCalledTimes(101);
+    });
+  });
 });
