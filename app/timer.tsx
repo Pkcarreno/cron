@@ -1,13 +1,24 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors } from '@/helpers/colors';
 import { Link, useLocalSearchParams } from 'expo-router';
 import { TimerStatus, useTimer } from '@/hooks/use-timer';
 import type { TimerRouteParams } from '@/helpers/timer/utils/config-serializer';
 import { deserializeTimerConfig } from '@/helpers/timer/utils/config-serializer';
 import { useKeepAwake } from 'expo-keep-awake';
+import type { TimerPhase } from '@/helpers/timer/strategy';
+import { useState } from 'react';
 
 export default function TimerScreen() {
   const rawConfigParams = useLocalSearchParams<TimerRouteParams>();
+  const [eventLogs, setEventLogs] = useState<string[]>([]);
+
+  const addLog = (message: string) => {
+    const timeString = new Date().toLocaleTimeString();
+    setEventLogs((prev) => [`[${timeString}] ${message}`, ...prev]);
+  };
+
+  const timerInput = deserializeTimerConfig(rawConfigParams);
+
   const {
     minutes,
     seconds,
@@ -21,7 +32,14 @@ export default function TimerScreen() {
     start,
     pause,
     reset,
-  } = useTimer(deserializeTimerConfig(rawConfigParams));
+  } = useTimer(timerInput, {
+    onBeep: (second: number) => addLog(`beep on ${second} left`),
+    onFinish: () => addLog('finish'),
+    onGo: () => addLog('Go'),
+    onPhaseChange: (newPhase: TimerPhase) =>
+      addLog(`on phase change: ${newPhase}`),
+    onRoundChange: (newRound: number) => addLog(`on round change: ${newRound}`),
+  });
 
   useKeepAwake();
 
@@ -37,7 +55,6 @@ export default function TimerScreen() {
 
       <View style={dataBoxStyles.container}>
         <Text style={dataBoxStyles.heading}>state</Text>
-        <Text style={dataBoxStyles.text}>{'{'}</Text>
         <View style={dataBoxStyles.dataWrapper}>
           <Text style={dataBoxStyles.text}>mode {modeAbbr}</Text>
           <Text style={dataBoxStyles.text}>status {status}</Text>
@@ -46,12 +63,10 @@ export default function TimerScreen() {
           <Text style={dataBoxStyles.text}>currentRound {currentRound}</Text>
           <Text style={dataBoxStyles.text}>displayTimeMs {displayTimeMs}</Text>
         </View>
-        <Text style={styles.text}>{'}'}</Text>
       </View>
 
       <View style={dataBoxStyles.container}>
         <Text style={dataBoxStyles.heading}>flags</Text>
-        <Text style={dataBoxStyles.text}>{'{'}</Text>
         <View style={dataBoxStyles.dataWrapper}>
           <Text style={dataBoxStyles.text}>
             isPreparing {JSON.stringify(flags.isPreparing)}
@@ -66,7 +81,20 @@ export default function TimerScreen() {
             showsTimeControls {JSON.stringify(flags.showsTimeControls)}
           </Text>
         </View>
-        <Text style={styles.text}>{'}'}</Text>
+      </View>
+
+      <View style={logStyles.container}>
+        <Text style={logStyles.heading}>logs</Text>
+        <ScrollView style={logStyles.logWrapper}>
+          {eventLogs.map((log) => (
+            <Text key={log} style={logStyles.text}>
+              {log}
+            </Text>
+          ))}
+          {eventLogs.length === 0 && (
+            <Text style={logStyles.text}>No log yet</Text>
+          )}
+        </ScrollView>
       </View>
 
       <View style={buttonsStyles.container}>
@@ -163,6 +191,34 @@ const dataBoxStyles = StyleSheet.create({
     color: colors.neutral[400],
     fontFamily: 'Geist Mono',
     fontWeight: '400',
+  },
+});
+
+const logStyles = StyleSheet.create({
+  container: {
+    height: 200,
+    paddingVertical: 4,
+  },
+  heading: {
+    color: colors.neutral[400],
+    fontFamily: 'Geist',
+    fontSize: 16,
+    fontWeight: '400',
+  },
+  logWrapper: {
+    borderColor: colors.neutral[800],
+    borderRadius: 4,
+    borderWidth: 1,
+    flex: 1,
+    marginTop: 4,
+    paddingHorizontal: 8,
+  },
+  text: {
+    color: colors.neutral[500],
+    fontFamily: 'Geist Mono',
+    fontSize: 12,
+    fontWeight: '400',
+    marginBottom: 5,
   },
 });
 
