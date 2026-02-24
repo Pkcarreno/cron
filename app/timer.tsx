@@ -67,10 +67,25 @@ export default function TimerScreen() {
         </View>
 
         <View style={dataBoxStyles.container}>
+          <Text style={dataBoxStyles.heading}>input</Text>
+          <View style={dataBoxStyles.dataWrapper}>
+            {Object.entries(timerInput).map(([key, value]) => (
+              <View
+                key={`${key}-${value}`}
+                style={dataBoxStyles.dataElementWrapper}
+              >
+                <Text style={dataBoxStyles.dataKeyText}>{key}</Text>
+                <Text style={dataBoxStyles.dataValueText}>{value}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View style={dataBoxStyles.container}>
           <Text style={dataBoxStyles.heading}>state</Text>
           <View style={dataBoxStyles.dataWrapper}>
             <View style={dataBoxStyles.dataElementWrapper}>
-              <Text style={dataBoxStyles.dataKeyText}>mode</Text>
+              <Text style={dataBoxStyles.dataKeyText}>modeAbbr</Text>
               <Text style={dataBoxStyles.dataValueText}>{modeAbbr}</Text>
             </View>
             <View style={dataBoxStyles.dataElementWrapper}>
@@ -204,7 +219,7 @@ const styles = StyleSheet.create({
   },
   contentWrapper: {
     flex: 1,
-    gap: 8,
+    gap: 6,
   },
   text: {
     color: colors.neutral[400],
