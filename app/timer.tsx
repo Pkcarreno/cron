@@ -9,13 +9,24 @@ import type { TimerPhase } from '@/helpers/timer/strategy';
 import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+interface logType {
+  time: string;
+  message: string;
+}
+
 export default function TimerScreen() {
   const rawConfigParams = useLocalSearchParams<TimerRouteParams>();
-  const [eventLogs, setEventLogs] = useState<string[]>([]);
+  const [eventLogs, setEventLogs] = useState<logType[]>([]);
 
   const addLog = (message: string) => {
     const timeString = new Date().toLocaleTimeString();
-    setEventLogs((prev) => [`[${timeString}] ${message}`, ...prev]);
+    setEventLogs((prev) => [
+      {
+        message,
+        time: timeString,
+      },
+      ...prev,
+    ]);
   };
 
   const timerInput = deserializeTimerConfig(rawConfigParams);
@@ -119,9 +130,13 @@ export default function TimerScreen() {
           <Text style={logStyles.heading}>logs</Text>
           <ScrollView style={logStyles.logWrapper}>
             {eventLogs.map((log) => (
-              <Text key={log} style={logStyles.text}>
-                {log}
-              </Text>
+              <View
+                key={`${log.time}-${log.message}`}
+                style={logStyles.logItemWrapper}
+              >
+                <Text style={logStyles.logTimeText}>[{log.time}]</Text>
+                <Text style={logStyles.logMessageText}>{log.message}</Text>
+              </View>
             ))}
             {eventLogs.length === 0 && (
               <Text style={logStyles.text}>No log yet</Text>
@@ -248,6 +263,20 @@ const logStyles = StyleSheet.create({
     color: colors.neutral[400],
     fontFamily: 'Geist',
     fontSize: 16,
+    fontWeight: '400',
+  },
+  logItemWrapper: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  logMessageText: {
+    color: colors.neutral[400],
+    fontFamily: 'Geist Mono',
+    fontWeight: '400',
+  },
+  logTimeText: {
+    color: colors.neutral[600],
+    fontFamily: 'Geist Mono',
     fontWeight: '400',
   },
   logWrapper: {
