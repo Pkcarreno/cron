@@ -23,6 +23,14 @@ export interface TimerFlags {
   showsTimeControls: boolean;
 }
 
+export interface TimerEventHandlers {
+  onGo?: () => void;
+  onFinish?: () => void;
+  onPhaseChange?: (phase: TimerPhase) => void;
+  onRoundChange?: (round: number) => void;
+  onBeep?: (second: number) => void;
+}
+
 const getTimerFlags = (
   config: TimerConfig,
   phase: TimerPhase,
@@ -44,9 +52,16 @@ const getTimerFlags = (
 const useTimerController = (
   config: TimerConfig,
   setTimerState: React.Dispatch<React.SetStateAction<TimerState>>,
-  setStatus: React.Dispatch<React.SetStateAction<TimerStatus>>
+  setStatus: React.Dispatch<React.SetStateAction<TimerStatus>>,
+  handlers?: TimerEventHandlers
 ) => {
   const controllerRef = useRef<TimerController | null>(null);
+
+  const handlersRef = useRef(handlers);
+
+  useEffect(() => {
+    handlersRef.current = handlers;
+  }, [handlers]);
 
   if (!controllerRef.current) {
     const strategy = createTimerStrategy(config);
@@ -60,27 +75,33 @@ const useTimerController = (
     }
 
     controller.on(TimerEventType.TICK, setTimerState);
-    controller.on(TimerEventType.BEEP, (second: number) =>
-      console.log(`beep on ${second} left`)
-    );
-    controller.on(TimerEventType.GO, () => {
-      console.log('Go');
+    controller.on(TimerEventType.BEEP, (second: number) => {
+      handlersRef.current?.onBeep?.(second);
     });
-    controller.on(TimerEventType.PHASE_CHANGE, (newPhase: TimerPhase) =>
-      console.log('on phase change:', newPhase)
-    );
+    controller.on(TimerEventType.GO, () => {
+      handlersRef.current?.onGo?.();
+    });
+    controller.on(TimerEventType.PHASE_CHANGE, (newPhase: TimerPhase) => {
+      handlersRef.current?.onPhaseChange?.(newPhase);
+    });
+    controller.on(TimerEventType.ROUND_CHANGE, (newRound: number) => {
+      handlersRef.current?.onRoundChange?.(newRound);
+    });
     controller.on(TimerEventType.FINISH, () => {
-      console.log('finish');
       setStatus(TimerStatus.FINISHED);
+      handlersRef.current?.onFinish?.();
     });
 
-    return () => controller.pause();
+    return () => controller.dispose();
   }, [setTimerState, setStatus]);
 
   return controllerRef;
 };
 
-export const useTimer = (config: TimerConfig) => {
+export const useTimer = (
+  config: TimerConfig,
+  handlers?: TimerEventHandlers
+) => {
   const [timerState, setTimerState] = useState<TimerState>({
     currentRound: 0,
     displayTimeMs: 0,
@@ -90,7 +111,12 @@ export const useTimer = (config: TimerConfig) => {
   });
   const [status, setStatus] = useState<TimerStatus>(TimerStatus.READY);
 
-  const controllerRef = useTimerController(config, setTimerState, setStatus);
+  const controllerRef = useTimerController(
+    config,
+    setTimerState,
+    setStatus,
+    handlers
+  );
 
   const { minutes, seconds } = formatTimeForDisplay(timerState.displayTimeMs);
 
