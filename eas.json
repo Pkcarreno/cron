@@ -19,7 +19,6 @@
       }
     },
     "preview": {
-      "channel": "preview",
       "autoIncrement": true,
       "distribution": "internal",
       "ios": {
@@ -35,7 +34,6 @@
       }
     },
     "production": {
-      "channel": "production",
       "autoIncrement": true,
       "distribution": "store",
       "environment": "production",
