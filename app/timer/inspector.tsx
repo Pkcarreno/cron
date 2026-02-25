@@ -14,7 +14,7 @@ interface logType {
   message: string;
 }
 
-export default function TimerScreen() {
+export default function TimerInspectorScreen() {
   const rawConfigParams = useLocalSearchParams<TimerRouteParams>();
   const [eventLogs, setEventLogs] = useState<logType[]>([]);
 

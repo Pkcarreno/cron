@@ -42,7 +42,7 @@ export default function HomeScreen() {
         <Link
           href={{
             params: serializeTimerConfig(emomConfig),
-            pathname: '/timer',
+            pathname: '/timer/inspector',
           }}
           style={buttonsStyles.link}
         >
@@ -51,7 +51,7 @@ export default function HomeScreen() {
         <Link
           href={{
             params: serializeTimerConfig(tabataConfig),
-            pathname: '/timer',
+            pathname: '/timer/inspector',
           }}
           style={buttonsStyles.link}
         >
@@ -60,7 +60,7 @@ export default function HomeScreen() {
         <Link
           href={{
             params: serializeTimerConfig(amrapConfig),
-            pathname: '/timer',
+            pathname: '/timer/inspector',
           }}
           style={buttonsStyles.link}
         >
@@ -69,7 +69,7 @@ export default function HomeScreen() {
         <Link
           href={{
             params: serializeTimerConfig(onOffConfig),
-            pathname: '/timer',
+            pathname: '/timer/inspector',
           }}
           style={buttonsStyles.link}
         >
@@ -78,7 +78,7 @@ export default function HomeScreen() {
         <Link
           href={{
             params: serializeTimerConfig(forTimeConfig),
-            pathname: '/timer',
+            pathname: '/timer/inspector',
           }}
           style={buttonsStyles.link}
         >
