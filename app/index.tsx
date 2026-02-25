@@ -5,6 +5,7 @@ import type { TimerConfig } from '@/helpers/timer/factory';
 import { TimerMode } from '@/helpers/timer/factory';
 import { serializeTimerConfig } from '@/helpers/timer/utils/config-serializer';
 import { convertTimeToMs } from '@/helpers/timer/utils/formatter';
+import type { FC, PropsWithChildren } from 'react';
 
 const emomConfig: TimerConfig = {
   mode: TimerMode.EMOM,
@@ -39,55 +40,43 @@ export default function HomeScreen() {
       <Text style={styles.text}>Index Screen</Text>
       <View style={buttonsStyles.linkWrapper}>
         <Text style={buttonsStyles.heading}>Jobs</Text>
-        <Link
-          href={{
-            params: serializeTimerConfig(emomConfig),
-            pathname: '/timer/inspector',
-          }}
-          style={buttonsStyles.link}
-        >
+        <TimerLink config={emomConfig} inspect={true}>
           EMOM
-        </Link>
-        <Link
-          href={{
-            params: serializeTimerConfig(tabataConfig),
-            pathname: '/timer/inspector',
-          }}
-          style={buttonsStyles.link}
-        >
+        </TimerLink>
+        <TimerLink config={tabataConfig} inspect={true}>
           TABATA
-        </Link>
-        <Link
-          href={{
-            params: serializeTimerConfig(amrapConfig),
-            pathname: '/timer/inspector',
-          }}
-          style={buttonsStyles.link}
-        >
+        </TimerLink>
+        <TimerLink config={amrapConfig} inspect={true}>
           AMRAP
-        </Link>
-        <Link
-          href={{
-            params: serializeTimerConfig(onOffConfig),
-            pathname: '/timer/inspector',
-          }}
-          style={buttonsStyles.link}
-        >
+        </TimerLink>
+        <TimerLink config={onOffConfig} inspect={true}>
           ON/OFF
-        </Link>
-        <Link
-          href={{
-            params: serializeTimerConfig(forTimeConfig),
-            pathname: '/timer/inspector',
-          }}
-          style={buttonsStyles.link}
-        >
+        </TimerLink>
+        <TimerLink config={forTimeConfig} inspect={true}>
           FOR TIME
-        </Link>
+        </TimerLink>
       </View>
     </View>
   );
 }
+
+interface TimerLinkProps extends PropsWithChildren {
+  config: TimerConfig;
+  inspect?: boolean;
+  children: PropsWithChildren['children'] | string;
+}
+
+const TimerLink: FC<TimerLinkProps> = ({ config, inspect, children }) => (
+  <Link
+    href={{
+      params: serializeTimerConfig(config),
+      pathname: inspect ? '/timer/inspector' : '/timer',
+    }}
+    style={buttonsStyles.link}
+  >
+    {children}
+  </Link>
+);
 
 const styles = StyleSheet.create({
   container: {
