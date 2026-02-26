@@ -1,10 +1,11 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '@/helpers/colors';
 import { Link } from 'expo-router';
 import type { TimerConfig } from '@/helpers/timer/factory';
 import { TimerMode } from '@/helpers/timer/factory';
 import { serializeTimerConfig } from '@/helpers/timer/utils/config-serializer';
 import { convertTimeToMs } from '@/helpers/timer/utils/formatter';
+import { useCallback, useState } from 'react';
 import type { FC, PropsWithChildren } from 'react';
 
 const emomConfig: TimerConfig = {
@@ -15,6 +16,7 @@ const emomConfig: TimerConfig = {
 const tabataConfig: TimerConfig = {
   mode: TimerMode.TABATA,
   preparationMs: convertTimeToMs(0, 10),
+  totalRounds: 8,
 };
 const onOffConfig: TimerConfig = {
   mode: TimerMode.ON_OFF,
@@ -35,26 +37,45 @@ const forTimeConfig: TimerConfig = {
 };
 
 export default function HomeScreen() {
+  const [inspectMode, setInspectMode] = useState(false);
+
+  const handleToggleInspectMode = useCallback(() => {
+    setInspectMode((prev) => !prev);
+  }, [setInspectMode]);
+
   return (
     <View style={styles.container}>
       <Text style={styles.text}>Index Screen</Text>
       <View style={buttonsStyles.linkWrapper}>
         <Text style={buttonsStyles.heading}>Jobs</Text>
-        <TimerLink config={emomConfig} inspect={true}>
+        <TimerLink config={emomConfig} inspect={inspectMode}>
           EMOM
         </TimerLink>
-        <TimerLink config={tabataConfig} inspect={true}>
+        <TimerLink config={tabataConfig} inspect={inspectMode}>
           TABATA
         </TimerLink>
-        <TimerLink config={amrapConfig} inspect={true}>
+        <TimerLink config={amrapConfig} inspect={inspectMode}>
           AMRAP
         </TimerLink>
-        <TimerLink config={onOffConfig} inspect={true}>
+        <TimerLink config={onOffConfig} inspect={inspectMode}>
           ON/OFF
         </TimerLink>
-        <TimerLink config={forTimeConfig} inspect={true}>
+        <TimerLink config={forTimeConfig} inspect={inspectMode}>
           FOR TIME
         </TimerLink>
+        <View style={styles.optionsWrapper}>
+          <Text style={buttonsStyles.heading}>
+            Inspect mode screen: {inspectMode.toString()}
+          </Text>
+          <Pressable
+            style={buttonsStyles.toggleInspectButton}
+            onPress={handleToggleInspectMode}
+          >
+            <Text style={buttonsStyles.toggleInspectButtonText}>
+              toggle inspect mode
+            </Text>
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -85,6 +106,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 16,
   },
+  optionsWrapper: {
+    gap: 6,
+  },
   text: {
     color: colors.neutral[400],
     fontFamily: 'Geist',
@@ -113,5 +137,18 @@ const buttonsStyles = StyleSheet.create({
     gap: 8,
     justifyContent: 'center',
     width: '100%',
+  },
+  toggleInspectButton: {
+    borderColor: colors.neutral[500],
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    textAlign: 'center',
+  },
+  toggleInspectButtonText: {
+    color: colors.neutral[500],
+    fontFamily: 'Geist',
+    fontWeight: '400',
   },
 });
