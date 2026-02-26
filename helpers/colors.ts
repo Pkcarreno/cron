@@ -1,5 +1,7 @@
 export const colors = {
   black: '#000000',
+  blue: '#0E76FF',
+  green: '#008153',
   neutral: {
     100: '#f5f5f5',
     200: '#e5e5e5',
@@ -13,5 +15,7 @@ export const colors = {
     900: '#171717',
     950: '#0a0a0a',
   },
+  orange: '#E7801F',
+  red: '#B91126',
   white: '#ffffff',
 };
