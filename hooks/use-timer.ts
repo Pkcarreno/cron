@@ -20,7 +20,7 @@ export interface TimerFlags {
   isPreparing: boolean;
   showsPhaseIndicator: boolean;
   showsRoundCounter: boolean;
-  showsTimeControls: boolean;
+  showsMinuteDigits: boolean;
 }
 
 export interface TimerEventHandlers {
@@ -31,11 +31,7 @@ export interface TimerEventHandlers {
   onBeep?: (second: number) => void;
 }
 
-const getTimerFlags = (
-  config: TimerConfig,
-  phase: TimerPhase,
-  status: TimerStatus
-): TimerFlags => {
+const getTimerFlags = (config: TimerConfig, phase: TimerPhase): TimerFlags => {
   const isPreparing = phase === TimerPhase.PREPARATION;
   const isIntervalMode =
     config.mode === TimerMode.TABATA || config.mode === TimerMode.ON_OFF;
@@ -43,9 +39,9 @@ const getTimerFlags = (
 
   return {
     isPreparing,
+    showsMinuteDigits: !isPreparing,
     showsPhaseIndicator: isIntervalMode && !isPreparing,
     showsRoundCounter: hasMultipleRounds && !isPreparing,
-    showsTimeControls: status !== TimerStatus.FINISHED,
   };
 };
 
@@ -126,8 +122,8 @@ export const useTimer = (
   );
 
   const flags = useMemo(
-    () => getTimerFlags(config, timerState.phase, status),
-    [config, timerState.phase, status]
+    () => getTimerFlags(config, timerState.phase),
+    [config, timerState.phase]
   );
 
   return {
@@ -151,3 +147,5 @@ export const useTimer = (
     status,
   };
 };
+
+export type timerType = ReturnType<typeof useTimer>;

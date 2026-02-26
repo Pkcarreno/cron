@@ -133,9 +133,9 @@ export default function TimerInspectorScreen() {
               </Text>
             </View>
             <View style={dataBoxStyles.dataElementWrapper}>
-              <Text style={dataBoxStyles.dataKeyText}>showsTimeControls</Text>
+              <Text style={dataBoxStyles.dataKeyText}>showsMinuteDigits</Text>
               <Text style={dataBoxStyles.dataValueText}>
-                {flags.showsTimeControls.toString()}
+                {flags.showsMinuteDigits.toString()}
               </Text>
             </View>
           </View>
