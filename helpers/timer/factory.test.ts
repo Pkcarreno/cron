@@ -49,6 +49,7 @@ describe('timerFactory', () => {
     const config: TimerConfig = {
       mode: TimerMode.TABATA,
       preparationMs: DEFAULT_PREPARATION_MS,
+      totalRounds: 8,
     };
 
     const strategy = createTimerStrategy(config);

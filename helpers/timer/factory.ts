@@ -65,6 +65,7 @@ export interface EmomConfig extends BaseTimerConfig {
 
 export interface TabataConfig extends BaseTimerConfig {
   mode: TimerMode.TABATA;
+  totalRounds: 8;
 }
 
 export interface OnOffConfig extends BaseTimerConfig {
