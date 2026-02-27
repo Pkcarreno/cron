@@ -1,5 +1,7 @@
 import { HideNavigationBar } from '@/components/hide-navigation-bar';
 import { TimerFace } from '@/components/timer/timer-face';
+import { playTone, playToneSequence } from '@/helpers/playback-service';
+import { TimerPhase } from '@/helpers/timer/strategy';
 import { deserializeTimerConfig } from '@/helpers/timer/utils/config-serializer';
 import type { TimerRouteParams } from '@/helpers/timer/utils/config-serializer';
 import { useIsLowBattery } from '@/hooks/use-is-low-battery';
@@ -22,7 +24,26 @@ export default function TimerScreen() {
     flags,
     start,
     reset,
-  } = useTimer(timerInput, {});
+  } = useTimer(timerInput, {
+    onBeep: () => playTone(659, 200),
+    onFinish: () =>
+      playToneSequence([
+        { durationMs: 300, frequencyHz: 523, silenceAfterMs: 150 },
+        { durationMs: 300, frequencyHz: 523, silenceAfterMs: 150 },
+        { durationMs: 800, frequencyHz: 523, silenceAfterMs: 0 },
+      ]),
+    onGo: () => playTone(880, 600),
+    onPhaseChange: (newPhase) => {
+      if (newPhase === TimerPhase.REST) {
+        playTone(523, 500);
+      }
+    },
+    onRoundChange: () =>
+      playToneSequence([
+        { durationMs: 200, frequencyHz: 698, silenceAfterMs: 100 },
+        { durationMs: 200, frequencyHz: 698, silenceAfterMs: 0 },
+      ]),
+  });
   const currentTime = useGetCurrentTime();
   const isLowBattery = useIsLowBattery();
 
