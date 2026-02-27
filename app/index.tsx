@@ -25,6 +25,13 @@ const onOffConfig: TimerConfig = {
   totalRounds: 3,
   workMs: convertTimeToMs(0, 30),
 };
+const quickOnOffConfig: TimerConfig = {
+  mode: TimerMode.ON_OFF,
+  preparationMs: convertTimeToMs(0, 5),
+  restMs: convertTimeToMs(0, 5),
+  totalRounds: 2,
+  workMs: convertTimeToMs(0, 5),
+};
 const amrapConfig: TimerConfig = {
   durationMs: convertTimeToMs(4, 0),
   mode: TimerMode.AMRAP,
@@ -59,6 +66,9 @@ export default function HomeScreen() {
         </TimerLink>
         <TimerLink config={onOffConfig} inspect={inspectMode}>
           ON/OFF
+        </TimerLink>
+        <TimerLink config={quickOnOffConfig} inspect={inspectMode}>
+          QUICK ON/OFF
         </TimerLink>
         <TimerLink config={forTimeConfig} inspect={inspectMode}>
           FOR TIME
