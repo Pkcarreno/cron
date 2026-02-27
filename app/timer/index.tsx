@@ -1,5 +1,5 @@
 import { HideNavigationBar } from '@/components/hide-navigation-bar';
-import { PortraitTimer } from '@/components/timer/portrait-timer';
+import { TimerFace } from '@/components/timer/timer-face';
 import { deserializeTimerConfig } from '@/helpers/timer/utils/config-serializer';
 import type { TimerRouteParams } from '@/helpers/timer/utils/config-serializer';
 import { useIsLowBattery } from '@/hooks/use-is-low-battery';
@@ -33,7 +33,7 @@ export default function TimerScreen() {
       <StatusBar hidden={true} />
       <HideNavigationBar />
 
-      <PortraitTimer
+      <TimerFace
         phase={phase}
         minutes={minutes}
         seconds={seconds}

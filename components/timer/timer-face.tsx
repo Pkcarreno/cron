@@ -14,7 +14,7 @@ interface Props extends Pick<
   isLowBattery: boolean;
 }
 
-export const PortraitTimer: FC<Props> = ({
+export const TimerFace: FC<Props> = ({
   minutes,
   seconds,
   currentRound,
