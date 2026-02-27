@@ -341,6 +341,7 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     'expo-router',
+    'react-native-audio-api',
   ],
   scheme: Env.EXPO_PUBLIC_SCHEME,
   slug: 'cron',
