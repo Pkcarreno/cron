@@ -13,8 +13,16 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 export default function TimerScreen() {
   const rawConfigParams = useLocalSearchParams<TimerRouteParams>();
   const timerInput = deserializeTimerConfig(rawConfigParams);
-  const { minutes, seconds, phase, currentRound, flags, start, reset } =
-    useTimer(timerInput, {});
+  const {
+    minutes,
+    seconds,
+    phase,
+    currentRound,
+    modeAbbr,
+    flags,
+    start,
+    reset,
+  } = useTimer(timerInput, {});
   const currentTime = useGetCurrentTime();
   const isLowBattery = useIsLowBattery();
 
@@ -39,6 +47,7 @@ export default function TimerScreen() {
         seconds={seconds}
         currentRound={currentRound}
         currentTime={currentTime}
+        modeAbbr={modeAbbr}
         flags={flags}
         isLowBattery={isLowBattery}
       />

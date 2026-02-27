@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Props extends Pick<
   timerType,
-  'flags' | 'minutes' | 'seconds' | 'currentRound' | 'phase'
+  'flags' | 'minutes' | 'seconds' | 'currentRound' | 'phase' | 'modeAbbr'
 > {
   currentTime: string;
   isLowBattery: boolean;
@@ -17,6 +17,7 @@ interface Props extends Pick<
 export const TimerFace: FC<Props> = ({
   minutes,
   seconds,
+  modeAbbr,
   currentRound,
   phase,
   currentTime,
@@ -49,6 +50,7 @@ export const TimerFace: FC<Props> = ({
         ]}
       >
         <View style={statusBarStyles.leftWrapper}>
+          <Text style={statusBarStyles.text}>{modeAbbr}</Text>
           <Text
             style={[
               statusBarStyles.text,
@@ -147,8 +149,10 @@ const statusBarStyles = StyleSheet.create({
     width: '100%',
   },
   leftWrapper: {
-    alignItems: 'flex-start',
     flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'flex-start',
     paddingLeft: 16,
   },
   localTimeText: {
@@ -159,8 +163,10 @@ const statusBarStyles = StyleSheet.create({
     opacity: 0.7,
   },
   rightWrapper: {
-    alignItems: 'flex-end',
     flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'flex-end',
     paddingRight: 16,
   },
   text: {
