@@ -2,6 +2,7 @@ import { UpStrategy } from '@/helpers/timer/strategies/up-strategy';
 import { TimerController, TimerEventType } from '@/helpers/timer/controller';
 import { TimerPhase } from '@/helpers/timer/strategy';
 import { IntervalStrategy } from './strategies/interval-strategy';
+import { StopwatchStrategy } from './strategies/stopwatch-strategy';
 
 describe('timerController', () => {
   beforeEach(() => {
@@ -272,6 +273,68 @@ describe('timerController', () => {
 
       expect(spy1).not.toHaveBeenCalled();
       expect(spy2).toHaveBeenCalledTimes(101);
+    });
+  });
+
+  describe('workout Summary and Manual Termination', () => {
+    const DEFAULT_PREPARATION_MS = 10_000;
+
+    it('provides a summary with fullyCompleted set to true when timer finishes automatically', () => {
+      const targetTimeMs = 5000;
+      const strategy = new UpStrategy(targetTimeMs);
+      const controller = new TimerController(strategy, DEFAULT_PREPARATION_MS);
+
+      const finishSpy = jest.fn();
+      controller.on(TimerEventType.FINISH, finishSpy);
+
+      controller.start();
+
+      jest.advanceTimersByTime(targetTimeMs + DEFAULT_PREPARATION_MS);
+
+      expect(finishSpy).toHaveBeenCalledTimes(1);
+
+      const [summaryPayload] = finishSpy.mock.lastCall;
+
+      expect(summaryPayload).toBeDefined();
+      expect(summaryPayload.totalSessionTimeMs).toBe(
+        targetTimeMs + DEFAULT_PREPARATION_MS
+      );
+      expect(summaryPayload.activeWorkoutTimeMs).toBe(targetTimeMs);
+      expect(summaryPayload.roundsCompleted).toBe(1);
+      expect(summaryPayload.fullyCompleted).toBeTruthy();
+    });
+
+    it('provides a summary with fullyCompleted set to false when finishTimer is called manually', () => {
+      const strategy = new StopwatchStrategy();
+      const controller = new TimerController(strategy, 0);
+
+      const finishSpy = jest.fn();
+      const tickSpy = jest.fn();
+
+      controller.on(TimerEventType.FINISH, finishSpy);
+      controller.on(TimerEventType.TICK, tickSpy);
+
+      controller.start();
+
+      const workoutDurationMs = 120_000;
+      jest.advanceTimersByTime(workoutDurationMs);
+
+      expect(finishSpy).not.toHaveBeenCalled();
+
+      controller.finishTimer();
+
+      expect(finishSpy).toHaveBeenCalledTimes(1);
+
+      const [summaryPayload] = finishSpy.mock.lastCall;
+
+      expect(summaryPayload.activeWorkoutTimeMs).toBe(workoutDurationMs);
+      expect(summaryPayload.fullyCompleted).toBeFalsy();
+
+      const ticksBeforeAdvancing = tickSpy.mock.calls.length;
+      jest.advanceTimersByTime(5000);
+      const ticksAfterAdvancing = tickSpy.mock.calls.length;
+
+      expect(ticksAfterAdvancing).toBe(ticksBeforeAdvancing);
     });
   });
 });

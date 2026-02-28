@@ -5,6 +5,7 @@ import { DownStrategy } from '@/helpers/timer/strategies/down-strategy';
 import { IntervalStrategy } from '@/helpers/timer/strategies/interval-strategy';
 import { RoundStrategy } from '@/helpers/timer/strategies/round-strategy';
 import { UpStrategy } from '@/helpers/timer/strategies/up-strategy';
+import { StopwatchStrategy } from '@/helpers/timer/strategies/stopwatch-strategy';
 
 describe('timerFactory', () => {
   const DEFAULT_PREPARATION_MS = 10_000;
@@ -69,6 +70,17 @@ describe('timerFactory', () => {
     const strategy = createTimerStrategy(config);
 
     expect(strategy).toBeInstanceOf(IntervalStrategy);
+  });
+
+  it('creates StopWatchStrategy when mode is STOP_WATCH', () => {
+    const config: TimerConfig = {
+      mode: TimerMode.STOP_WATCH,
+      preparationMs: DEFAULT_PREPARATION_MS,
+    };
+
+    const strategy = createTimerStrategy(config);
+
+    expect(strategy).toBeInstanceOf(StopwatchStrategy);
   });
 
   it('throws error when wrong mode is inserted', () => {

@@ -15,11 +15,18 @@ export enum TimerEventType {
   TICK = 'TICK',
 }
 
+export interface WorkoutSummary {
+  totalSessionTimeMs: number;
+  activeWorkoutTimeMs: number;
+  roundsCompleted: number;
+  fullyCompleted: boolean;
+}
+
 export interface TimerEventMap {
   [TimerEventType.START]: [];
   [TimerEventType.PAUSE]: [];
   [TimerEventType.RESET]: [];
-  [TimerEventType.FINISH]: [];
+  [TimerEventType.FINISH]: [summary: WorkoutSummary];
   [TimerEventType.GO]: [];
   [TimerEventType.PHASE_CHANGE]: [newPhase: TimerPhase];
   [TimerEventType.ROUND_CHANGE]: [newRound: number];
@@ -88,6 +95,27 @@ export class TimerController {
     }
   }
 
+  private generateSummary(fullyCompleted: boolean): WorkoutSummary {
+    const finalState = this.previousState || {
+      currentRound: 0,
+      displayTimeMs: 0,
+    };
+
+    const totalSessionMs = this.engine['totalElapsedMs'] || 0;
+
+    const activeWorkoutMs = Math.max(
+      0,
+      totalSessionMs - this.preparationTimeMs
+    );
+
+    return {
+      activeWorkoutTimeMs: activeWorkoutMs,
+      fullyCompleted,
+      roundsCompleted: finalState.currentRound,
+      totalSessionTimeMs: totalSessionMs,
+    };
+  }
+
   private detectStateChanges(
     oldState: TimerState | null,
     newState: TimerState
@@ -98,7 +126,7 @@ export class TimerController {
 
     // detect finish
     if (!oldState.isFinished && newState.isFinished) {
-      this.emit(TimerEventType.FINISH);
+      this.emit(TimerEventType.FINISH, this.generateSummary(true));
       return;
     }
 
@@ -157,6 +185,15 @@ export class TimerController {
 
   public dispose() {
     this.engine.pause();
+    this.removeAllListeners();
+  }
+
+  public finishTimer() {
+    this.engine.pause();
+
+    const isCompleted = this.previousState?.isFinished || false;
+
+    this.emit(TimerEventType.FINISH, this.generateSummary(isCompleted));
     this.removeAllListeners();
   }
 

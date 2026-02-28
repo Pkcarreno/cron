@@ -3,6 +3,7 @@ import { IntervalStrategy } from '@/helpers/timer/strategies/interval-strategy';
 import { RoundStrategy } from '@/helpers/timer/strategies/round-strategy';
 import { UpStrategy } from '@/helpers/timer/strategies/up-strategy';
 import type { TimerStrategy } from '@/helpers/timer/strategy';
+import { StopwatchStrategy } from '@/helpers/timer/strategies/stopwatch-strategy';
 
 export enum TimerMode {
   AMRAP = 'AMRAP',
@@ -10,6 +11,7 @@ export enum TimerMode {
   EMOM = 'EMOM',
   TABATA = 'TABATA',
   ON_OFF = 'ON_OFF',
+  STOP_WATCH = 'STOP_WATCH',
 }
 
 export const createTimerStrategy = (config: TimerConfig): TimerStrategy => {
@@ -36,6 +38,10 @@ export const createTimerStrategy = (config: TimerConfig): TimerStrategy => {
         config.restMs,
         config.totalRounds
       );
+    }
+
+    case TimerMode.STOP_WATCH: {
+      return new StopwatchStrategy();
     }
 
     default: {
@@ -75,9 +81,14 @@ export interface OnOffConfig extends BaseTimerConfig {
   totalRounds: number;
 }
 
+export interface StopWatchConfig extends BaseTimerConfig {
+  mode: TimerMode.STOP_WATCH;
+}
+
 export type TimerConfig =
   | AmrapConfig
   | ForTimeConfig
   | EmomConfig
   | TabataConfig
-  | OnOffConfig;
+  | OnOffConfig
+  | StopWatchConfig;
