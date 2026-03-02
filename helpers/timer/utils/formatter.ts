@@ -3,6 +3,8 @@ import { TimerMode } from '@/helpers/timer/factory';
 export const convertTimeToMs = (minutes: number, seconds = 0): number =>
   minutes * 60 * 1000 + seconds * 1000;
 
+const pad = (num: number) => num.toString().padStart(2, '0');
+
 export const formatTimeForDisplay = (
   totalMs: number
 ): {
@@ -14,9 +16,18 @@ export const formatTimeForDisplay = (
   const seconds = totalSeconds % 60;
 
   return {
-    minutes: minutes.toString().padStart(2, '0'),
-    seconds: seconds.toString().padStart(2, '0'),
+    minutes: pad(minutes),
+    seconds: pad(seconds),
   };
+};
+
+export const formatFullTimeToString = (totalMs: number) => {
+  const totalSeconds = Math.ceil(totalMs / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 };
 
 export const getModeAbbreviation = (mode: TimerMode): string => {

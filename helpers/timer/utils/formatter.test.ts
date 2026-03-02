@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import {
   convertTimeToMs,
+  formatFullTimeToString,
   formatTimeForDisplay,
   getModeAbbreviation,
 } from '@/helpers/timer/utils/formatter';
@@ -64,6 +65,64 @@ describe('formatter', () => {
       const result = formatTimeForDisplay(totalMilliseconds);
 
       expect(result).toStrictEqual({ minutes: '00', seconds: '02' });
+    });
+  });
+
+  describe('formatFullTimeToString function', () => {
+    it('returns formatted object with exact zero hours, 5 minutes and zero seconds', () => {
+      const totalMilliseconds = 300_000;
+
+      const result = formatFullTimeToString(totalMilliseconds);
+
+      expect(result).toBe('00:05:00');
+    });
+
+    it('returns formatted object calculating both minutes and seconds', () => {
+      const totalMilliseconds = 95_000;
+
+      const result = formatFullTimeToString(totalMilliseconds);
+
+      expect(result).toBe('00:01:35');
+    });
+
+    it('prepends a leading zero to single-digit values', () => {
+      const totalMilliseconds = 9000;
+
+      const result = formatFullTimeToString(totalMilliseconds);
+
+      expect(result).toBe('00:00:09');
+    });
+
+    it('rounds up milliseconds to the nearest second', () => {
+      const totalMilliseconds = 1200;
+
+      const result = formatFullTimeToString(totalMilliseconds);
+
+      expect(result).toBe('00:00:02');
+    });
+
+    it('calculates hours, minutes, and seconds correctly', () => {
+      const totalMilliseconds = 4_530_000;
+
+      const result = formatFullTimeToString(totalMilliseconds);
+
+      expect(result).toBe('01:15:30');
+    });
+
+    it('handles double-digit hours correctly', () => {
+      const totalMilliseconds = 40_500_000;
+
+      const result = formatFullTimeToString(totalMilliseconds);
+
+      expect(result).toBe('11:15:00');
+    });
+
+    it('handles values over 24 hours cumulatively', () => {
+      const totalMilliseconds = 90_065_000;
+
+      const result = formatFullTimeToString(totalMilliseconds);
+
+      expect(result).toBe('25:01:05');
     });
   });
 
