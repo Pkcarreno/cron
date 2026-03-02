@@ -1,15 +1,14 @@
 import { HideNavigationBar } from '@/components/hide-navigation-bar';
+import { SummaryFace } from '@/components/timer/summary-face';
 import { TimerFace } from '@/components/timer/timer-face';
 import { playTone, playToneSequence } from '@/helpers/playback-service';
 import { TimerPhase } from '@/helpers/timer/strategy';
 import { deserializeTimerConfig } from '@/helpers/timer/utils/config-serializer';
 import type { TimerRouteParams } from '@/helpers/timer/utils/config-serializer';
-import { useIsLowBattery } from '@/hooks/use-is-low-battery';
-import { useTimer } from '@/hooks/use-timer';
-import { useKeepAwake } from 'expo-keep-awake';
-import { useLocalSearchParams } from 'expo-router';
+import { TimerStatus, useTimer } from '@/hooks/use-timer';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 export default function TimerScreen() {
@@ -24,6 +23,9 @@ export default function TimerScreen() {
     flags,
     start,
     reset,
+    status,
+    getSummary,
+    handleEndSession,
   } = useTimer(timerInput, {
     onBeep: () => playTone(659, 200),
     onFinish: () =>
@@ -45,9 +47,14 @@ export default function TimerScreen() {
       ]),
   });
   const currentTime = useGetCurrentTime();
-  const isLowBattery = useIsLowBattery();
 
-  useKeepAwake();
+  const router = useRouter();
+
+  const handleFinish = useCallback(() => {
+    handleEndSession();
+
+    router.back();
+  }, [handleEndSession, router]);
 
   useEffect(() => {
     start();
@@ -56,6 +63,17 @@ export default function TimerScreen() {
       reset();
     };
   }, [start, reset]);
+
+  if (status === TimerStatus.PAUSED || status === TimerStatus.FINISHED) {
+    return (
+      <SummaryFace
+        summary={getSummary()}
+        mode={timerInput.mode}
+        handleEndSession={handleFinish}
+        handleResumeSession={start}
+      />
+    );
+  }
 
   return (
     <SafeAreaProvider>
@@ -70,7 +88,6 @@ export default function TimerScreen() {
         currentTime={currentTime}
         modeAbbr={modeAbbr}
         flags={flags}
-        isLowBattery={isLowBattery}
       />
     </SafeAreaProvider>
   );
