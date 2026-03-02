@@ -1,3 +1,4 @@
+import type { WorkoutSummary } from '@/helpers/timer/controller';
 import { TimerController, TimerEventType } from '@/helpers/timer/controller';
 import type { TimerConfig } from '@/helpers/timer/factory';
 import { createTimerStrategy, TimerMode } from '@/helpers/timer/factory';
@@ -53,6 +54,9 @@ const useTimerController = (
 ) => {
   const controllerRef = useRef<TimerController | null>(null);
 
+  const startedAtRef = useRef<Date | null>(null);
+  const endedAtRef = useRef<Date | null>(null);
+
   const handlersRef = useRef(handlers);
 
   useEffect(() => {
@@ -75,6 +79,7 @@ const useTimerController = (
       handlersRef.current?.onBeep?.(second);
     });
     controller.on(TimerEventType.GO, () => {
+      startedAtRef.current = new Date();
       handlersRef.current?.onGo?.();
     });
     controller.on(TimerEventType.PHASE_CHANGE, (newPhase: TimerPhase) => {
@@ -85,14 +90,20 @@ const useTimerController = (
     });
     controller.on(TimerEventType.FINISH, () => {
       setStatus(TimerStatus.FINISHED);
+      endedAtRef.current = new Date();
       handlersRef.current?.onFinish?.();
     });
 
     return () => controller.dispose();
   }, [setTimerState, setStatus]);
 
-  return controllerRef;
+  return { controllerRef, endedAtRef, startedAtRef };
 };
+
+export interface UIWorkoutSummary extends WorkoutSummary {
+  startedAt: Date | null;
+  endedAt: Date | null;
+}
 
 export const useTimer = (
   config: TimerConfig,
@@ -107,7 +118,7 @@ export const useTimer = (
   });
   const [status, setStatus] = useState<TimerStatus>(TimerStatus.READY);
 
-  const controllerRef = useTimerController(
+  const { controllerRef, startedAtRef, endedAtRef } = useTimerController(
     config,
     setTimerState,
     setStatus,
@@ -126,9 +137,31 @@ export const useTimer = (
     [config, timerState.phase]
   );
 
+  const handleEndSession = useCallback(() => {
+    setStatus(TimerStatus.FINISHED);
+    controllerRef.current?.finishTimer();
+    // oxlint-disable eslint/exhaustive-deps
+  }, []);
+
+  const getSummary = useCallback((): UIWorkoutSummary | undefined => {
+    const coreSummary = controllerRef.current?.getSummary();
+    if (!coreSummary) {
+      return;
+    }
+
+    return {
+      ...coreSummary,
+      endedAt: endedAtRef.current || new Date(),
+      startedAt: startedAtRef.current,
+    };
+    // oxlint-disable eslint/exhaustive-deps
+  }, []);
+
   return {
     ...timerState,
     flags,
+    getSummary,
+    handleEndSession,
     minutes,
     modeAbbr,
     pause: useCallback(() => {
