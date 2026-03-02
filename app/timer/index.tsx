@@ -1,4 +1,5 @@
 import { HideNavigationBar } from '@/components/hide-navigation-bar';
+import { PressableArea } from '@/components/pressable-area';
 import { SummaryFace } from '@/components/timer-screen/summary-face';
 import { TimerFace } from '@/components/timer-screen/timer-face';
 import { playTone, playToneSequence } from '@/helpers/playback-service';
@@ -21,6 +22,7 @@ export default function TimerScreen() {
     currentRound,
     modeAbbr,
     flags,
+    pause,
     start,
     reset,
     status,
@@ -83,15 +85,17 @@ export default function TimerScreen() {
       <StatusBar hidden={true} />
       <HideNavigationBar />
 
-      <TimerFace
-        phase={phase}
-        minutes={minutes}
-        seconds={seconds}
-        currentRound={currentRound}
-        currentTime={currentTime}
-        modeAbbr={modeAbbr}
-        flags={flags}
-      />
+      <PressableArea onLongPress={pause} deadZone={14}>
+        <TimerFace
+          phase={phase}
+          minutes={minutes}
+          seconds={seconds}
+          currentRound={currentRound}
+          currentTime={currentTime}
+          modeAbbr={modeAbbr}
+          flags={flags}
+        />
+      </PressableArea>
     </SafeAreaProvider>
   );
 }
