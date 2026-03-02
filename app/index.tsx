@@ -8,6 +8,8 @@ import { useCallback, useState } from 'react';
 import type { FC } from 'react';
 import Button from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { Logo } from '@/components/logo';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const emomConfig: TimerConfig = {
   mode: TimerMode.EMOM,
@@ -52,38 +54,53 @@ export default function HomeScreen() {
   }, [setInspectMode]);
 
   return (
-    <View style={styles.container}>
-      <Text>Index Screen</Text>
-      <View style={buttonsStyles.linkWrapper}>
-        <Text colorSubtone="500">Jobs</Text>
-        <TimerLink config={emomConfig} inspect={inspectMode} title="EMOM" />
-        <TimerLink config={tabataConfig} inspect={inspectMode} title="TABATA" />
-        <TimerLink config={amrapConfig} inspect={inspectMode} title="AMRAP" />
-        <TimerLink config={onOffConfig} inspect={inspectMode} title="ON_OFF" />
-        <TimerLink
-          config={quickOnOffConfig}
-          inspect={inspectMode}
-          title="QUICK ON_OFF"
-        />
-        <TimerLink
-          config={forTimeConfig}
-          inspect={inspectMode}
-          title="FOR_TIME"
-        />
-
-        <View style={styles.optionsWrapper}>
-          <Text colorSubtone="500">
-            Inspect mode screen: {inspectMode.toString()}
-          </Text>
-          <Button
-            title="toggle inspect mode"
-            variant="outline"
-            size="sm"
-            onPress={handleToggleInspectMode}
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text weight="700" color="white" size={48}>
+          Cron
+        </Text>
+        <Logo />
+      </View>
+      <View style={styles.content}>
+        <View style={buttonsStyles.linkWrapper}>
+          <Text colorSubtone="500">Jobs</Text>
+          <TimerLink config={emomConfig} inspect={inspectMode} title="EMOM" />
+          <TimerLink
+            config={tabataConfig}
+            inspect={inspectMode}
+            title="TABATA"
+          />
+          <TimerLink config={amrapConfig} inspect={inspectMode} title="AMRAP" />
+          <TimerLink
+            config={onOffConfig}
+            inspect={inspectMode}
+            title="ON_OFF"
+          />
+          <TimerLink
+            config={quickOnOffConfig}
+            inspect={inspectMode}
+            title="QUICK ON_OFF"
+          />
+          <TimerLink
+            config={forTimeConfig}
+            inspect={inspectMode}
+            title="FOR_TIME"
           />
         </View>
       </View>
-    </View>
+
+      <View style={styles.footer}>
+        <Text colorSubtone="500">
+          Inspect mode screen: {inspectMode.toString()}
+        </Text>
+        <Button
+          title="toggle inspect mode"
+          variant="outline"
+          size="sm"
+          onPress={handleToggleInspectMode}
+        />
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -108,12 +125,24 @@ const TimerLink: FC<TimerLinkProps> = ({ config, inspect, title }) => (
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    gap: 8,
+    gap: 16,
     justifyContent: 'center',
-    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
-  optionsWrapper: {
-    gap: 6,
+  content: {
+    flex: 1,
+    gap: 16,
+    paddingVertical: 12,
+  },
+  footer: {
+    gap: 8,
+    paddingHorizontal: 20,
+  },
+  header: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
   },
 });
 
@@ -121,6 +150,7 @@ const buttonsStyles = StyleSheet.create({
   linkWrapper: {
     gap: 8,
     justifyContent: 'center',
+    paddingHorizontal: 20,
     width: '100%',
   },
 });
