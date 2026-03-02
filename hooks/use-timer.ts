@@ -152,7 +152,7 @@ export const useTimer = (
     return {
       ...coreSummary,
       endedAt: endedAtRef.current || new Date(),
-      startedAt: startedAtRef.current,
+      startedAt: startedAtRef.current || new Date(),
     };
     // oxlint-disable eslint/exhaustive-deps
   }, []);
