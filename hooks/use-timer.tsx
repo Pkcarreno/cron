@@ -26,7 +26,7 @@ export interface TimerFlags {
 
 export interface TimerEventHandlers {
   onGo?: () => void;
-  onFinish?: () => void;
+  onFinish?: (summary: WorkoutSummary) => void;
   onPhaseChange?: (phase: TimerPhase) => void;
   onRoundChange?: (round: number) => void;
   onBeep?: (second: number) => void;
@@ -88,10 +88,10 @@ const useTimerController = (
     controller.on(TimerEventType.ROUND_CHANGE, (newRound: number) => {
       handlersRef.current?.onRoundChange?.(newRound);
     });
-    controller.on(TimerEventType.FINISH, () => {
+    controller.on(TimerEventType.FINISH, (summary: WorkoutSummary) => {
       setStatus(TimerStatus.FINISHED);
       endedAtRef.current = new Date();
-      handlersRef.current?.onFinish?.();
+      handlersRef.current?.onFinish?.(summary);
     });
 
     return () => controller.dispose();

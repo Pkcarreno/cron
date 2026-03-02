@@ -28,12 +28,15 @@ export default function TimerScreen() {
     handleEndSession,
   } = useTimer(timerInput, {
     onBeep: () => playTone(659, 200),
-    onFinish: () =>
-      playToneSequence([
-        { durationMs: 300, frequencyHz: 523, silenceAfterMs: 150 },
-        { durationMs: 300, frequencyHz: 523, silenceAfterMs: 150 },
-        { durationMs: 800, frequencyHz: 523, silenceAfterMs: 0 },
-      ]),
+    onFinish: (summary) => {
+      if (summary.fullyCompleted) {
+        playToneSequence([
+          { durationMs: 300, frequencyHz: 523, silenceAfterMs: 150 },
+          { durationMs: 300, frequencyHz: 523, silenceAfterMs: 150 },
+          { durationMs: 800, frequencyHz: 523, silenceAfterMs: 0 },
+        ]);
+      }
+    },
     onGo: () => playTone(880, 600),
     onPhaseChange: (newPhase) => {
       if (newPhase === TimerPhase.REST) {
