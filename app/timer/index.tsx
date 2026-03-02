@@ -1,6 +1,6 @@
 import { HideNavigationBar } from '@/components/hide-navigation-bar';
-import { SummaryFace } from '@/components/timer/summary-face';
-import { TimerFace } from '@/components/timer/timer-face';
+import { SummaryFace } from '@/components/timer-screen/summary-face';
+import { TimerFace } from '@/components/timer-screen/timer-face';
 import { playTone, playToneSequence } from '@/helpers/playback-service';
 import { TimerPhase } from '@/helpers/timer/strategy';
 import { deserializeTimerConfig } from '@/helpers/timer/utils/config-serializer';
