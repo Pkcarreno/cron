@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -13,7 +14,7 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <>
+    <GestureHandlerRootView>
       {/* oxlint-disable react/style-prop-object */}
       <StatusBar style="light" />
       <Stack
@@ -22,7 +23,7 @@ export default function RootLayout() {
           headerShown: false,
         }}
       />
-    </>
+    </GestureHandlerRootView>
   );
 }
 
