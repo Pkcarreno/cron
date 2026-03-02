@@ -336,5 +336,34 @@ describe('timerController', () => {
 
       expect(ticksAfterAdvancing).toBe(ticksBeforeAdvancing);
     });
+
+    it('returns the current workout statistics without pausing or destroying the engine', () => {
+      const workoutTargetMs = 10_000;
+      const preparationMs = 3000;
+      const strategy = new UpStrategy(workoutTargetMs);
+      const controller = new TimerController(strategy, preparationMs);
+
+      const tickSpy = jest.fn();
+      controller.on(TimerEventType.TICK, tickSpy);
+
+      controller.start();
+
+      jest.advanceTimersByTime(5000);
+
+      const currentSummary = controller.getSummary();
+
+      expect(currentSummary.totalSessionTimeMs).toBe(5000);
+      expect(currentSummary.activeWorkoutTimeMs).toBe(2000);
+      expect(currentSummary.roundsCompleted).toBe(1);
+      expect(currentSummary.fullyCompleted).toBeFalsy();
+
+      const ticksAtSnapshot = tickSpy.mock.calls.length;
+
+      jest.advanceTimersByTime(1000);
+
+      const ticksAfterSnapshot = tickSpy.mock.calls.length;
+
+      expect(ticksAfterSnapshot).toBeGreaterThan(ticksAtSnapshot);
+    });
   });
 });

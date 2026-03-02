@@ -169,6 +169,14 @@ export class TimerController {
     }
   }
 
+  public getSummary(): WorkoutSummary {
+    const currentState = this.previousState || {
+      isFinished: false,
+    };
+
+    return this.generateSummary(currentState.isFinished);
+  }
+
   public removeAllListeners() {
     this.listeners = {
       [TimerEventType.START]: [],
