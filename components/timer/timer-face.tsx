@@ -1,6 +1,8 @@
 import { colors } from '@/helpers/colors';
 import { TimerPhase } from '@/helpers/timer/strategy';
+import { useIsLowBattery } from '@/hooks/use-is-low-battery';
 import type { timerType } from '@/hooks/use-timer';
+import { useKeepAwake } from 'expo-keep-awake';
 import type { FC } from 'react';
 import { useMemo } from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
@@ -11,7 +13,6 @@ interface Props extends Pick<
   'flags' | 'minutes' | 'seconds' | 'currentRound' | 'phase' | 'modeAbbr'
 > {
   currentTime: string;
-  isLowBattery: boolean;
 }
 
 export const TimerFace: FC<Props> = ({
@@ -21,10 +22,10 @@ export const TimerFace: FC<Props> = ({
   currentRound,
   phase,
   currentTime,
-  isLowBattery,
   flags,
 }) => {
   const insets = useSafeAreaInsets();
+  const isLowBattery = useIsLowBattery();
 
   const phaseColor = useMemo(() => {
     if (phase === TimerPhase.REST) {
@@ -36,6 +37,8 @@ export const TimerFace: FC<Props> = ({
 
     return contextInfoStyles.phaseTextColorGray;
   }, [phase]);
+
+  useKeepAwake();
 
   return (
     <View style={styles.container}>
