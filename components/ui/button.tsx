@@ -1,7 +1,8 @@
 /* oxlint-disable react-native/no-unused-styles */
 import { colors } from '@/helpers/colors';
 import type { ViewStyle } from 'react-native';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
+import { Text } from './text';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline';
 type ButtonSize = 'md' | 'sm';
