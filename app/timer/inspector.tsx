@@ -59,7 +59,7 @@ export default function TimerInspectorScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.contentWrapper}>
+      <View style={styles.header}>
         <Text>Timer Screen</Text>
 
         <View style={timerStyles.container}>
@@ -73,7 +73,9 @@ export default function TimerInspectorScreen() {
             {seconds}
           </Text>
         </View>
+      </View>
 
+      <View style={styles.content}>
         <View style={dataBoxStyles.container}>
           <Text>input</Text>
           <View style={dataBoxStyles.dataWrapper}>
@@ -186,8 +188,8 @@ export default function TimerInspectorScreen() {
         </View>
       </View>
 
-      <View style={buttonsStyles.container}>
-        <View style={buttonsStyles.actionWrapper}>
+      <View style={styles.footer}>
+        <View style={styles.row}>
           <Button
             title="Start"
             onPress={start}
@@ -220,12 +222,22 @@ export default function TimerInspectorScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    gap: 12,
-    paddingHorizontal: 16,
+    gap: 16,
+    paddingBottom: 12,
+    paddingHorizontal: 20,
   },
-  contentWrapper: {
+  content: {
     flex: 1,
-    gap: 6,
+    gap: 8,
+    paddingVertical: 12,
+  },
+  footer: {
+    gap: 8,
+  },
+  header: {},
+  row: {
+    flexDirection: 'row',
+    gap: 8,
   },
 });
 
@@ -250,7 +262,7 @@ const dataBoxStyles = StyleSheet.create({
 
 const logStyles = StyleSheet.create({
   container: {
-    height: 200,
+    flex: 1,
     paddingVertical: 4,
   },
   logItemWrapper: {
@@ -264,16 +276,5 @@ const logStyles = StyleSheet.create({
     flex: 1,
     marginTop: 4,
     paddingHorizontal: 8,
-  },
-});
-
-const buttonsStyles = StyleSheet.create({
-  actionWrapper: {
-    flexDirection: 'row',
-    gap: 4,
-    width: '100%',
-  },
-  container: {
-    gap: 16,
   },
 });
