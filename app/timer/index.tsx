@@ -56,10 +56,12 @@ export default function TimerScreen() {
   const router = useRouter();
 
   const handleFinish = useCallback(() => {
-    handleEndSession();
+    if (status !== TimerStatus.FINISHED) {
+      handleEndSession();
+    }
 
     router.back();
-  }, [handleEndSession, router]);
+  }, [handleEndSession, router, status]);
 
   useEffect(() => {
     start();
