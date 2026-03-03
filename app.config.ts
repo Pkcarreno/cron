@@ -96,6 +96,7 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
     backgroundColor: '#000000',
     edgeToEdgeEnabled: true,
     package: Env.EXPO_PUBLIC_PACKAGE,
+    permissions: ['android.permission.VIBRATE'],
     predictiveBackGestureEnabled: false,
   },
   backgroundColor: '#000000',

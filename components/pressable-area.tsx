@@ -2,7 +2,12 @@ import React, { useRef } from 'react';
 import type { DimensionValue } from 'react-native';
 import { View, StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import * as Haptics from 'expo-haptics';
+import { Haptics } from 'react-native-nitro-haptics';
+
+const LONG_PRESS_DURATION = 600;
+const BUILDUP_DELAY = 250;
+const TICK_INTERVAL = 60;
+const MAX_TICKS = 5;
 
 interface PressableAreaProps {
   children: React.ReactNode;
@@ -21,16 +26,29 @@ export const PressableArea = ({
 }: PressableAreaProps) => {
   const hapticTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const playTick = () => {
+    Haptics.selection();
+  };
+
+  const playExplosion = () => {
+    Haptics.impact('heavy');
+  };
+
   const startHapticBuildup = () => {
-    let delay = 150;
+    let currentTick = 0;
 
     const tick = () => {
-      Haptics.selectionAsync();
-      delay = Math.max(40, delay - 25);
-      hapticTimer.current = setTimeout(tick, delay);
+      if (currentTick >= MAX_TICKS) {
+        return;
+      }
+
+      playTick();
+      currentTick += 1;
+
+      hapticTimer.current = setTimeout(tick, TICK_INTERVAL);
     };
 
-    tick();
+    hapticTimer.current = setTimeout(tick, BUILDUP_DELAY);
   };
 
   const stopHapticBuildup = () => {
@@ -45,14 +63,12 @@ export const PressableArea = ({
     .enabled(!!onDoublePress)
     .runOnJS(true)
     .onStart(() => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      if (onDoublePress) {
-        onDoublePress();
-      }
+      Haptics.notification('success');
+      onDoublePress?.();
     });
 
   const longPress = Gesture.LongPress()
-    .minDuration(600)
+    .minDuration(LONG_PRESS_DURATION)
     .enabled(!!onLongPress)
     .runOnJS(true)
     .onBegin(() => {
@@ -60,24 +76,20 @@ export const PressableArea = ({
     })
     .onStart(() => {
       stopHapticBuildup();
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      if (onLongPress) {
-        onLongPress();
-      }
+      playExplosion();
+      onLongPress?.();
     })
     .onFinalize(() => {
       stopHapticBuildup();
     });
 
   const singleTap = Gesture.Tap()
-    .enabled(!!onPress)
     .requireExternalGestureToFail(doubleTap, longPress)
+    .enabled(!!onPress)
     .runOnJS(true)
     .onStart(() => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      if (onPress) {
-        onPress();
-      }
+      Haptics.impact('light');
+      onPress?.();
     });
 
   const composed = Gesture.Exclusive(doubleTap, longPress, singleTap);
@@ -94,7 +106,7 @@ export const PressableArea = ({
         pointerEvents="box-none"
       >
         <GestureDetector gesture={composed}>
-          <View style={styles.container} />
+          <View collapsable={false} style={styles.container} />
         </GestureDetector>
       </View>
     </View>
