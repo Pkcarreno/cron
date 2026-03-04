@@ -46,6 +46,19 @@ describe('timerFactory', () => {
     expect(strategy).toBeInstanceOf(RoundStrategy);
   });
 
+  it('creates RoundStrategy when mode is EVERY', () => {
+    const config: TimerConfig = {
+      durationMs: 600_000,
+      mode: TimerMode.EVERY,
+      preparationMs: DEFAULT_PREPARATION_MS,
+      totalRounds: 10,
+    };
+
+    const strategy = createTimerStrategy(config);
+
+    expect(strategy).toBeInstanceOf(RoundStrategy);
+  });
+
   it('creates IntervalStrategy when mode is TABATA', () => {
     const config: TimerConfig = {
       mode: TimerMode.TABATA,
