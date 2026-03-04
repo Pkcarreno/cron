@@ -17,9 +17,9 @@ const emomConfig: TimerConfig = {
   totalRounds: 3,
 };
 const everyConfig: TimerConfig = {
-  durationMs: convertTimeToMs(0, 45),
   mode: TimerMode.EVERY,
   preparationMs: convertTimeToMs(0, 10),
+  roundDurationMs: convertTimeToMs(0, 45),
   totalRounds: 3,
 };
 const tabataConfig: TimerConfig = {

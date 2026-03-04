@@ -30,7 +30,7 @@ export const createTimerStrategy = (config: TimerConfig): TimerStrategy => {
     }
 
     case TimerMode.EVERY: {
-      return new RoundStrategy(config.durationMs, config.totalRounds);
+      return new RoundStrategy(config.roundDurationMs, config.totalRounds);
     }
 
     case TimerMode.TABATA: {
@@ -76,7 +76,7 @@ export interface EmomConfig extends BaseTimerConfig {
 
 export interface EveryConfig extends BaseTimerConfig {
   mode: TimerMode.EVERY;
-  durationMs: number;
+  roundDurationMs: number;
   totalRounds: number;
 }
 

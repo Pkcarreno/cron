@@ -48,9 +48,9 @@ describe('timerFactory', () => {
 
   it('creates RoundStrategy when mode is EVERY', () => {
     const config: TimerConfig = {
-      durationMs: 600_000,
       mode: TimerMode.EVERY,
       preparationMs: DEFAULT_PREPARATION_MS,
+      roundDurationMs: 600_000,
       totalRounds: 10,
     };
 
