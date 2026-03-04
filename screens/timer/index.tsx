@@ -6,10 +6,11 @@ import { playTone, playToneSequence } from '@/helpers/playback-service';
 import { TimerPhase } from '@/helpers/timer/strategy';
 import { deserializeTimerConfig } from '@/helpers/timer/utils/config-serializer';
 import type { TimerRouteParams } from '@/helpers/timer/utils/config-serializer';
+import { useGetCurrentTime } from '@/hooks/use-get-current-time';
 import { TimerStatus, useTimer } from '@/hooks/use-timer';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 
 export const Timer = () => {
   const rawConfigParams = useLocalSearchParams<TimerRouteParams>();
@@ -99,23 +100,4 @@ export const Timer = () => {
       </PressableArea>
     </>
   );
-};
-
-const useGetCurrentTime = () => {
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  const formattedCurrentTime = currentTime.toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  return formattedCurrentTime;
 };
