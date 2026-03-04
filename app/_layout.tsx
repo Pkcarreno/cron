@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PortalHost } from '@rn-primitives/portal';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -16,16 +17,18 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView>
-      {/* oxlint-disable react/style-prop-object */}
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          contentStyle: styles.contentStyle,
-          headerShown: false,
-        }}
-      />
+      <SafeAreaProvider>
+        {/* oxlint-disable react/style-prop-object */}
+        <StatusBar style="light" />
+        <Stack
+          screenOptions={{
+            contentStyle: styles.contentStyle,
+            headerShown: false,
+          }}
+        />
 
-      <PortalHost />
+        <PortalHost />
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

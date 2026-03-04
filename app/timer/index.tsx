@@ -10,7 +10,6 @@ import { TimerStatus, useTimer } from '@/hooks/use-timer';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 export default function TimerScreen() {
   const rawConfigParams = useLocalSearchParams<TimerRouteParams>();
@@ -83,7 +82,7 @@ export default function TimerScreen() {
   }
 
   return (
-    <SafeAreaProvider>
+    <>
       <StatusBar hidden={true} />
       <HideNavigationBar />
 
@@ -98,7 +97,7 @@ export default function TimerScreen() {
           flags={flags}
         />
       </PressableArea>
-    </SafeAreaProvider>
+    </>
   );
 }
 
