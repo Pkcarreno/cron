@@ -8,6 +8,7 @@ import type { FormTabOption } from './types';
 import { useEvent, useSharedValue } from 'react-native-reanimated';
 import { Haptics } from 'react-native-nitro-haptics';
 import type {
+  DropdownMenuItemWithIndexOnActionType,
   PressableWithIndexOnActionType,
   ViewWithIndexOnLayoutType,
 } from './components/utils';
@@ -92,6 +93,32 @@ const usePagerMath = (optionsLength: number, tabWidths: number[]) => {
   return { safeInputRange, safePillWidths, safeTranslations };
 };
 
+const useDropdownChevronManager = (
+  pagerRef: React.RefObject<PagerView | null>
+) => {
+  const isDropdownOpen = useSharedValue(false);
+
+  const handleOnDropdownStateChange = useCallback(
+    (open: boolean) => {
+      isDropdownOpen.value = open;
+    },
+    [isDropdownOpen]
+  );
+
+  const handleOnPressDropdownMenuItem = useCallback(
+    ({ index }: DropdownMenuItemWithIndexOnActionType) => {
+      pagerRef.current?.setPage(index);
+    },
+    [pagerRef]
+  );
+
+  return {
+    handleOnDropdownStateChange,
+    handleOnPressDropdownMenuItem,
+    isDropdownOpen,
+  };
+};
+
 export const useFormPager = <T extends string>(
   options: FormTabOption<T>[],
   value?: T,
@@ -110,6 +137,11 @@ export const useFormPager = <T extends string>(
     options.length,
     tabWidths
   );
+  const {
+    isDropdownOpen,
+    handleOnDropdownStateChange,
+    handleOnPressDropdownMenuItem,
+  } = useDropdownChevronManager(pagerRef);
 
   const scrollPosition = useSharedValue(safeActiveIndex);
 
@@ -150,8 +182,11 @@ export const useFormPager = <T extends string>(
   return {
     allWidthsMeasured,
     handleMeasureOnLayout,
+    handleOnDropdownStateChange,
+    handleOnPressDropdownMenuItem,
     handleOnPressInactiveTab,
     handlePageSelected,
+    isDropdownOpen,
     pagerRef,
     safeActiveIndex,
     safeInputRange,

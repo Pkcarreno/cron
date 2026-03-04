@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import type { NativeSyntheticEvent } from 'react-native';
-import { View, Pressable, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import type { PagerViewOnPageScrollEventData } from 'react-native-pager-view';
 import PagerView from 'react-native-pager-view';
 import Animated, {
@@ -8,11 +8,16 @@ import Animated, {
   interpolate,
   Extrapolation,
   createAnimatedComponent,
+  withTiming,
 } from 'react-native-reanimated';
 import { Text } from '@/components/ui/text';
 import { colors } from '@/helpers/colors';
 import { CaretDownIcon } from 'phosphor-react-native';
-import { PressableWithIndex, ViewWithIndexOnLayout } from './components/utils';
+import {
+  DropdownMenuItemWithIndex,
+  PressableWithIndex,
+  ViewWithIndexOnLayout,
+} from './components/utils';
 import type { FormTabOption } from './types';
 import { AnimatedTabWrapper } from './components/animated-tab';
 import {
@@ -22,6 +27,12 @@ import {
   TAB_ICON_SIZE,
 } from './shared';
 import { useFormPager } from './use-form-pager';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const AnimatedPagerView = createAnimatedComponent(PagerView);
 
@@ -50,6 +61,9 @@ export const FormPager = <T extends string>({
     handlePageSelected,
     handleMeasureOnLayout,
     handleOnPressInactiveTab,
+    isDropdownOpen,
+    handleOnPressDropdownMenuItem,
+    handleOnDropdownStateChange,
   } = useFormPager(options, value, onValueChange);
 
   const propIndex = useMemo(() => {
@@ -106,6 +120,16 @@ export const FormPager = <T extends string>({
     [allWidthsMeasured]
   );
 
+  const chevronAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        rotate: withTiming(isDropdownOpen.value ? '180deg' : '0deg', {
+          duration: 150,
+        }),
+      },
+    ],
+  }));
+
   return (
     <View style={styles.container}>
       <View style={hiddenMeasureStyles.container}>
@@ -153,24 +177,44 @@ export const FormPager = <T extends string>({
         <Animated.View
           style={[tabBarStyles.activeZone, activeZoneAnimatedStyle]}
         >
-          <Animated.View style={[tabBarStyles.textRow, textRowAnimatedStyle]}>
-            {options.map((option, index) => (
-              <AnimatedTabWrapper
-                key={`active-${option.value || 'undef'}`}
-                index={index}
-                scrollPosition={scrollPosition}
-                baseWidth={tabWidths[index]}
+          <DropdownMenu onOpenChange={handleOnDropdownStateChange}>
+            <DropdownMenuTrigger>
+              <Animated.View
+                style={[tabBarStyles.textRow, textRowAnimatedStyle]}
               >
-                <Text size={TAB_FONT_SIZE} weight="500" color="black">
-                  {option.label}
-                </Text>
-              </AnimatedTabWrapper>
-            ))}
-          </Animated.View>
+                {options.map((option, index) => (
+                  <AnimatedTabWrapper
+                    key={`active-${option.value || 'undef'}`}
+                    index={index}
+                    scrollPosition={scrollPosition}
+                    baseWidth={tabWidths[index]}
+                  >
+                    <Text size={TAB_FONT_SIZE} weight="500" color="black">
+                      {option.label}
+                    </Text>
+                  </AnimatedTabWrapper>
+                ))}
+              </Animated.View>
+              <Animated.View
+                style={[tabBarStyles.dropdownIcon, chevronAnimatedStyle]}
+              >
+                <CaretDownIcon color={colors.black} size={TAB_ICON_SIZE} />
+              </Animated.View>
+            </DropdownMenuTrigger>
 
-          <Pressable style={tabBarStyles.dropdownIcon}>
-            <CaretDownIcon color={colors.black} size={TAB_ICON_SIZE} />
-          </Pressable>
+            <DropdownMenuContent sideOffset={8}>
+              {options.map((option, index) => (
+                <DropdownMenuItemWithIndex
+                  key={option.value}
+                  index={index}
+                  disabled={safeActiveIndex === index}
+                  onAction={handleOnPressDropdownMenuItem}
+                >
+                  <DropdownMenuLabel>{option.label}</DropdownMenuLabel>
+                </DropdownMenuItemWithIndex>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </Animated.View>
       </View>
 

@@ -1,3 +1,4 @@
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { useCallback } from 'react';
 import type { GestureResponderEvent, LayoutChangeEvent } from 'react-native';
 import { Pressable, View } from 'react-native';
@@ -59,4 +60,31 @@ export const PressableWithIndex: React.FC<PressableWithIndexProps> = ({
   );
 
   return <Pressable onPress={handlePress} {...rest} />;
+};
+
+export interface DropdownMenuItemWithIndexOnActionType {
+  event: GestureResponderEvent;
+  index: number;
+}
+
+export interface DropdownMenuItemWithIndexProps extends React.ComponentProps<
+  typeof DropdownMenuItem
+> {
+  index: number;
+  onAction?: (value: DropdownMenuItemWithIndexOnActionType) => void;
+}
+
+export const DropdownMenuItemWithIndex: React.FC<
+  DropdownMenuItemWithIndexProps
+> = ({ index, onAction, ...rest }) => {
+  const handlePress = useCallback(
+    (event: GestureResponderEvent) => {
+      if (onAction) {
+        onAction({ event, index });
+      }
+    },
+    [index, onAction]
+  );
+
+  return <DropdownMenuItem onPress={handlePress} {...rest} />;
 };
