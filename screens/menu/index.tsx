@@ -11,10 +11,14 @@ import { Logo } from '@/components/logo';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FormPager } from './components/form-pager';
 
-const QUICK_ON_OFF = `QUICK_${TimerMode.ON_OFF}`;
-
 const emomConfig: TimerConfig = {
   mode: TimerMode.EMOM,
+  preparationMs: convertTimeToMs(0, 10),
+  totalRounds: 3,
+};
+const everyConfig: TimerConfig = {
+  durationMs: convertTimeToMs(0, 45),
+  mode: TimerMode.EVERY,
   preparationMs: convertTimeToMs(0, 10),
   totalRounds: 3,
 };
@@ -30,13 +34,6 @@ const onOffConfig: TimerConfig = {
   totalRounds: 3,
   workMs: convertTimeToMs(0, 30),
 };
-const quickOnOffConfig: TimerConfig = {
-  mode: TimerMode.ON_OFF,
-  preparationMs: convertTimeToMs(0, 5),
-  restMs: convertTimeToMs(0, 5),
-  totalRounds: 2,
-  workMs: convertTimeToMs(0, 5),
-};
 const amrapConfig: TimerConfig = {
   durationMs: convertTimeToMs(4, 0),
   mode: TimerMode.AMRAP,
@@ -50,9 +47,7 @@ const forTimeConfig: TimerConfig = {
 
 export const Menu = () => {
   const [inspectMode, setInspectMode] = useState(false);
-  const [currentMode, setCurrentMode] = useState<
-    TimerMode | typeof QUICK_ON_OFF
-  >(TimerMode.EMOM);
+  const [currentMode, setCurrentMode] = useState<TimerMode>(TimerMode.EMOM);
   const router = useRouter();
 
   const handleToggleInspectMode = useCallback(() => {
@@ -77,8 +72,8 @@ export const Menu = () => {
         return onOffConfig;
       }
 
-      case QUICK_ON_OFF: {
-        return quickOnOffConfig;
+      case TimerMode.EVERY: {
+        return everyConfig;
       }
 
       case TimerMode.FOR_TIME: {
@@ -146,10 +141,10 @@ export const Menu = () => {
             },
             {
               content: (
-                <Placeholder page={QUICK_ON_OFF} config={quickOnOffConfig} />
+                <Placeholder page={TimerMode.EVERY} config={everyConfig} />
               ),
-              label: QUICK_ON_OFF,
-              value: QUICK_ON_OFF,
+              label: TimerMode.EVERY,
+              value: TimerMode.EVERY,
             },
             {
               content: (
