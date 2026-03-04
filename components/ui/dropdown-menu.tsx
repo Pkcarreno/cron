@@ -1,12 +1,13 @@
 import { NativeOnlyAnimatedView } from '@/components/ui/native-only-animated-view';
 import { colors } from '@/helpers/colors';
+import { triggerHapticLight } from '@/helpers/haptics';
 import * as DropdownMenuPrimitive from '@rn-primitives/dropdown-menu';
 import * as React from 'react';
 import { Platform, StyleSheet } from 'react-native';
 import type { GestureResponderEvent, StyleProp, ViewStyle } from 'react-native';
-import { Haptics } from 'react-native-nitro-haptics';
 import { FadeIn } from 'react-native-reanimated';
 import { FullWindowOverlay as RNFullWindowOverlay } from 'react-native-screens';
+import { scheduleOnUI } from 'react-native-worklets';
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 
@@ -21,7 +22,7 @@ const DropdownMenuTrigger = ({
   React.RefAttributes<DropdownMenuPrimitive.TriggerRef>) => {
   const handlePress = React.useCallback(
     (e: GestureResponderEvent) => {
-      Haptics.impact('light');
+      scheduleOnUI(triggerHapticLight);
       onPress?.(e);
     },
     [onPress]

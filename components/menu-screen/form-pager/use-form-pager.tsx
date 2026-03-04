@@ -6,12 +6,13 @@ import type {
 import type PagerView from 'react-native-pager-view';
 import type { FormTabOption } from './types';
 import { useEvent, useSharedValue } from 'react-native-reanimated';
-import { Haptics } from 'react-native-nitro-haptics';
 import type {
   DropdownMenuItemWithIndexOnActionType,
   PressableWithIndexOnActionType,
   ViewWithIndexOnLayoutType,
 } from './components/utils';
+import { scheduleOnUI } from 'react-native-worklets';
+import { triggerHapticSoft } from '@/helpers/haptics';
 
 const usePagerState = <T extends string>(
   options: FormTabOption<T>[],
@@ -166,7 +167,7 @@ export const useFormPager = <T extends string>(
       if (newIndex !== currentIndexRef.current) {
         currentIndexRef.current = newIndex;
         setInternalIndex(newIndex);
-        Haptics.selection();
+        scheduleOnUI(triggerHapticSoft);
         onValueChange?.(options[newIndex].value);
       }
     },
