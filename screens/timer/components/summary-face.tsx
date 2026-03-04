@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text } from '@/components/ui/text';
-import Button from '@/components/ui/button';
+import { Text } from '@/components/text';
+import Button from '@/components/button';
 import type { TimerMode } from '@/helpers/timer/factory';
 import { formatFullTimeToString } from '@/helpers/timer/utils/formatter';
 import { Logo } from '@/components/logo';

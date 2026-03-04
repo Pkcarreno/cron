@@ -1,4 +1,4 @@
-import { NativeOnlyAnimatedView } from '@/components/ui/native-only-animated-view';
+import { NativeOnlyAnimatedView } from '@/components/native-only-animated-view';
 import { colors } from '@/helpers/colors';
 import { triggerHapticLight } from '@/helpers/haptics';
 import * as DropdownMenuPrimitive from '@rn-primitives/dropdown-menu';

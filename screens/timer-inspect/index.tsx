@@ -8,8 +8,8 @@ import { useKeepAwake } from 'expo-keep-awake';
 import type { TimerPhase } from '@/helpers/timer/strategy';
 import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text } from '@/components/ui/text';
-import Button from '@/components/ui/button';
+import { Text } from '@/components/text';
+import Button from '@/components/button';
 
 interface logType {
   time: string;

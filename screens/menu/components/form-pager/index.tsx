@@ -10,7 +10,7 @@ import Animated, {
   createAnimatedComponent,
   withTiming,
 } from 'react-native-reanimated';
-import { Text } from '@/components/ui/text';
+import { Text } from '@/components/text';
 import { colors } from '@/helpers/colors';
 import { CaretDownIcon } from 'phosphor-react-native';
 import {
@@ -32,7 +32,7 @@ import {
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from '@/components/dropdown-menu';
 
 const AnimatedPagerView = createAnimatedComponent(PagerView);
 
