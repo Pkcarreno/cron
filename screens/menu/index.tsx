@@ -9,7 +9,7 @@ import Button from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Logo } from '@/components/logo';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FormPager } from '@/components/menu-screen/form-pager';
+import { FormPager } from './components/form-pager';
 
 const QUICK_ON_OFF = `QUICK_${TimerMode.ON_OFF}`;
 

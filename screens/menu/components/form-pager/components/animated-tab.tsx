@@ -7,7 +7,7 @@ import Animated, {
 import {
   ICON_SPACE,
   sharedStyles,
-} from '@/components/menu-screen/form-pager/shared';
+} from '@/screens/menu/components/form-pager/shared';
 
 interface AnimatedTabWrapperProps extends React.PropsWithChildren {
   index: number;
