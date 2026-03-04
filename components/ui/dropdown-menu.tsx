@@ -47,12 +47,11 @@ const DropdownMenuContent = ({
   <DropdownMenuPrimitive.Portal hostName={portalHost}>
     <FullWindowOverlay>
       <DropdownMenuPrimitive.Overlay
-        style={Platform.select({
-          native: overlayStyle
+        style={
+          overlayStyle
             ? StyleSheet.flatten([StyleSheet.absoluteFill, overlayStyle])
-            : StyleSheet.absoluteFill,
-          web: overlayStyle ?? undefined,
-        })}
+            : StyleSheet.absoluteFill
+        }
       >
         <NativeOnlyAnimatedView entering={FadeIn.duration(150)}>
           <DropdownMenuPrimitive.Content
