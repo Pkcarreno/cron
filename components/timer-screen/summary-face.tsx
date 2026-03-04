@@ -86,21 +86,36 @@ const RenderData: React.FC<RenderDataProps> = ({ summary }) => {
     <View style={styles.dataWrapper}>
       <View style={styles.data}>
         <Text size={16}>Total Time</Text>
-        <Text colorSubtone="200" weight="600" size={16}>
+        <Text
+          style={styles.numberText}
+          colorSubtone="200"
+          weight="600"
+          size={16}
+        >
           {totalTime}
         </Text>
       </View>
 
       <View style={styles.data}>
         <Text size={16}>Active Time</Text>
-        <Text colorSubtone="200" weight="600" size={16}>
+        <Text
+          style={styles.numberText}
+          colorSubtone="200"
+          weight="600"
+          size={16}
+        >
           {activeTime}
         </Text>
       </View>
 
       <View style={styles.data}>
         <Text size={16}>Rounds</Text>
-        <Text colorSubtone="200" weight="600" size={16}>
+        <Text
+          style={styles.numberText}
+          colorSubtone="200"
+          weight="600"
+          size={16}
+        >
           {summary.roundsCompleted}
         </Text>
       </View>
@@ -141,5 +156,8 @@ const styles = StyleSheet.create({
   },
   mention: {
     alignItems: 'center',
+  },
+  numberText: {
+    fontVariant: ['tabular-nums'],
   },
 });
