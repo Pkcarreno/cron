@@ -1,15 +1,17 @@
 import { StyleSheet, View } from 'react-native';
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import type { TimerConfig } from '@/helpers/timer/factory';
 import { TimerMode } from '@/helpers/timer/factory';
 import { serializeTimerConfig } from '@/helpers/timer/utils/config-serializer';
 import { convertTimeToMs } from '@/helpers/timer/utils/formatter';
-import { useCallback, useState } from 'react';
-import type { FC } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import Button from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Logo } from '@/components/logo';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { FormPager } from '@/components/menu-screen/form-pager';
+
+const QUICK_ON_OFF = `QUICK_${TimerMode.ON_OFF}`;
 
 const emomConfig: TimerConfig = {
   mode: TimerMode.EMOM,
@@ -48,10 +50,55 @@ const forTimeConfig: TimerConfig = {
 
 export default function HomeScreen() {
   const [inspectMode, setInspectMode] = useState(false);
+  const [currentMode, setCurrentMode] = useState<
+    TimerMode | typeof QUICK_ON_OFF
+  >(TimerMode.EMOM);
+  const router = useRouter();
 
   const handleToggleInspectMode = useCallback(() => {
     setInspectMode((prev) => !prev);
   }, [setInspectMode]);
+
+  const modeConfig = useMemo(() => {
+    switch (currentMode) {
+      case TimerMode.EMOM: {
+        return emomConfig;
+      }
+
+      case TimerMode.TABATA: {
+        return tabataConfig;
+      }
+
+      case TimerMode.AMRAP: {
+        return amrapConfig;
+      }
+
+      case TimerMode.ON_OFF: {
+        return onOffConfig;
+      }
+
+      case QUICK_ON_OFF: {
+        return quickOnOffConfig;
+      }
+
+      case TimerMode.FOR_TIME: {
+        return forTimeConfig;
+      }
+
+      default: {
+        return null;
+      }
+    }
+  }, [currentMode]);
+
+  const handleStart = useCallback(() => {
+    if (modeConfig) {
+      router.push({
+        params: serializeTimerConfig(modeConfig),
+        pathname: inspectMode ? '/timer/inspector' : '/timer',
+      });
+    }
+  }, [modeConfig, inspectMode, router]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -62,65 +109,102 @@ export default function HomeScreen() {
         <Logo />
       </View>
       <View style={styles.content}>
-        <View style={buttonsStyles.linkWrapper}>
-          <Text colorSubtone="500">Jobs</Text>
-          <TimerLink config={emomConfig} inspect={inspectMode} title="EMOM" />
-          <TimerLink
-            config={tabataConfig}
-            inspect={inspectMode}
-            title="TABATA"
-          />
-          <TimerLink config={amrapConfig} inspect={inspectMode} title="AMRAP" />
-          <TimerLink
-            config={onOffConfig}
-            inspect={inspectMode}
-            title="ON_OFF"
-          />
-          <TimerLink
-            config={quickOnOffConfig}
-            inspect={inspectMode}
-            title="QUICK ON_OFF"
-          />
-          <TimerLink
-            config={forTimeConfig}
-            inspect={inspectMode}
-            title="FOR_TIME"
-          />
-        </View>
+        <Text weight="200" size={14} style={styles.contentHeading}>
+          Job
+        </Text>
+        <FormPager
+          value={currentMode}
+          onValueChange={setCurrentMode}
+          options={[
+            {
+              content: (
+                <Placeholder page={TimerMode.EMOM} config={emomConfig} />
+              ),
+              label: TimerMode.EMOM,
+              value: TimerMode.EMOM,
+            },
+            {
+              content: (
+                <Placeholder page={TimerMode.TABATA} config={tabataConfig} />
+              ),
+              label: TimerMode.TABATA,
+              value: TimerMode.TABATA,
+            },
+            {
+              content: (
+                <Placeholder page={TimerMode.AMRAP} config={amrapConfig} />
+              ),
+              label: TimerMode.AMRAP,
+              value: TimerMode.AMRAP,
+            },
+            {
+              content: (
+                <Placeholder page={TimerMode.ON_OFF} config={onOffConfig} />
+              ),
+              label: TimerMode.ON_OFF,
+              value: TimerMode.ON_OFF,
+            },
+            {
+              content: (
+                <Placeholder page={QUICK_ON_OFF} config={quickOnOffConfig} />
+              ),
+              label: QUICK_ON_OFF,
+              value: QUICK_ON_OFF,
+            },
+            {
+              content: (
+                <Placeholder page={TimerMode.FOR_TIME} config={forTimeConfig} />
+              ),
+              label: TimerMode.FOR_TIME,
+              value: TimerMode.FOR_TIME,
+            },
+          ]}
+        />
       </View>
 
       <View style={styles.footer}>
-        <Text colorSubtone="500">
-          Inspect mode screen: {inspectMode.toString()}
-        </Text>
         <Button
-          title="toggle inspect mode"
+          title={`toggle inspect mode: ${inspectMode.toString()}`}
           variant="outline"
           size="sm"
           onPress={handleToggleInspectMode}
         />
+
+        <Button title="Start" onPress={handleStart} />
       </View>
     </SafeAreaView>
   );
 }
 
-interface TimerLinkProps {
+interface PlaceholderProps {
+  page: string;
   config: TimerConfig;
-  inspect?: boolean;
-  title: string;
 }
 
-const TimerLink: FC<TimerLinkProps> = ({ config, inspect, title }) => (
-  <Link
-    href={{
-      params: serializeTimerConfig(config),
-      pathname: inspect ? '/timer/inspector' : '/timer',
-    }}
-    asChild
-  >
-    <Button title={title} variant="secondary" size="sm" />
-  </Link>
+const Placeholder: React.FC<PlaceholderProps> = ({ config }) => (
+  <View style={placeholderStyles.container}>
+    <View style={placeholderStyles.content}>
+      {Object.entries(config).map(([key, value]) => (
+        <View key={`${key}-${value}`}>
+          <Text colorSubtone="500">{key}</Text>
+          <Text fontType="mono" size={16}>
+            {value}
+          </Text>
+        </View>
+      ))}
+    </View>
+  </View>
 );
+
+const placeholderStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  content: {
+    gap: 8,
+    paddingHorizontal: 8,
+  },
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -131,8 +215,9 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    gap: 16,
-    paddingVertical: 12,
+  },
+  contentHeading: {
+    paddingLeft: 28,
   },
   footer: {
     gap: 8,
@@ -143,14 +228,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-  },
-});
-
-const buttonsStyles = StyleSheet.create({
-  linkWrapper: {
-    gap: 8,
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-    width: '100%',
   },
 });
