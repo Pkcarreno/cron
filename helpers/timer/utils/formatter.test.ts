@@ -145,6 +145,12 @@ describe('formatter', () => {
       expect(result).toBe('EMO');
     });
 
+    it('returns `EVR` for EVERY mode', () => {
+      const result = getModeAbbreviation(TimerMode.EVERY);
+
+      expect(result).toBe('EVR');
+    });
+
     it('returns `TAB` for TABATA mode', () => {
       const result = getModeAbbreviation(TimerMode.TABATA);
 

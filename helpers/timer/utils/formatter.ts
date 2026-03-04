@@ -41,6 +41,9 @@ export const getModeAbbreviation = (mode: TimerMode): string => {
     case TimerMode.EMOM: {
       return 'EMO';
     }
+    case TimerMode.EVERY: {
+      return 'EVR';
+    }
     case TimerMode.TABATA: {
       return 'TAB';
     }
