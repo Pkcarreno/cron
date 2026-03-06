@@ -13,7 +13,12 @@
     "typescript/no-use-before-define": ["error", { "variables": false }],
     "react-native/no-color-literals": "error",
     "react-native/no-inline-styles": "warn",
-    "react-native/no-raw-text": ["error", { "skip": ["Link", "TimerLink"] }],
+    "react-native/no-raw-text": [
+      "error",
+      {
+        "skip": ["Link", "FieldTitle", "FieldLabel", "FieldDescription"]
+      }
+    ],
     "react-native/no-single-element-style-arrays": "error",
     "react-native/no-unused-styles": "warn",
     "react-native/sort-styles": "warn"
