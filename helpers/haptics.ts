@@ -1,29 +1,63 @@
-import { Haptics } from 'react-native-nitro-haptics';
-import { NitroModules } from 'react-native-nitro-modules';
+import * as Haptics from 'expo-haptics';
+import { Platform } from 'react-native';
 
-const boxed = NitroModules.box(Haptics);
+const isCompatibleAndroid =
+  Platform.OS === 'android' &&
+  typeof Platform.Version === 'number' &&
+  Platform.Version >= 30;
 
-export const triggerHapticLight = () => {
-  'worklet';
-  boxed.unbox().impact('light');
+export enum triggerType {
+  Impact = 'Impact',
+  Notification = 'Notification',
+  Selection = 'Selection',
+}
+
+type triggerHapticType =
+  | {
+      type: triggerType.Impact;
+      mode: Haptics.ImpactFeedbackStyle;
+    }
+  | {
+      type: triggerType.Notification;
+      mode: Haptics.NotificationFeedbackType;
+    }
+  | {
+      type: triggerType.Selection;
+      mode: undefined;
+    };
+
+export const triggerHaptic = ({ type, mode }: triggerHapticType) => {
+  switch (type) {
+    case triggerType.Impact: {
+      Haptics.impactAsync(mode);
+      break;
+    }
+
+    case triggerType.Notification: {
+      Haptics.notificationAsync(mode);
+      break;
+    }
+
+    case triggerType.Selection: {
+      Haptics.selectionAsync();
+      break;
+    }
+
+    default: {
+      console.error('no trigger found');
+    }
+  }
 };
 
-export const triggerHapticMedium = () => {
-  'worklet';
-  boxed.unbox().impact('medium');
-};
-
-export const triggerHapticHeavy = () => {
-  'worklet';
-  boxed.unbox().impact('medium');
-};
-
-export const triggerHapticSoft = () => {
-  'worklet';
-  boxed.unbox().impact('soft');
-};
-
-export const triggerHapticSuccess = () => {
-  'worklet';
-  boxed.unbox().notification('success');
+export const triggerAndroidHaptic = (
+  type: Haptics.AndroidHaptics,
+  fallback?: triggerHapticType
+) => {
+  if (isCompatibleAndroid) {
+    Haptics.performAndroidHapticsAsync(type);
+  } else if (fallback) {
+    triggerHaptic(fallback);
+  } else {
+    console.warn('Haptics: no haptic found to be triggered');
+  }
 };

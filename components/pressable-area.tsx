@@ -1,13 +1,17 @@
 import {
-  triggerHapticHeavy,
-  triggerHapticMedium,
-  triggerHapticSuccess,
+  triggerAndroidHaptic,
+  triggerHaptic,
+  triggerType,
 } from '@/helpers/haptics';
+import {
+  AndroidHaptics,
+  ImpactFeedbackStyle,
+  NotificationFeedbackType,
+} from 'expo-haptics';
 import React from 'react';
 import type { DimensionValue } from 'react-native';
 import { View, StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { scheduleOnUI } from 'react-native-worklets';
 
 const LONG_PRESS_DURATION = 600;
 
@@ -31,7 +35,10 @@ export const PressableArea = ({
     .enabled(!!onDoublePress)
     .runOnJS(true)
     .onStart(() => {
-      scheduleOnUI(triggerHapticSuccess);
+      triggerHaptic({
+        mode: NotificationFeedbackType.Success,
+        type: triggerType.Notification,
+      });
       onDoublePress?.();
     });
 
@@ -40,7 +47,10 @@ export const PressableArea = ({
     .enabled(!!onLongPress)
     .runOnJS(true)
     .onStart(() => {
-      scheduleOnUI(triggerHapticHeavy);
+      triggerAndroidHaptic(AndroidHaptics.Long_Press, {
+        mode: ImpactFeedbackStyle.Heavy,
+        type: triggerType.Impact,
+      });
       onLongPress?.();
     });
 
@@ -49,7 +59,10 @@ export const PressableArea = ({
     .enabled(!!onPress)
     .runOnJS(true)
     .onStart(() => {
-      scheduleOnUI(triggerHapticMedium);
+      triggerHaptic({
+        mode: ImpactFeedbackStyle.Medium,
+        type: triggerType.Impact,
+      });
       onPress?.();
     });
 

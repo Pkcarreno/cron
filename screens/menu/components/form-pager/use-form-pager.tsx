@@ -11,8 +11,8 @@ import type {
   PressableWithIndexOnActionType,
   ViewWithIndexOnLayoutType,
 } from './components/utils';
-import { scheduleOnUI } from 'react-native-worklets';
-import { triggerHapticSoft } from '@/helpers/haptics';
+import { triggerAndroidHaptic, triggerType } from '@/helpers/haptics';
+import { AndroidHaptics, ImpactFeedbackStyle } from 'expo-haptics';
 
 const usePagerState = <T extends string>(
   options: FormTabOption<T>[],
@@ -167,7 +167,10 @@ export const useFormPager = <T extends string>(
       if (newIndex !== currentIndexRef.current) {
         currentIndexRef.current = newIndex;
         setInternalIndex(newIndex);
-        scheduleOnUI(triggerHapticSoft);
+        triggerAndroidHaptic(AndroidHaptics.Segment_Tick, {
+          mode: ImpactFeedbackStyle.Soft,
+          type: triggerType.Impact,
+        });
         onValueChange?.(options[newIndex].value);
       }
     },
