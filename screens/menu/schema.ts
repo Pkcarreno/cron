@@ -6,6 +6,7 @@ import type {
   ForTimeConfig,
   OnOffConfig,
   TabataConfig,
+  StopWatchConfig,
 } from '@/helpers/timer/factory';
 import { z } from 'zod';
 
@@ -36,6 +37,10 @@ export const forTimeSchema = z.object({
   timecapMs: z.number().min(1, 'Time cap must be at least 1ms'),
 }) satisfies z.ZodType<Omit<ForTimeConfig, 'preparationMs' | 'mode'>>;
 
+export const stopWatchSchema = z.object({}) satisfies z.ZodType<
+  Omit<StopWatchConfig, 'preparationMs' | 'mode'>
+>;
+
 export const emomDefaults: z.infer<typeof emomSchema> = {
   totalRounds: 3,
 };
@@ -63,12 +68,15 @@ export const forTimeDefaults: z.infer<typeof forTimeSchema> = {
   timecapMs: 3 * 60 * 1000,
 };
 
+export const stopWatchDefaults: z.infer<typeof stopWatchSchema> = {};
+
 export type EmomFormValues = z.infer<typeof emomSchema>;
 export type TabataFormValues = z.infer<typeof tabataSchema>;
 export type AmrapFormValues = z.infer<typeof amrapSchema>;
 export type EveryFormValues = z.infer<typeof everySchema>;
 export type OnOffFormValues = z.infer<typeof onOffSchema>;
 export type ForTimeFormValues = z.infer<typeof forTimeSchema>;
+export type StopWatchFormValues = z.infer<typeof stopWatchSchema>;
 
 export interface FormHandle {
   submit: () => void;
@@ -82,4 +90,5 @@ export const TIMER_MODES = [
   TimerMode.ON_OFF,
   TimerMode.EVERY,
   TimerMode.FOR_TIME,
-] as const;
+  TimerMode.STOP_WATCH,
+];

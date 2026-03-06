@@ -5,6 +5,7 @@ import { TabataForm } from '@/screens/menu/components/forms/tabata-form';
 import { AmrapForm } from '@/screens/menu/components/forms/amrap-form';
 import { EveryForm } from '@/screens/menu/components/forms/every-form';
 import { ForTimeForm } from '@/screens/menu/components/forms/for-time-form';
+import { StopWatchForm } from '@/screens/menu/components/forms/stopwatch-form';
 import type { TimerConfig } from '@/helpers/timer/factory';
 import { TimerMode } from '@/helpers/timer/factory';
 import { useRouter } from 'expo-router';
@@ -20,6 +21,7 @@ const FORM_COMPONENTS = {
   [TimerMode.ON_OFF]: OnOffForm,
   [TimerMode.EVERY]: EveryForm,
   [TimerMode.FOR_TIME]: ForTimeForm,
+  [TimerMode.STOP_WATCH]: StopWatchForm,
 };
 
 export const useTimerForms = (inspectMode: boolean) => {
@@ -39,7 +41,7 @@ export const useTimerForms = (inspectMode: boolean) => {
     [inspectMode, router]
   );
 
-  const pages = useMemo<FormTabOption<Exclude<TimerMode, 'STOP_WATCH'>>[]>(
+  const pages = useMemo<FormTabOption<TimerMode>[]>(
     () =>
       TIMER_MODES.map((mode) => {
         const FormComponent = FORM_COMPONENTS[mode];
@@ -57,7 +59,7 @@ export const useTimerForms = (inspectMode: boolean) => {
     [handleSubmitConfig]
   );
 
-  const startTimer = useCallback((mode: Exclude<TimerMode, 'STOP_WATCH'>) => {
+  const startTimer = useCallback((mode: TimerMode) => {
     formRefs.current.get(mode)?.current?.submit();
   }, []);
 

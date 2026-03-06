@@ -10,9 +10,7 @@ import { useTimerForms } from './hooks/use-timer-form';
 
 export const Menu = () => {
   const [inspectMode, setInspectMode] = useState(false);
-  const [currentMode, setCurrentMode] = useState<
-    Exclude<TimerMode, 'STOP_WATCH'>
-  >(TimerMode.EMOM);
+  const [currentMode, setCurrentMode] = useState<TimerMode>(TimerMode.EMOM);
   const { pages, startTimer } = useTimerForms(inspectMode);
 
   const handleToggleInspectMode = useCallback(() => {
