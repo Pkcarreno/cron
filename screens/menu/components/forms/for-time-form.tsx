@@ -1,0 +1,70 @@
+import { useImperativeHandle } from 'react';
+import type { Ref } from 'react';
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldSet,
+} from '@/components/field';
+import { formOptions } from '@tanstack/form-core';
+import {
+  forTimeDefaults,
+  forTimeSchema,
+  DEFAULT_PREPARATION_MS,
+} from '@/screens/menu/schema';
+import type { FormHandle } from '@/screens/menu/schema';
+import { TimerMode } from '@/helpers/timer/factory';
+import type { TimerConfig } from '@/helpers/timer/factory';
+import { useAppForm } from './form-utils';
+
+const forTimeFormOpts = formOptions({
+  defaultValues: forTimeDefaults,
+  validators: {
+    onSubmit: forTimeSchema,
+  },
+});
+
+interface ForTimeFormProps {
+  ref?: Ref<FormHandle>;
+  onSubmit: (config: TimerConfig) => void;
+}
+
+export const ForTimeForm = ({ onSubmit, ref }: ForTimeFormProps) => {
+  const form = useAppForm({
+    ...forTimeFormOpts,
+    onSubmit: ({ value }) => {
+      const config: TimerConfig = {
+        mode: TimerMode.FOR_TIME,
+        preparationMs: DEFAULT_PREPARATION_MS,
+        timecapMs: value.timecapMs,
+      };
+      onSubmit(config);
+    },
+  });
+
+  useImperativeHandle(ref, () => ({
+    submit: () => {
+      form.handleSubmit();
+    },
+  }));
+
+  return (
+    <FieldSet>
+      <FieldGroup>
+        <form.AppField name="timecapMs">
+          {(field) => (
+            <Field>
+              <FieldContent>
+                <FieldLabel>Time Cap</FieldLabel>
+              </FieldContent>
+              <field.TimeField />
+              <FieldError errors={field.state.meta.errors} />
+            </Field>
+          )}
+        </form.AppField>
+      </FieldGroup>
+    </FieldSet>
+  );
+};

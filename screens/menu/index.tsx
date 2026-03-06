@@ -1,99 +1,28 @@
 import { StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import type { TimerConfig } from '@/helpers/timer/factory';
 import { TimerMode } from '@/helpers/timer/factory';
-import { serializeTimerConfig } from '@/helpers/timer/utils/config-serializer';
-import { convertTimeToMs } from '@/helpers/timer/utils/formatter';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import Button from '@/components/button';
 import { Text } from '@/components/text';
 import { Logo } from '@/components/logo';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FormPager } from './components/form-pager';
-
-const emomConfig: TimerConfig = {
-  mode: TimerMode.EMOM,
-  preparationMs: convertTimeToMs(0, 10),
-  totalRounds: 3,
-};
-const everyConfig: TimerConfig = {
-  mode: TimerMode.EVERY,
-  preparationMs: convertTimeToMs(0, 10),
-  roundDurationMs: convertTimeToMs(0, 45),
-  totalRounds: 3,
-};
-const tabataConfig: TimerConfig = {
-  mode: TimerMode.TABATA,
-  preparationMs: convertTimeToMs(0, 10),
-  totalRounds: 8,
-};
-const onOffConfig: TimerConfig = {
-  mode: TimerMode.ON_OFF,
-  preparationMs: convertTimeToMs(0, 10),
-  restMs: convertTimeToMs(0, 20),
-  totalRounds: 3,
-  workMs: convertTimeToMs(0, 30),
-};
-const amrapConfig: TimerConfig = {
-  durationMs: convertTimeToMs(4, 0),
-  mode: TimerMode.AMRAP,
-  preparationMs: convertTimeToMs(0, 10),
-};
-const forTimeConfig: TimerConfig = {
-  mode: TimerMode.FOR_TIME,
-  preparationMs: convertTimeToMs(0, 10),
-  timecapMs: convertTimeToMs(3, 0),
-};
+import { useTimerForms } from './hooks/use-timer-form';
 
 export const Menu = () => {
   const [inspectMode, setInspectMode] = useState(false);
-  const [currentMode, setCurrentMode] = useState<TimerMode>(TimerMode.EMOM);
-  const router = useRouter();
+  const [currentMode, setCurrentMode] = useState<
+    Exclude<TimerMode, 'STOP_WATCH'>
+  >(TimerMode.EMOM);
+  const { pages, startTimer } = useTimerForms(inspectMode);
 
   const handleToggleInspectMode = useCallback(() => {
     setInspectMode((prev) => !prev);
   }, [setInspectMode]);
 
-  const modeConfig = useMemo(() => {
-    switch (currentMode) {
-      case TimerMode.EMOM: {
-        return emomConfig;
-      }
-
-      case TimerMode.TABATA: {
-        return tabataConfig;
-      }
-
-      case TimerMode.AMRAP: {
-        return amrapConfig;
-      }
-
-      case TimerMode.ON_OFF: {
-        return onOffConfig;
-      }
-
-      case TimerMode.EVERY: {
-        return everyConfig;
-      }
-
-      case TimerMode.FOR_TIME: {
-        return forTimeConfig;
-      }
-
-      default: {
-        return null;
-      }
-    }
-  }, [currentMode]);
-
-  const handleStart = useCallback(() => {
-    if (modeConfig) {
-      router.push({
-        params: serializeTimerConfig(modeConfig),
-        pathname: inspectMode ? '/timer/inspector' : '/timer',
-      });
-    }
-  }, [modeConfig, inspectMode, router]);
+  const handleStart = useCallback(
+    () => startTimer(currentMode),
+    [startTimer, currentMode]
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -110,50 +39,7 @@ export const Menu = () => {
         <FormPager
           value={currentMode}
           onValueChange={setCurrentMode}
-          options={[
-            {
-              content: (
-                <Placeholder page={TimerMode.EMOM} config={emomConfig} />
-              ),
-              label: TimerMode.EMOM,
-              value: TimerMode.EMOM,
-            },
-            {
-              content: (
-                <Placeholder page={TimerMode.TABATA} config={tabataConfig} />
-              ),
-              label: TimerMode.TABATA,
-              value: TimerMode.TABATA,
-            },
-            {
-              content: (
-                <Placeholder page={TimerMode.AMRAP} config={amrapConfig} />
-              ),
-              label: TimerMode.AMRAP,
-              value: TimerMode.AMRAP,
-            },
-            {
-              content: (
-                <Placeholder page={TimerMode.ON_OFF} config={onOffConfig} />
-              ),
-              label: TimerMode.ON_OFF,
-              value: TimerMode.ON_OFF,
-            },
-            {
-              content: (
-                <Placeholder page={TimerMode.EVERY} config={everyConfig} />
-              ),
-              label: TimerMode.EVERY,
-              value: TimerMode.EVERY,
-            },
-            {
-              content: (
-                <Placeholder page={TimerMode.FOR_TIME} config={forTimeConfig} />
-              ),
-              label: TimerMode.FOR_TIME,
-              value: TimerMode.FOR_TIME,
-            },
-          ]}
+          options={pages}
         />
       </View>
 
@@ -170,36 +56,6 @@ export const Menu = () => {
     </SafeAreaView>
   );
 };
-
-interface PlaceholderProps {
-  page: string;
-  config: TimerConfig;
-}
-
-const Placeholder: React.FC<PlaceholderProps> = ({ config }) => (
-  <View style={placeholderStyles.container}>
-    <View style={placeholderStyles.content}>
-      {Object.entries(config).map(([key, value]) => (
-        <View key={`${key}-${value}`}>
-          <Text colorSubtone="500">{key}</Text>
-          <Text fontType="mono" size={16}>
-            {value}
-          </Text>
-        </View>
-      ))}
-    </View>
-  </View>
-);
-
-const placeholderStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    gap: 8,
-    paddingHorizontal: 8,
-  },
-});
 
 const styles = StyleSheet.create({
   container: {

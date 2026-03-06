@@ -1,0 +1,85 @@
+import { TimerMode } from '@/helpers/timer/factory';
+import type {
+  AmrapConfig,
+  EmomConfig,
+  EveryConfig,
+  ForTimeConfig,
+  OnOffConfig,
+  TabataConfig,
+} from '@/helpers/timer/factory';
+import { z } from 'zod';
+
+export const emomSchema = z.object({
+  totalRounds: z.number().min(1, 'Rounds must be at least 1'),
+}) satisfies z.ZodType<Omit<EmomConfig, 'preparationMs' | 'mode'>>;
+
+export const tabataSchema = z.object({
+  totalRounds: z.literal(8),
+}) satisfies z.ZodType<Omit<TabataConfig, 'preparationMs' | 'mode'>>;
+
+export const amrapSchema = z.object({
+  durationMs: z.number().min(1, 'Duration must be at least 1ms'),
+}) satisfies z.ZodType<Omit<AmrapConfig, 'preparationMs' | 'mode'>>;
+
+export const everySchema = z.object({
+  roundDurationMs: z.number().min(1, 'Round duration must be at least 1ms'),
+  totalRounds: z.number().min(1, 'Rounds must be at least 1'),
+}) satisfies z.ZodType<Omit<EveryConfig, 'preparationMs' | 'mode'>>;
+
+export const onOffSchema = z.object({
+  restMs: z.number().min(1, 'Rest duration must be at least 1ms'),
+  totalRounds: z.number().min(1, 'Rounds must be at least 1'),
+  workMs: z.number().min(1, 'Work duration must be at least 1ms'),
+}) satisfies z.ZodType<Omit<OnOffConfig, 'preparationMs' | 'mode'>>;
+
+export const forTimeSchema = z.object({
+  timecapMs: z.number().min(1, 'Time cap must be at least 1ms'),
+}) satisfies z.ZodType<Omit<ForTimeConfig, 'preparationMs' | 'mode'>>;
+
+export const emomDefaults: z.infer<typeof emomSchema> = {
+  totalRounds: 3,
+};
+
+export const tabataDefaults: z.infer<typeof tabataSchema> = {
+  totalRounds: 8,
+};
+
+export const amrapDefaults: z.infer<typeof amrapSchema> = {
+  durationMs: 4 * 60 * 1000,
+};
+
+export const everyDefaults: z.infer<typeof everySchema> = {
+  roundDurationMs: 45 * 1000,
+  totalRounds: 3,
+};
+
+export const onOffDefaults: z.infer<typeof onOffSchema> = {
+  restMs: 20 * 1000,
+  totalRounds: 3,
+  workMs: 30 * 1000,
+};
+
+export const forTimeDefaults: z.infer<typeof forTimeSchema> = {
+  timecapMs: 3 * 60 * 1000,
+};
+
+export type EmomFormValues = z.infer<typeof emomSchema>;
+export type TabataFormValues = z.infer<typeof tabataSchema>;
+export type AmrapFormValues = z.infer<typeof amrapSchema>;
+export type EveryFormValues = z.infer<typeof everySchema>;
+export type OnOffFormValues = z.infer<typeof onOffSchema>;
+export type ForTimeFormValues = z.infer<typeof forTimeSchema>;
+
+export interface FormHandle {
+  submit: () => void;
+}
+export const DEFAULT_PREPARATION_MS = 10 * 1000;
+
+export const TIMER_MODES = [
+  TimerMode.EMOM,
+  TimerMode.TABATA,
+  TimerMode.AMRAP,
+  TimerMode.ON_OFF,
+  TimerMode.EVERY,
+  TimerMode.FOR_TIME,
+] as const;
