@@ -151,6 +151,12 @@ describe('formatter', () => {
       expect(result).toBe('EVR');
     });
 
+    it('returns `STP` for STOP_WATCH mode', () => {
+      const result = getModeAbbreviation(TimerMode.STOP_WATCH);
+
+      expect(result).toBe('STP');
+    });
+
     it('returns `TAB` for TABATA mode', () => {
       const result = getModeAbbreviation(TimerMode.TABATA);
 

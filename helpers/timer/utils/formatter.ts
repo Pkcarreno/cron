@@ -50,6 +50,9 @@ export const getModeAbbreviation = (mode: TimerMode): string => {
     case TimerMode.ON_OFF: {
       return 'O/F';
     }
+    case TimerMode.STOP_WATCH: {
+      return 'STP';
+    }
     default: {
       return '---';
     }
