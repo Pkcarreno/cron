@@ -76,6 +76,7 @@ export const Timer = () => {
       <SummaryFace
         summary={getSummary()}
         mode={timerInput.mode}
+        flags={flags}
         handleEndSession={handleFinish}
         handleResumeSession={start}
       />

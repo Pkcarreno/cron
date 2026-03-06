@@ -22,6 +22,7 @@ export interface TimerFlags {
   showsPhaseIndicator: boolean;
   showsRoundCounter: boolean;
   showsMinuteDigits: boolean;
+  showsSummaryRoundCounter: boolean;
 }
 
 export interface TimerEventHandlers {
@@ -37,12 +38,14 @@ const getTimerFlags = (config: TimerConfig, phase: TimerPhase): TimerFlags => {
   const isIntervalMode =
     config.mode === TimerMode.TABATA || config.mode === TimerMode.ON_OFF;
   const hasMultipleRounds = 'totalRounds' in config && config.totalRounds > 1;
+  const isStopwatchMode = config.mode === TimerMode.STOP_WATCH;
 
   return {
     isPreparing,
     showsMinuteDigits: !isPreparing,
     showsPhaseIndicator: isIntervalMode && !isPreparing,
     showsRoundCounter: hasMultipleRounds && !isPreparing,
+    showsSummaryRoundCounter: !isStopwatchMode,
   };
 };
 

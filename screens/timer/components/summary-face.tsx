@@ -5,17 +5,19 @@ import Button from '@/components/button';
 import type { TimerMode } from '@/helpers/timer/factory';
 import { formatFullTimeToString } from '@/helpers/timer/utils/formatter';
 import { Logo } from '@/components/logo';
-import type { UIWorkoutSummary } from '@/hooks/use-timer';
+import type { timerType, UIWorkoutSummary } from '@/hooks/use-timer';
 
 interface Props {
   summary: UIWorkoutSummary | undefined;
   mode: TimerMode;
+  flags: timerType['flags'];
   handleEndSession: () => void;
   handleResumeSession: () => void;
 }
 
 export const SummaryFace: React.FC<Props> = ({
   summary,
+  flags,
   mode,
   handleEndSession,
   handleResumeSession,
@@ -45,7 +47,7 @@ export const SummaryFace: React.FC<Props> = ({
       </View>
 
       <View style={styles.content}>
-        <RenderData summary={summary} />
+        <RenderData summary={summary} flags={flags} />
 
         <View style={styles.mention}>
           <Text colorSubtone="600" size={12}>
@@ -68,9 +70,9 @@ export const SummaryFace: React.FC<Props> = ({
   );
 };
 
-type RenderDataProps = Pick<Props, 'summary'>;
+type RenderDataProps = Pick<Props, 'summary' | 'flags'>;
 
-const RenderData: React.FC<RenderDataProps> = ({ summary }) => {
+const RenderData: React.FC<RenderDataProps> = ({ summary, flags }) => {
   if (!summary) {
     return (
       <View style={styles.data}>
@@ -108,17 +110,19 @@ const RenderData: React.FC<RenderDataProps> = ({ summary }) => {
         </Text>
       </View>
 
-      <View style={styles.data}>
-        <Text size={16}>Rounds</Text>
-        <Text
-          style={styles.numberText}
-          colorSubtone="200"
-          weight="600"
-          size={16}
-        >
-          {summary.roundsCompleted}
-        </Text>
-      </View>
+      {flags.showsSummaryRoundCounter && (
+        <View style={styles.data}>
+          <Text size={16}>Rounds</Text>
+          <Text
+            style={styles.numberText}
+            colorSubtone="200"
+            weight="600"
+            size={16}
+          >
+            {summary.roundsCompleted}
+          </Text>
+        </View>
+      )}
     </View>
   );
 };
