@@ -43,7 +43,7 @@ interface SolidProps {
   colorSubtone?: never;
 }
 
-type TextProps = RNTextProps & {
+export type TextProps = RNTextProps & {
   fontType?: FontType;
   weight?: FontWeight;
   size?: TextStyle['fontSize'];
