@@ -1,5 +1,5 @@
 import { StyleSheet, View } from 'react-native';
-import { TimerMode } from '@/helpers/timer/factory';
+import type { TimerMode } from '@/helpers/timer/factory';
 import { useCallback, useState } from 'react';
 import Button from '@/components/button';
 import { Text } from '@/components/text';
@@ -7,10 +7,11 @@ import { Logo } from '@/components/logo';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FormPager } from './components/form-pager';
 import { useTimerForms } from './hooks/use-timer-form';
+import { TIMER_MODES } from './schema';
 
 export const Menu = () => {
   const [inspectMode, setInspectMode] = useState(false);
-  const [currentMode, setCurrentMode] = useState<TimerMode>(TimerMode.EMOM);
+  const [currentMode, setCurrentMode] = useState<TimerMode>(TIMER_MODES[0]);
   const { pages, startTimer } = useTimerForms(inspectMode);
 
   const handleToggleInspectMode = useCallback(() => {

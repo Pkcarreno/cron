@@ -84,11 +84,11 @@ export interface FormHandle {
 export const DEFAULT_PREPARATION_MS = 10 * 1000;
 
 export const TIMER_MODES = [
-  TimerMode.EMOM,
   TimerMode.TABATA,
   TimerMode.AMRAP,
+  TimerMode.EMOM,
   TimerMode.ON_OFF,
-  TimerMode.EVERY,
   TimerMode.FOR_TIME,
+  TimerMode.EVERY,
   TimerMode.STOP_WATCH,
 ];
