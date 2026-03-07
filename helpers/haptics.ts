@@ -23,18 +23,17 @@ type triggerHapticType =
     }
   | {
       type: triggerType.Selection;
-      mode: undefined;
     };
 
-export const triggerHaptic = ({ type, mode }: triggerHapticType) => {
-  switch (type) {
+export const triggerHaptic = (config: triggerHapticType) => {
+  switch (config.type) {
     case triggerType.Impact: {
-      Haptics.impactAsync(mode);
+      Haptics.impactAsync(config.mode);
       break;
     }
 
     case triggerType.Notification: {
-      Haptics.notificationAsync(mode);
+      Haptics.notificationAsync(config.mode);
       break;
     }
 
