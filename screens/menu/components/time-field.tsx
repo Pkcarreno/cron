@@ -13,7 +13,6 @@ export const TimeField = (props: TimeFieldProps) => {
     <InputTime
       value={field.state.value}
       onChangeValue={field.handleChange}
-      onBlur={field.handleBlur}
       {...props}
     />
   );

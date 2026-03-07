@@ -1,28 +1,32 @@
-import type { InputProps } from '@/components/input';
-import { Input } from '@/components/input';
 import { useCallback } from 'react';
 import { useFieldContext } from '@/screens/menu/form-context';
+import type { InputNumberProps } from '@/components/input-number';
+import { InputNumber } from '@/components/input-number';
+import { Col, Grid, Row } from '@/components/grid';
 
 export const NumberField = (
-  props: Omit<InputProps, 'value' | 'onChangeText' | 'keyboardType' | 'onBlur'>
+  props: Omit<InputNumberProps, 'value' | 'onChangeValue'>
 ) => {
   const field = useFieldContext<number>();
 
   const handleChange = useCallback(
-    (text: string) => {
-      const num = Number.parseInt(text, 10);
-      field.handleChange(Number.isNaN(num) ? 0 : num);
+    (value: number) => {
+      field.handleChange(Number.isNaN(value) ? 0 : value);
     },
     [field]
   );
 
   return (
-    <Input
-      value={field.state.value?.toString() ?? ''}
-      onChangeText={handleChange}
-      onBlur={field.handleBlur}
-      keyboardType="number-pad"
-      {...props}
-    />
+    <Grid columns={2} gap={12}>
+      <Row>
+        <Col span={1}>
+          <InputNumber
+            value={field.state.value}
+            onChangeValue={handleChange}
+            {...props}
+          />
+        </Col>
+      </Row>
+    </Grid>
   );
 };

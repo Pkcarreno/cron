@@ -18,6 +18,7 @@ import type { FormHandle } from '@/screens/menu/schema';
 import { TimerMode } from '@/helpers/timer/factory';
 import type { TimerConfig } from '@/helpers/timer/factory';
 import { useAppForm } from './form-utils';
+import { ScrollView } from 'react-native';
 
 const forTimeFormOpts = formOptions({
   defaultValues: forTimeDefaults,
@@ -51,20 +52,22 @@ export const ForTimeForm = ({ onSubmit, ref }: ForTimeFormProps) => {
   }));
 
   return (
-    <FieldSet>
-      <FieldGroup>
-        <form.AppField name="timecapMs">
-          {(field) => (
-            <Field>
-              <FieldContent>
-                <FieldLabel>Time Cap</FieldLabel>
-              </FieldContent>
-              <field.TimeField />
-              <FieldError errors={field.state.meta.errors} />
-            </Field>
-          )}
-        </form.AppField>
-      </FieldGroup>
-    </FieldSet>
+    <ScrollView showsVerticalScrollIndicator={false}>
+      <FieldSet>
+        <FieldGroup>
+          <form.AppField name="timecapMs">
+            {(field) => (
+              <Field>
+                <FieldContent>
+                  <FieldLabel>Time Cap</FieldLabel>
+                </FieldContent>
+                <field.TimeField />
+                <FieldError errors={field.state.meta.errors} />
+              </Field>
+            )}
+          </form.AppField>
+        </FieldGroup>
+      </FieldSet>
+    </ScrollView>
   );
 };

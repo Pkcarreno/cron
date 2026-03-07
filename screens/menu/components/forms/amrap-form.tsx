@@ -18,6 +18,7 @@ import type { FormHandle } from '@/screens/menu/schema';
 import { TimerMode } from '@/helpers/timer/factory';
 import type { TimerConfig } from '@/helpers/timer/factory';
 import { useAppForm } from './form-utils';
+import { ScrollView } from 'react-native';
 
 const amrapFormOpts = formOptions({
   defaultValues: amrapDefaults,
@@ -51,20 +52,22 @@ export const AmrapForm = ({ onSubmit, ref }: AmrapFormProps) => {
   }));
 
   return (
-    <FieldSet>
-      <FieldGroup>
-        <form.AppField name="durationMs">
-          {(field) => (
-            <Field>
-              <FieldContent>
-                <FieldLabel>Duration</FieldLabel>
-              </FieldContent>
-              <field.TimeField />
-              <FieldError errors={field.state.meta.errors} />
-            </Field>
-          )}
-        </form.AppField>
-      </FieldGroup>
-    </FieldSet>
+    <ScrollView showsVerticalScrollIndicator={false}>
+      <FieldSet>
+        <FieldGroup>
+          <form.AppField name="durationMs">
+            {(field) => (
+              <Field>
+                <FieldContent>
+                  <FieldLabel>Duration</FieldLabel>
+                </FieldContent>
+                <field.TimeField />
+                <FieldError errors={field.state.meta.errors} />
+              </Field>
+            )}
+          </form.AppField>
+        </FieldGroup>
+      </FieldSet>
+    </ScrollView>
   );
 };

@@ -16,9 +16,11 @@ import {
   FieldLabel,
   FieldSet,
 } from '@/components/field';
-import { Input } from '@/components/input';
 import { InputTime } from '@/components/input-time';
 import { useAppForm } from './form-utils';
+import { ScrollView } from 'react-native';
+import { InputNumber } from '@/components/input-number';
+import { Col, Grid, Row } from '@/components/grid';
 
 const tabataFormOpts = formOptions({
   defaultValues: tabataDefaults,
@@ -52,27 +54,36 @@ export const TabataForm = ({ onSubmit, ref }: TabataFormProps) => {
   }));
 
   return (
-    <FieldSet>
-      <FieldDescription>
-        This is an interval preset and can&apos;t be modified. For custom
-        intervals use the ON/OFF timer.
-      </FieldDescription>
-      <FieldGroup>
-        <Field>
-          <FieldLabel>Rounds</FieldLabel>
-          <Input value="8" editable={false} />
-        </Field>
+    <ScrollView showsVerticalScrollIndicator={false}>
+      <FieldSet>
+        <FieldDescription>
+          This is an interval preset and can&apos;t be modified. For custom
+          intervals use the ON/OFF timer.
+        </FieldDescription>
+        <FieldGroup>
+          <Field>
+            <FieldLabel>Rounds</FieldLabel>
 
-        <Field>
-          <FieldLabel>Work phase duration</FieldLabel>
-          <InputTime value={20 * 1000} editable={false} />
-        </Field>
+            <Grid columns={2} gap={12}>
+              <Row>
+                <Col span={1}>
+                  <InputNumber value={8} editable={false} />
+                </Col>
+              </Row>
+            </Grid>
+          </Field>
 
-        <Field>
-          <FieldLabel>Rest phase duration</FieldLabel>
-          <InputTime value={10 * 1000} editable={false} />
-        </Field>
-      </FieldGroup>
-    </FieldSet>
+          <Field>
+            <FieldLabel>Work phase duration</FieldLabel>
+            <InputTime value={20 * 1000} editable={false} />
+          </Field>
+
+          <Field>
+            <FieldLabel>Rest phase duration</FieldLabel>
+            <InputTime value={10 * 1000} editable={false} />
+          </Field>
+        </FieldGroup>
+      </FieldSet>
+    </ScrollView>
   );
 };
