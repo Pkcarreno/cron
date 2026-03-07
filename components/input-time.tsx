@@ -1,26 +1,18 @@
-import { StyleSheet, View } from 'react-native';
-import type { InputProps } from './input';
-import { Input } from './input';
-import { Text } from './text';
 import { useCallback, useMemo } from 'react';
 import {
   convertTimeToMs,
   formatTimeForDisplay,
 } from '@/helpers/timer/utils/formatter';
+import { Col, Grid, Row } from './grid';
+import type { InputNumberProps } from './input-number';
+import { InputNumber } from './input-number';
 
 const MAX_MINUTES = 99;
 const MAX_SECONDS = 59;
 
-export interface InputTimeProps extends Omit<
-  InputProps,
-  'value' | 'onChangeText' | 'keyboardType' | 'maxLength'
-> {
-  value: number;
-  onChangeValue?: (value: number) => void;
-}
+export type InputTimeProps = InputNumberProps;
 
 export const InputTime: React.FC<InputTimeProps> = ({
-  style,
   value,
   onChangeValue,
   ...props
@@ -42,68 +34,51 @@ export const InputTime: React.FC<InputTimeProps> = ({
   );
 
   const handleMinutesChange = useCallback(
-    (text: string) => {
-      const num = Number.parseInt(text, 10);
-      const clamped = Number.isNaN(num) ? 0 : Math.min(num, MAX_MINUTES);
+    (newValue: number) => {
+      const clamped = Number.isNaN(newValue)
+        ? 0
+        : Math.min(newValue, MAX_MINUTES);
       updateMs(clamped, seconds);
     },
     [seconds, updateMs]
   );
 
   const handleSecondsChange = useCallback(
-    (text: string) => {
-      const num = Number.parseInt(text, 10);
-      const clamped = Number.isNaN(num) ? 0 : Math.min(num, MAX_SECONDS);
+    (newValue: number) => {
+      const clamped = Number.isNaN(newValue)
+        ? 0
+        : Math.min(newValue, MAX_SECONDS);
       updateMs(minutes, clamped);
     },
     [minutes, updateMs]
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.inputWrapper}>
-        <Input
-          value={minutes.toString()}
-          onChangeText={handleMinutesChange}
-          keyboardType="number-pad"
-          maxLength={2}
-          style={[styles.input, style]}
-          {...props}
-        />
-        <Text weight="200" size={16}>
-          M
-        </Text>
-      </View>
-      <View style={styles.inputWrapper}>
-        <Input
-          value={seconds.toString()}
-          onChangeText={handleSecondsChange}
-          keyboardType="number-pad"
-          maxLength={2}
-          style={[styles.input, style]}
-          {...props}
-        />
-        <Text weight="200" size={16}>
-          S
-        </Text>
-      </View>
-    </View>
+    <Grid columns={2} gap={12}>
+      <Row>
+        <Col span={1}>
+          <InputNumber
+            value={minutes}
+            onChangeValue={handleMinutesChange}
+            suffix="M"
+            valueSuffix="min"
+            min={0}
+            max={MAX_MINUTES}
+            {...props}
+          />
+        </Col>
+        <Col span={1}>
+          <InputNumber
+            value={seconds}
+            onChangeValue={handleSecondsChange}
+            suffix="S"
+            valueSuffix="sec"
+            min={0}
+            max={MAX_SECONDS}
+            {...props}
+          />
+        </Col>
+      </Row>
+    </Grid>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  input: {
-    flex: 1,
-    textAlign: 'center',
-  },
-  inputWrapper: {
-    alignItems: 'flex-end',
-    flex: 1,
-    flexDirection: 'row',
-    gap: 4,
-  },
-});
