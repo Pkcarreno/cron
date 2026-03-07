@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PortalHost } from '@rn-primitives/portal';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -17,18 +18,20 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView>
-      <SafeAreaProvider>
-        {/* oxlint-disable react/style-prop-object */}
-        <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            contentStyle: styles.contentStyle,
-            headerShown: false,
-          }}
-        />
+      <BottomSheetModalProvider>
+        <SafeAreaProvider>
+          {/* oxlint-disable react/style-prop-object */}
+          <StatusBar style="light" />
+          <Stack
+            screenOptions={{
+              contentStyle: styles.contentStyle,
+              headerShown: false,
+            }}
+          />
 
-        <PortalHost />
-      </SafeAreaProvider>
+          <PortalHost />
+        </SafeAreaProvider>
+      </BottomSheetModalProvider>
     </GestureHandlerRootView>
   );
 }
