@@ -1,8 +1,9 @@
 /* oxlint-disable react-native/no-unused-styles */
 import { colors } from '@/helpers/colors';
-import type { ViewStyle } from 'react-native';
+import type { PressableStateCallbackType, ViewStyle } from 'react-native';
 import { Pressable, StyleSheet } from 'react-native';
 import { Text } from './text';
+import { useCallback } from 'react';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline';
 type ButtonSize = 'md' | 'sm';
@@ -24,13 +25,9 @@ const Button = ({
   size = 'md',
   style,
   ...rest
-}: ButtonProps) => (
-  <Pressable
-    onPress={onPress}
-    disabled={disabled}
-    {...rest}
-    // oxlint-disable jsx-no-new-function-as-prop
-    style={({ pressed }) => [
+}: ButtonProps) => {
+  const pressableStyles = useCallback(
+    ({ pressed }: PressableStateCallbackType) => [
       styles.base,
       variantStyles[variant],
       sizeStyles[size],
@@ -38,20 +35,30 @@ const Button = ({
       pressed && !disabled && styles.shrink,
       disabled && styles.disabled,
       style,
-    ]}
-  >
-    <Text
-      style={[
-        styles.text,
-        variantStyles[`${variant}Text`],
-        sizeStyles[`${size}TextSize`],
-        disabled && styles.disabledText,
-      ]}
+    ],
+    [variant, size, disabled, style]
+  );
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      {...rest}
+      style={pressableStyles}
     >
-      {title}
-    </Text>
-  </Pressable>
-);
+      <Text
+        style={[
+          styles.text,
+          variantStyles[`${variant}Text`],
+          sizeStyles[`${size}TextSize`],
+          disabled && styles.disabledText,
+        ]}
+      >
+        {title}
+      </Text>
+    </Pressable>
+  );
+};
 
 export default Button;
 
