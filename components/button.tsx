@@ -8,7 +8,7 @@ import { useCallback } from 'react';
 type ButtonVariant = 'primary' | 'secondary' | 'outline';
 type ButtonSize = 'md' | 'sm';
 
-interface ButtonProps extends React.ComponentProps<typeof Pressable> {
+export interface ButtonProps extends React.ComponentProps<typeof Pressable> {
   title: string;
   onPress?: () => void;
   disabled?: boolean;
