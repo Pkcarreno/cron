@@ -58,14 +58,13 @@ describe('config-serializer', () => {
 
     it('should omit undefined properties', () => {
       const params: Partial<TimerRouteParams> = {
-        // @ts-expect-error: Testing runtime behavior for explicitly undefined values
         durationMs: undefined,
-        mode: TimerMode.TABATA,
+        mode: TimerMode.AMRAP,
       };
 
       const result = deserializeTimerConfig(params as TimerRouteParams);
 
-      expect(result).toStrictEqual({ mode: TimerMode.TABATA });
+      expect(result).toStrictEqual({ mode: TimerMode.AMRAP });
       expect(result).not.toHaveProperty('durationMs');
     });
   });

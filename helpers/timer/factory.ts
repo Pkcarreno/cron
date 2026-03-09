@@ -6,13 +6,10 @@ import type { TimerStrategy } from '@/helpers/timer/strategy';
 import { StopwatchStrategy } from '@/helpers/timer/strategies/stopwatch-strategy';
 
 export enum TimerMode {
-  AMRAP = 'AMRAP',
   FOR_TIME = 'FOR_TIME',
+  AMRAP = 'AMRAP',
   EMOM = 'EMOM',
-  EVERY = 'EVERY',
-  TABATA = 'TABATA',
   INTERVAL = 'INTERVAL',
-  ON_OFF = 'ON_OFF',
   STOP_WATCH = 'STOP_WATCH',
 }
 
@@ -27,23 +24,7 @@ export const createTimerStrategy = (config: TimerConfig): TimerStrategy => {
     }
 
     case TimerMode.EMOM: {
-      return new RoundStrategy(60 * 1000, config.totalRounds);
-    }
-
-    case TimerMode.EVERY: {
       return new RoundStrategy(config.roundDurationMs, config.totalRounds);
-    }
-
-    case TimerMode.TABATA: {
-      return new IntervalStrategy(20 * 1000, 10 * 1000, 8);
-    }
-
-    case TimerMode.ON_OFF: {
-      return new IntervalStrategy(
-        config.workMs,
-        config.restMs,
-        config.totalRounds
-      );
     }
 
     case TimerMode.INTERVAL: {
@@ -80,29 +61,12 @@ export interface ForTimeConfig extends BaseTimerConfig {
 
 export interface EmomConfig extends BaseTimerConfig {
   mode: TimerMode.EMOM;
+  roundDurationMs: number;
   totalRounds: number;
 }
 
 export interface IntervalConfig extends BaseTimerConfig {
   mode: TimerMode.INTERVAL;
-  workMs: number;
-  restMs: number;
-  totalRounds: number;
-}
-
-export interface EveryConfig extends BaseTimerConfig {
-  mode: TimerMode.EVERY;
-  roundDurationMs: number;
-  totalRounds: number;
-}
-
-export interface TabataConfig extends BaseTimerConfig {
-  mode: TimerMode.TABATA;
-  totalRounds: 8;
-}
-
-export interface OnOffConfig extends BaseTimerConfig {
-  mode: TimerMode.ON_OFF;
   workMs: number;
   restMs: number;
   totalRounds: number;
@@ -116,8 +80,5 @@ export type TimerConfig =
   | AmrapConfig
   | ForTimeConfig
   | EmomConfig
-  | EveryConfig
-  | TabataConfig
-  | OnOffConfig
   | IntervalConfig
   | StopWatchConfig;

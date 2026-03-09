@@ -145,28 +145,16 @@ describe('formatter', () => {
       expect(result).toBe('EMO');
     });
 
-    it('returns `EVR` for EVERY mode', () => {
-      const result = getModeAbbreviation(TimerMode.EVERY);
+    it('returns `INT` for INTERVAL mode', () => {
+      const result = getModeAbbreviation(TimerMode.INTERVAL);
 
-      expect(result).toBe('EVR');
+      expect(result).toBe('INT');
     });
 
     it('returns `STP` for STOP_WATCH mode', () => {
       const result = getModeAbbreviation(TimerMode.STOP_WATCH);
 
       expect(result).toBe('STP');
-    });
-
-    it('returns `TAB` for TABATA mode', () => {
-      const result = getModeAbbreviation(TimerMode.TABATA);
-
-      expect(result).toBe('TAB');
-    });
-
-    it('returns `O/F` for ON_OFF mode', () => {
-      const result = getModeAbbreviation(TimerMode.ON_OFF);
-
-      expect(result).toBe('O/F');
     });
 
     it('returns `---` when an unknown mode is provided', () => {

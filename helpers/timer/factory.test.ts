@@ -38,18 +38,6 @@ describe('timerFactory', () => {
     const config: TimerConfig = {
       mode: TimerMode.EMOM,
       preparationMs: DEFAULT_PREPARATION_MS,
-      totalRounds: 10,
-    };
-
-    const strategy = createTimerStrategy(config);
-
-    expect(strategy).toBeInstanceOf(RoundStrategy);
-  });
-
-  it('creates RoundStrategy when mode is EVERY', () => {
-    const config: TimerConfig = {
-      mode: TimerMode.EVERY,
-      preparationMs: DEFAULT_PREPARATION_MS,
       roundDurationMs: 600_000,
       totalRounds: 10,
     };
@@ -59,35 +47,9 @@ describe('timerFactory', () => {
     expect(strategy).toBeInstanceOf(RoundStrategy);
   });
 
-  it('creates IntervalStrategy when mode is TABATA', () => {
-    const config: TimerConfig = {
-      mode: TimerMode.TABATA,
-      preparationMs: DEFAULT_PREPARATION_MS,
-      totalRounds: 8,
-    };
-
-    const strategy = createTimerStrategy(config);
-
-    expect(strategy).toBeInstanceOf(IntervalStrategy);
-  });
-
   it('creates IntervalStrategy when mode is INTERVAL', () => {
     const config: TimerConfig = {
       mode: TimerMode.INTERVAL,
-      preparationMs: DEFAULT_PREPARATION_MS,
-      restMs: 30_000,
-      totalRounds: 4,
-      workMs: 30_000,
-    };
-
-    const strategy = createTimerStrategy(config);
-
-    expect(strategy).toBeInstanceOf(IntervalStrategy);
-  });
-
-  it('creates IntervalStrategy when mode is ON_OFF', () => {
-    const config: TimerConfig = {
-      mode: TimerMode.ON_OFF,
       preparationMs: DEFAULT_PREPARATION_MS,
       restMs: 30_000,
       totalRounds: 4,
