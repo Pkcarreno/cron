@@ -10,8 +10,8 @@ import {
 } from '@/components/field';
 import { formOptions } from '@tanstack/form-core';
 import {
-  onOffDefaults,
-  onOffSchema,
+  intervalDefaults,
+  intervalSchema,
   DEFAULT_PREPARATION_MS,
 } from '@/screens/menu/schema';
 import type { FormHandle } from '@/screens/menu/schema';
@@ -20,24 +20,24 @@ import type { TimerConfig } from '@/helpers/timer/factory';
 import { useAppForm } from './form-utils';
 import { ScrollView } from 'react-native';
 
-const onOffFormOpts = formOptions({
-  defaultValues: onOffDefaults,
+const intervalFormOpts = formOptions({
+  defaultValues: intervalDefaults,
   validators: {
-    onSubmit: onOffSchema,
+    onSubmit: intervalSchema,
   },
 });
 
-interface OnOffFormProps {
+interface IntervalFormProps {
   ref?: Ref<FormHandle>;
   onSubmit: (config: TimerConfig) => void;
 }
 
-export const OnOffForm = ({ onSubmit, ref }: OnOffFormProps) => {
+export const IntervalForm = ({ onSubmit, ref }: IntervalFormProps) => {
   const form = useAppForm({
-    ...onOffFormOpts,
+    ...intervalFormOpts,
     onSubmit: ({ value }) => {
       const config: TimerConfig = {
-        mode: TimerMode.ON_OFF,
+        mode: TimerMode.INTERVAL,
         preparationMs: DEFAULT_PREPARATION_MS,
         restMs: value.restMs,
         totalRounds: value.totalRounds,

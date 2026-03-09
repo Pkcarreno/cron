@@ -2,7 +2,7 @@ import { useImperativeHandle } from 'react';
 import type { Ref } from 'react';
 import {
   Field,
-  FieldDescription,
+  FieldContent,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -17,7 +17,6 @@ import {
 import type { FormHandle } from '@/screens/menu/schema';
 import { TimerMode } from '@/helpers/timer/factory';
 import type { TimerConfig } from '@/helpers/timer/factory';
-import { InputTime } from '@/components/input-time';
 import { useAppForm } from './form-utils';
 import { ScrollView } from 'react-native';
 
@@ -40,6 +39,7 @@ export const EmomForm = ({ onSubmit, ref }: EmomFormProps) => {
       const config: TimerConfig = {
         mode: TimerMode.EMOM,
         preparationMs: DEFAULT_PREPARATION_MS,
+        roundDurationMs: value.roundDurationMs,
         totalRounds: value.totalRounds,
       };
       onSubmit(config);
@@ -55,10 +55,6 @@ export const EmomForm = ({ onSubmit, ref }: EmomFormProps) => {
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
       <FieldSet>
-        <FieldDescription>
-          This is a round preset and can&apos;t be modified. To set custom round
-          duration use the EVERY timer.
-        </FieldDescription>
         <FieldGroup>
           <form.AppField name="totalRounds">
             {(field) => (
@@ -70,10 +66,17 @@ export const EmomForm = ({ onSubmit, ref }: EmomFormProps) => {
             )}
           </form.AppField>
 
-          <Field>
-            <FieldLabel>Round duration</FieldLabel>
-            <InputTime value={60 * 1000} editable={false} />
-          </Field>
+          <form.AppField name="roundDurationMs">
+            {(field) => (
+              <Field>
+                <FieldContent>
+                  <FieldLabel>Round Duration</FieldLabel>
+                </FieldContent>
+                <field.TimeField />
+                <FieldError errors={field.state.meta.errors} />
+              </Field>
+            )}
+          </form.AppField>
         </FieldGroup>
       </FieldSet>
     </ScrollView>

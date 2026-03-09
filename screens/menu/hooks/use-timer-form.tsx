@@ -1,10 +1,8 @@
 import type { FormTabOption } from '@/screens/menu/components/form-pager/types';
-import { EmomForm } from '@/screens/menu/components/forms/emom-form';
-import { OnOffForm } from '@/screens/menu/components/forms/on-off-form';
-import { TabataForm } from '@/screens/menu/components/forms/tabata-form';
-import { AmrapForm } from '@/screens/menu/components/forms/amrap-form';
-import { EveryForm } from '@/screens/menu/components/forms/every-form';
 import { ForTimeForm } from '@/screens/menu/components/forms/for-time-form';
+import { AmrapForm } from '@/screens/menu/components/forms/amrap-form';
+import { EmomForm } from '@/screens/menu/components/forms/emom-form';
+import { IntervalForm } from '@/screens/menu/components/forms/interval-form';
 import { StopWatchForm } from '@/screens/menu/components/forms/stopwatch-form';
 import type { TimerConfig } from '@/helpers/timer/factory';
 import { TimerMode } from '@/helpers/timer/factory';
@@ -15,12 +13,10 @@ import { TIMER_MODES } from '@/screens/menu/schema';
 import { serializeTimerConfig } from '@/helpers/timer/utils/config-serializer';
 
 const FORM_COMPONENTS = {
-  [TimerMode.EMOM]: EmomForm,
-  [TimerMode.TABATA]: TabataForm,
-  [TimerMode.AMRAP]: AmrapForm,
-  [TimerMode.ON_OFF]: OnOffForm,
-  [TimerMode.EVERY]: EveryForm,
   [TimerMode.FOR_TIME]: ForTimeForm,
+  [TimerMode.AMRAP]: AmrapForm,
+  [TimerMode.INTERVAL]: IntervalForm,
+  [TimerMode.EMOM]: EmomForm,
   [TimerMode.STOP_WATCH]: StopWatchForm,
 };
 

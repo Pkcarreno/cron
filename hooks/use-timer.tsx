@@ -35,8 +35,7 @@ export interface TimerEventHandlers {
 
 const getTimerFlags = (config: TimerConfig, phase: TimerPhase): TimerFlags => {
   const isPreparing = phase === TimerPhase.PREPARATION;
-  const isIntervalMode =
-    config.mode === TimerMode.TABATA || config.mode === TimerMode.ON_OFF;
+  const isIntervalMode = config.mode === TimerMode.INTERVAL;
   const hasMultipleRounds = 'totalRounds' in config && config.totalRounds > 1;
   const isStopwatchMode = config.mode === TimerMode.STOP_WATCH;
 
