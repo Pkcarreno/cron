@@ -1,4 +1,4 @@
-import { useImperativeHandle } from 'react';
+import { useCallback, useImperativeHandle } from 'react';
 import type { Ref } from 'react';
 import {
   Field,
@@ -19,6 +19,8 @@ import { TimerMode } from '@/helpers/timer/factory';
 import type { TimerConfig } from '@/helpers/timer/factory';
 import { useAppForm } from './form-utils';
 import { ScrollView } from 'react-native';
+import { Col, Grid, Row } from '@/components/grid';
+import { EmomPresetButton } from '@/screens/menu/components/preset-button';
 
 const emomFormOpts = formOptions({
   defaultValues: emomDefaults,
@@ -52,10 +54,50 @@ export const EmomForm = ({ onSubmit, ref }: EmomFormProps) => {
     },
   }));
 
+  const presetSelectors = useCallback(
+    (state: typeof form.state) => ({
+      roundDurationMs: state.values.roundDurationMs,
+      totalRounds: state.values.totalRounds,
+    }),
+    []
+  );
+
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
       <FieldSet>
         <FieldGroup>
+          <Field>
+            <FieldContent>
+              <FieldLabel>Presets</FieldLabel>
+            </FieldContent>
+            <Grid columns={2} gap={12}>
+              <Row>
+                <form.Subscribe selector={presetSelectors}>
+                  {({ roundDurationMs }) => (
+                    <>
+                      <Col>
+                        <EmomPresetButton
+                          title="1 min"
+                          roundDurationMs={60_000}
+                          disabled={roundDurationMs === 60_000}
+                          setValue={form.setFieldValue}
+                        />
+                      </Col>
+                      <Col>
+                        <EmomPresetButton
+                          title="45 sec"
+                          roundDurationMs={45_000}
+                          disabled={roundDurationMs === 45_000}
+                          setValue={form.setFieldValue}
+                        />
+                      </Col>
+                    </>
+                  )}
+                </form.Subscribe>
+              </Row>
+            </Grid>
+          </Field>
+
           <form.AppField name="totalRounds">
             {(field) => (
               <Field>

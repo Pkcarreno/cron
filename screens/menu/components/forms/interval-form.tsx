@@ -1,4 +1,4 @@
-import { useImperativeHandle } from 'react';
+import { useCallback, useImperativeHandle } from 'react';
 import type { Ref } from 'react';
 import {
   Field,
@@ -19,6 +19,8 @@ import { TimerMode } from '@/helpers/timer/factory';
 import type { TimerConfig } from '@/helpers/timer/factory';
 import { useAppForm } from './form-utils';
 import { ScrollView } from 'react-native';
+import { Col, Grid, Row } from '@/components/grid';
+import { IntervalPresetButton } from '@/screens/menu/components/preset-button';
 
 const intervalFormOpts = formOptions({
   defaultValues: intervalDefaults,
@@ -53,10 +55,58 @@ export const IntervalForm = ({ onSubmit, ref }: IntervalFormProps) => {
     },
   }));
 
+  const presetSelectors = useCallback(
+    (state: typeof form.state) => ({
+      restMs: state.values.restMs,
+      totalRounds: state.values.totalRounds,
+      workMs: state.values.workMs,
+    }),
+    []
+  );
+
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
       <FieldSet>
         <FieldGroup>
+          <Field>
+            <FieldContent>
+              <FieldLabel>Presets</FieldLabel>
+            </FieldContent>
+            <Grid columns={2} gap={12}>
+              <Row>
+                <form.Subscribe selector={presetSelectors}>
+                  {({ workMs, restMs, totalRounds }) => (
+                    <>
+                      <Col>
+                        <IntervalPresetButton
+                          title="TABATA"
+                          totalRounds={8}
+                          workMs={20_000}
+                          restMs={10_000}
+                          disabled={
+                            workMs === 20_000 &&
+                            restMs === 10_000 &&
+                            totalRounds === 8
+                          }
+                          setValue={form.setFieldValue}
+                        />
+                      </Col>
+                      <Col>
+                        <IntervalPresetButton
+                          title='30" / 30"'
+                          workMs={30_000}
+                          restMs={30_000}
+                          disabled={workMs === 30_000 && restMs === 30_000}
+                          setValue={form.setFieldValue}
+                        />
+                      </Col>
+                    </>
+                  )}
+                </form.Subscribe>
+              </Row>
+            </Grid>
+          </Field>
+
           <form.AppField name="totalRounds">
             {(field) => (
               <Field>
