@@ -11,6 +11,7 @@ export enum TimerMode {
   EMOM = 'EMOM',
   EVERY = 'EVERY',
   TABATA = 'TABATA',
+  INTERVAL = 'INTERVAL',
   ON_OFF = 'ON_OFF',
   STOP_WATCH = 'STOP_WATCH',
 }
@@ -38,6 +39,14 @@ export const createTimerStrategy = (config: TimerConfig): TimerStrategy => {
     }
 
     case TimerMode.ON_OFF: {
+      return new IntervalStrategy(
+        config.workMs,
+        config.restMs,
+        config.totalRounds
+      );
+    }
+
+    case TimerMode.INTERVAL: {
       return new IntervalStrategy(
         config.workMs,
         config.restMs,
@@ -74,6 +83,13 @@ export interface EmomConfig extends BaseTimerConfig {
   totalRounds: number;
 }
 
+export interface IntervalConfig extends BaseTimerConfig {
+  mode: TimerMode.INTERVAL;
+  workMs: number;
+  restMs: number;
+  totalRounds: number;
+}
+
 export interface EveryConfig extends BaseTimerConfig {
   mode: TimerMode.EVERY;
   roundDurationMs: number;
@@ -103,4 +119,5 @@ export type TimerConfig =
   | EveryConfig
   | TabataConfig
   | OnOffConfig
+  | IntervalConfig
   | StopWatchConfig;

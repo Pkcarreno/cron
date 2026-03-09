@@ -71,6 +71,20 @@ describe('timerFactory', () => {
     expect(strategy).toBeInstanceOf(IntervalStrategy);
   });
 
+  it('creates IntervalStrategy when mode is INTERVAL', () => {
+    const config: TimerConfig = {
+      mode: TimerMode.INTERVAL,
+      preparationMs: DEFAULT_PREPARATION_MS,
+      restMs: 30_000,
+      totalRounds: 4,
+      workMs: 30_000,
+    };
+
+    const strategy = createTimerStrategy(config);
+
+    expect(strategy).toBeInstanceOf(IntervalStrategy);
+  });
+
   it('creates IntervalStrategy when mode is ON_OFF', () => {
     const config: TimerConfig = {
       mode: TimerMode.ON_OFF,
