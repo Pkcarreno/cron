@@ -1,4 +1,7 @@
-import type { WorkoutSummary } from '@/helpers/timer/controller';
+import type {
+  CheckpointData,
+  WorkoutSummary,
+} from '@/helpers/timer/controller';
 import { TimerController, TimerEventType } from '@/helpers/timer/controller';
 import type { TimerConfig } from '@/helpers/timer/factory';
 import { createTimerStrategy, TimerMode } from '@/helpers/timer/factory';
@@ -23,6 +26,11 @@ export interface TimerFlags {
   showsRoundCounter: boolean;
   showsMinuteDigits: boolean;
   showsSummaryRoundCounter: boolean;
+  hasCheckpointsBehavior: boolean;
+}
+
+export interface UICheckpoint extends CheckpointData {
+  recordedAt: Date;
 }
 
 export interface TimerEventHandlers {
@@ -31,6 +39,7 @@ export interface TimerEventHandlers {
   onPhaseChange?: (phase: TimerPhase) => void;
   onRoundChange?: (round: number) => void;
   onBeep?: (second: number) => void;
+  onCheckpoint?: (checkpoint: UICheckpoint) => void;
 }
 
 const getTimerFlags = (config: TimerConfig, phase: TimerPhase): TimerFlags => {
@@ -40,6 +49,9 @@ const getTimerFlags = (config: TimerConfig, phase: TimerPhase): TimerFlags => {
   const isStopwatchMode = config.mode === TimerMode.STOP_WATCH;
 
   return {
+    hasCheckpointsBehavior:
+      !isPreparing &&
+      (config.mode === TimerMode.STOP_WATCH || config.mode === TimerMode.AMRAP),
     isPreparing,
     showsMinuteDigits: !isPreparing,
     showsPhaseIndicator: isIntervalMode && !isPreparing,
@@ -48,28 +60,41 @@ const getTimerFlags = (config: TimerConfig, phase: TimerPhase): TimerFlags => {
   };
 };
 
+const useTimerInstance = (
+  config: TimerConfig
+): React.RefObject<TimerController | null> => {
+  const controllerRef = useRef<TimerController | null>(null);
+
+  if (!controllerRef.current) {
+    controllerRef.current = new TimerController(
+      createTimerStrategy(config),
+      config.preparationMs
+    );
+  }
+
+  return controllerRef;
+};
+
 const useTimerController = (
   config: TimerConfig,
   setTimerState: React.Dispatch<React.SetStateAction<TimerState>>,
   setStatus: React.Dispatch<React.SetStateAction<TimerStatus>>,
   handlers?: TimerEventHandlers
 ) => {
-  const controllerRef = useRef<TimerController | null>(null);
+  const controllerRef = useTimerInstance(config);
 
   const startedAtRef = useRef<Date | null>(null);
   const endedAtRef = useRef<Date | null>(null);
 
   const handlersRef = useRef(handlers);
 
+  const checkpointsRef = useRef<UICheckpoint[]>([]);
+
   useEffect(() => {
     handlersRef.current = handlers;
   }, [handlers]);
 
-  if (!controllerRef.current) {
-    const strategy = createTimerStrategy(config);
-    controllerRef.current = new TimerController(strategy, config.preparationMs);
-  }
-
+  // oxlint-disable eslint/max-statements
   useEffect(() => {
     const controller = controllerRef.current;
     if (!controller) {
@@ -95,16 +120,28 @@ const useTimerController = (
       endedAtRef.current = new Date();
       handlersRef.current?.onFinish?.(summary);
     });
+    controller.on(
+      TimerEventType.CHECKPOINT,
+      (checkpointData: CheckpointData) => {
+        const enrichedCheckpoint: UICheckpoint = {
+          ...checkpointData,
+          recordedAt: new Date(),
+        };
+        checkpointsRef.current.push(enrichedCheckpoint);
+        handlersRef.current?.onCheckpoint?.(enrichedCheckpoint);
+      }
+    );
 
     return () => controller.dispose();
-  }, [setTimerState, setStatus]);
+  }, [setTimerState, setStatus, checkpointsRef, controllerRef]);
 
-  return { controllerRef, endedAtRef, startedAtRef };
+  return { checkpointsRef, controllerRef, endedAtRef, startedAtRef };
 };
 
-export interface UIWorkoutSummary extends WorkoutSummary {
+export interface UIWorkoutSummary extends Omit<WorkoutSummary, 'checkpoints'> {
   startedAt: Date | null;
   endedAt: Date | null;
+  checkpoints: UICheckpoint[];
 }
 
 export const useTimer = (
@@ -120,12 +157,8 @@ export const useTimer = (
   });
   const [status, setStatus] = useState<TimerStatus>(TimerStatus.READY);
 
-  const { controllerRef, startedAtRef, endedAtRef } = useTimerController(
-    config,
-    setTimerState,
-    setStatus,
-    handlers
-  );
+  const { controllerRef, startedAtRef, endedAtRef, checkpointsRef } =
+    useTimerController(config, setTimerState, setStatus, handlers);
 
   const { minutes, seconds } = formatTimeForDisplay(timerState.displayTimeMs);
 
@@ -151,10 +184,13 @@ export const useTimer = (
       return;
     }
 
+    const currentDate = new Date();
+
     return {
       ...coreSummary,
-      endedAt: endedAtRef.current || new Date(),
-      startedAt: startedAtRef.current || new Date(),
+      checkpoints: checkpointsRef.current,
+      endedAt: endedAtRef.current || currentDate,
+      startedAt: startedAtRef.current || currentDate,
     };
     // oxlint-disable eslint/exhaustive-deps
   }, []);
@@ -170,6 +206,7 @@ export const useTimer = (
       setStatus(TimerStatus.PAUSED);
       controllerRef.current?.pause();
     }, [controllerRef]),
+    recordCheckpoint: () => controllerRef.current?.recordCheckpoint(),
     reset: useCallback(() => {
       setStatus(TimerStatus.READY);
       controllerRef.current?.reset();

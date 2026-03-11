@@ -366,4 +366,111 @@ describe('timerController', () => {
       expect(ticksAfterSnapshot).toBeGreaterThan(ticksAtSnapshot);
     });
   });
+
+  describe('checkpoints', () => {
+    it('records a single checkpoint and emits the event with correct initial split', () => {
+      const targetTimeMs = 10_000;
+      const strategy = new UpStrategy(targetTimeMs);
+      const controller = new TimerController(strategy, 0);
+
+      const checkpointSpy = jest.fn();
+      controller.on(TimerEventType.CHECKPOINT, checkpointSpy);
+
+      controller.start();
+      jest.advanceTimersByTime(2500);
+
+      controller.recordCheckpoint();
+
+      expect(checkpointSpy).toHaveBeenCalledTimes(1);
+
+      expect(checkpointSpy).toHaveBeenNthCalledWith(1, {
+        activeTimeMs: 2500,
+        lap: 1,
+        splitTimeMs: 2500,
+      });
+    });
+
+    it('calculates split times correctly across multiple consecutive checkpoints', () => {
+      const strategy = new StopwatchStrategy();
+      const controller = new TimerController(strategy, 0);
+
+      const checkpointSpy = jest.fn();
+      controller.on(TimerEventType.CHECKPOINT, checkpointSpy);
+
+      controller.start();
+
+      jest.advanceTimersByTime(2000);
+      controller.recordCheckpoint();
+
+      jest.advanceTimersByTime(3500);
+      controller.recordCheckpoint();
+
+      jest.advanceTimersByTime(1000);
+      controller.recordCheckpoint();
+
+      expect(checkpointSpy).toHaveBeenCalledTimes(3);
+
+      expect(checkpointSpy).toHaveBeenNthCalledWith(1, {
+        activeTimeMs: 2000,
+        lap: 1,
+        splitTimeMs: 2000,
+      });
+
+      expect(checkpointSpy).toHaveBeenNthCalledWith(2, {
+        activeTimeMs: 5500,
+        lap: 2,
+        splitTimeMs: 3500,
+      });
+
+      expect(checkpointSpy).toHaveBeenNthCalledWith(3, {
+        activeTimeMs: 6500,
+        lap: 3,
+        splitTimeMs: 1000,
+      });
+    });
+
+    it('excludes preparation time from the recorded active time', () => {
+      const targetTimeMs = 10_000;
+      const preparationMs = 3000;
+      const strategy = new UpStrategy(targetTimeMs);
+      const controller = new TimerController(strategy, preparationMs);
+
+      const checkpointSpy = jest.fn();
+      controller.on(TimerEventType.CHECKPOINT, checkpointSpy);
+
+      controller.start();
+
+      jest.advanceTimersByTime(3000);
+      jest.advanceTimersByTime(4000);
+
+      controller.recordCheckpoint();
+
+      expect(checkpointSpy).toHaveBeenNthCalledWith(1, {
+        activeTimeMs: 4000,
+        lap: 1,
+        splitTimeMs: 4000,
+      });
+    });
+
+    it('includes the complete checkpoint history in the generated workout summary', () => {
+      const strategy = new StopwatchStrategy();
+      const controller = new TimerController(strategy, 0);
+
+      controller.start();
+
+      jest.advanceTimersByTime(1000);
+      controller.recordCheckpoint();
+
+      jest.advanceTimersByTime(2000);
+      controller.recordCheckpoint();
+
+      const summary = controller.getSummary();
+
+      expect(summary.checkpoints).toBeDefined();
+      expect(summary.checkpoints).toHaveLength(2);
+
+      expect(summary.checkpoints[0]).toMatchObject({ splitTimeMs: 1000 });
+      expect(summary.checkpoints[1]).toMatchObject({ splitTimeMs: 2000 });
+    });
+  });
 });

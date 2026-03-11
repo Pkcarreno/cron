@@ -13,6 +13,13 @@ export enum TimerEventType {
   ROUND_CHANGE = 'ROUND_CHANGE',
   BEEP = 'BEEP',
   TICK = 'TICK',
+  CHECKPOINT = 'CHECKPOINT',
+}
+
+export interface CheckpointData {
+  lap: number;
+  activeTimeMs: number;
+  splitTimeMs: number;
 }
 
 export interface WorkoutSummary {
@@ -20,6 +27,7 @@ export interface WorkoutSummary {
   activeWorkoutTimeMs: number;
   roundsCompleted: number;
   fullyCompleted: boolean;
+  checkpoints: CheckpointData[];
 }
 
 export interface TimerEventMap {
@@ -32,17 +40,24 @@ export interface TimerEventMap {
   [TimerEventType.ROUND_CHANGE]: [newRound: number];
   [TimerEventType.BEEP]: [secondRemaining: number];
   [TimerEventType.TICK]: [state: TimerState];
+  [TimerEventType.CHECKPOINT]: [lastCheckpoint: CheckpointData];
 }
 
 export type TimerEventCallback<K extends keyof TimerEventMap> = (
   ...args: TimerEventMap[K]
 ) => void;
 
+export type TimerEventHandlerMap = {
+  [K in keyof TimerEventMap]?: TimerEventCallback<K>;
+};
+
 export class TimerController {
   private engine: TickEngine;
   private strategy: TimerStrategy;
   private preparationTimeMs: number;
   private previousState: TimerState | null = null;
+  private checkpoints: CheckpointData[] = [];
+  private lastKnownElapsedMs = 0;
 
   private listeners: {
     [K in keyof TimerEventMap]: TimerEventCallback<K>[];
@@ -56,6 +71,7 @@ export class TimerController {
     [TimerEventType.ROUND_CHANGE]: [],
     [TimerEventType.BEEP]: [],
     [TimerEventType.TICK]: [],
+    [TimerEventType.CHECKPOINT]: [],
   };
 
   constructor(strategy: TimerStrategy, preparationTimeMs: number) {
@@ -66,8 +82,11 @@ export class TimerController {
     this.engine.onTickCallbacks.push((tickEvent) => this.handleTick(tickEvent));
   }
 
+  // oxlint-disable eslint/max-statements
   private handleTick(tickEvent: TickEvent) {
     let newState: TimerState;
+
+    this.lastKnownElapsedMs = tickEvent.totalElapsedMs;
 
     if (tickEvent.totalElapsedMs < this.preparationTimeMs) {
       newState = {
@@ -101,7 +120,7 @@ export class TimerController {
       displayTimeMs: 0,
     };
 
-    const totalSessionMs = this.engine['totalElapsedMs'] || 0;
+    const totalSessionMs = this.lastKnownElapsedMs;
 
     const activeWorkoutMs = Math.max(
       0,
@@ -110,10 +129,32 @@ export class TimerController {
 
     return {
       activeWorkoutTimeMs: activeWorkoutMs,
+      checkpoints: [...this.checkpoints],
       fullyCompleted,
       roundsCompleted: finalState.currentRound,
       totalSessionTimeMs: totalSessionMs,
     };
+  }
+
+  public recordCheckpoint() {
+    const activeMs = Math.max(
+      0,
+      this.lastKnownElapsedMs - this.preparationTimeMs
+    );
+
+    const lastActiveMs = this.checkpoints.at(-1)?.activeTimeMs ?? 0;
+
+    const splitMs = activeMs - lastActiveMs;
+
+    const newCheckpoint: CheckpointData = {
+      activeTimeMs: activeMs,
+      lap: this.checkpoints.length + 1,
+      splitTimeMs: splitMs,
+    };
+
+    this.checkpoints.push(newCheckpoint);
+
+    this.emit(TimerEventType.CHECKPOINT, newCheckpoint);
   }
 
   private detectStateChanges(
@@ -188,11 +229,13 @@ export class TimerController {
       [TimerEventType.ROUND_CHANGE]: [],
       [TimerEventType.BEEP]: [],
       [TimerEventType.TICK]: [],
+      [TimerEventType.CHECKPOINT]: [],
     };
   }
 
   public dispose() {
     this.engine.pause();
+    this.checkpoints = [];
     this.removeAllListeners();
   }
 
@@ -236,6 +279,7 @@ export class TimerController {
   }
   public reset() {
     this.emit(TimerEventType.RESET);
+    this.checkpoints = [];
     this.engine.reset();
   }
 }
