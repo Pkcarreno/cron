@@ -3,7 +3,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from '@/components/text';
 import Button from '@/components/button';
 import { TimerMode } from '@/helpers/timer/factory';
-import { formatFullTimeToString } from '@/helpers/timer/utils/formatter';
+import {
+  formatDuration,
+  formatFullTimeToString,
+} from '@/helpers/timer/utils/formatter';
 import { Logo } from '@/components/logo';
 import type { UIWorkoutSummary } from '@/hooks/use-timer';
 import { colors } from '@/helpers/colors';
@@ -148,8 +151,8 @@ const RenderCheckpoints: React.FC<RenderCheckpointsProps> = ({
   return (
     <ScrollView stickyHeaderIndices={[0]} style={checkpointsStyle.container}>
       <Grid
-        columns={3}
-        gap={12}
+        columns={4}
+        gap={8}
         style={[checkpointsStyle.header, checkpointsStyle.containerPadding]}
       >
         <Row>
@@ -163,26 +166,45 @@ const RenderCheckpoints: React.FC<RenderCheckpointsProps> = ({
               Time
             </Text>
           </Col>
+          <Col style={checkpointsStyle.gridColumnCenter}>
+            <Text colorSubtone="300" weight="600">
+              Duration
+            </Text>
+          </Col>
           <Col style={checkpointsStyle.gridColumnRight}>
             <Text colorSubtone="300" weight="600">
-              Split
+              Delta
             </Text>
           </Col>
         </Row>
       </Grid>
-      <Grid columns={3} gap={12} style={checkpointsStyle.containerPadding}>
+      <Grid columns={4} gap={8} style={checkpointsStyle.containerPadding}>
         {summary.checkpoints.map((item) => {
-          const activeTime = formatFullTimeToString(item.activeTimeMs);
+          const isDeltaColored = item.lapDeltaMs !== 0;
+          const deltaColor =
+            item.lapDeltaMs > 0 ? 'redHighlight' : 'greenHighlight';
           return (
-            <Row key={item.lap}>
+            <Row key={`${item.lap}-${item.elapsedTimeMs}`}>
               <Col style={checkpointsStyle.gridColumnLeft}>
                 <Text fontType="mono">{item.lap}</Text>
               </Col>
               <Col style={checkpointsStyle.gridColumnCenter}>
-                <Text fontType="mono">{activeTime}</Text>
+                <Text fontType="mono">
+                  {formatDuration(item.elapsedTimeMs)}
+                </Text>
+              </Col>
+              <Col style={checkpointsStyle.gridColumnCenter}>
+                <Text fontType="mono">
+                  {formatDuration(item.lapDurationMs)}
+                </Text>
               </Col>
               <Col style={checkpointsStyle.gridColumnRight}>
-                <Text fontType="mono">{`+${(item.splitTimeMs / 1000).toFixed(3)}s`}</Text>
+                <Text
+                  fontType="mono"
+                  color={isDeltaColored ? deltaColor : undefined}
+                >
+                  {formatDuration(item.lapDeltaMs, true)}
+                </Text>
               </Col>
             </Row>
           );
@@ -233,7 +255,7 @@ const styles = StyleSheet.create({
 
 const checkpointsStyle = StyleSheet.create({
   container: {
-    backgroundColor: colors.neutral[800],
+    backgroundColor: colors.neutral[900],
     borderRadius: 8,
     paddingHorizontal: 12,
   },
@@ -243,7 +265,6 @@ const checkpointsStyle = StyleSheet.create({
   gridColumnCenter: {
     alignItems: 'center',
   },
-
   gridColumnLeft: {
     alignItems: 'flex-start',
   },
@@ -251,6 +272,6 @@ const checkpointsStyle = StyleSheet.create({
     alignItems: 'flex-end',
   },
   header: {
-    backgroundColor: colors.neutral[800],
+    backgroundColor: colors.neutral[900],
   },
 });

@@ -180,7 +180,7 @@ export const Timer = () => {
           }
           split={
             timerInput.mode === TimerMode.STOP_WATCH
-              ? lastCheckpoint?.splitTimeMs
+              ? lastCheckpoint?.lapDeltaMs
               : undefined
           }
           minutes={minutes}
