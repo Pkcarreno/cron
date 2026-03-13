@@ -18,8 +18,9 @@ export enum TimerEventType {
 
 export interface CheckpointData {
   lap: number;
-  activeTimeMs: number;
-  splitTimeMs: number;
+  elapsedTimeMs: number;
+  lapDurationMs: number;
+  lapDeltaMs: number;
 }
 
 export interface WorkoutSummary {
@@ -137,19 +138,26 @@ export class TimerController {
   }
 
   public recordCheckpoint() {
-    const activeMs = Math.max(
+    const lap = this.checkpoints.length + 1;
+
+    const elapsedTimeMs = Math.max(
       0,
       this.lastKnownElapsedMs - this.preparationTimeMs
     );
 
-    const lastActiveMs = this.checkpoints.at(-1)?.activeTimeMs ?? 0;
+    const lastElapsedTimeMs = this.checkpoints.at(-1)?.elapsedTimeMs ?? 0;
 
-    const splitMs = activeMs - lastActiveMs;
+    const lapDurationMs = elapsedTimeMs - lastElapsedTimeMs;
+
+    const lastLapDurationMs = this.checkpoints.at(-1)?.lapDurationMs ?? 0;
+
+    const lapDeltaMs = lap === 1 ? 0 : lapDurationMs - lastLapDurationMs;
 
     const newCheckpoint: CheckpointData = {
-      activeTimeMs: activeMs,
-      lap: this.checkpoints.length + 1,
-      splitTimeMs: splitMs,
+      elapsedTimeMs,
+      lap,
+      lapDeltaMs,
+      lapDurationMs,
     };
 
     this.checkpoints.push(newCheckpoint);

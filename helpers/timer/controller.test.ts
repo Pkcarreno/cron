@@ -384,9 +384,10 @@ describe('timerController', () => {
       expect(checkpointSpy).toHaveBeenCalledTimes(1);
 
       expect(checkpointSpy).toHaveBeenNthCalledWith(1, {
-        activeTimeMs: 2500,
+        elapsedTimeMs: 2500,
         lap: 1,
-        splitTimeMs: 2500,
+        lapDeltaMs: 0,
+        lapDurationMs: 2500,
       });
     });
 
@@ -411,21 +412,24 @@ describe('timerController', () => {
       expect(checkpointSpy).toHaveBeenCalledTimes(3);
 
       expect(checkpointSpy).toHaveBeenNthCalledWith(1, {
-        activeTimeMs: 2000,
+        elapsedTimeMs: 2000,
         lap: 1,
-        splitTimeMs: 2000,
+        lapDeltaMs: 0,
+        lapDurationMs: 2000,
       });
 
       expect(checkpointSpy).toHaveBeenNthCalledWith(2, {
-        activeTimeMs: 5500,
+        elapsedTimeMs: 5500,
         lap: 2,
-        splitTimeMs: 3500,
+        lapDeltaMs: 1500,
+        lapDurationMs: 3500,
       });
 
       expect(checkpointSpy).toHaveBeenNthCalledWith(3, {
-        activeTimeMs: 6500,
+        elapsedTimeMs: 6500,
         lap: 3,
-        splitTimeMs: 1000,
+        lapDeltaMs: -2500,
+        lapDurationMs: 1000,
       });
     });
 
@@ -446,9 +450,10 @@ describe('timerController', () => {
       controller.recordCheckpoint();
 
       expect(checkpointSpy).toHaveBeenNthCalledWith(1, {
-        activeTimeMs: 4000,
+        elapsedTimeMs: 4000,
         lap: 1,
-        splitTimeMs: 4000,
+        lapDeltaMs: 0,
+        lapDurationMs: 4000,
       });
     });
 
@@ -469,8 +474,8 @@ describe('timerController', () => {
       expect(summary.checkpoints).toBeDefined();
       expect(summary.checkpoints).toHaveLength(2);
 
-      expect(summary.checkpoints[0]).toMatchObject({ splitTimeMs: 1000 });
-      expect(summary.checkpoints[1]).toMatchObject({ splitTimeMs: 2000 });
+      expect(summary.checkpoints[0]).toMatchObject({ lapDurationMs: 1000 });
+      expect(summary.checkpoints[1]).toMatchObject({ lapDurationMs: 2000 });
     });
   });
 });
