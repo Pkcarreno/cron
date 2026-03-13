@@ -10,9 +10,8 @@ import { useGetCurrentTime } from '@/hooks/use-get-current-time';
 import { TimerStatus, useTimer } from '@/hooks/use-timer';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { TimerMode } from '@/helpers/timer/factory';
-import type { CheckpointData } from '@/helpers/timer/controller';
 import { colors } from '@/helpers/colors';
 import type { ContextFormatType } from './types';
 
@@ -20,15 +19,13 @@ import type { ContextFormatType } from './types';
 export const Timer = () => {
   const rawConfigParams = useLocalSearchParams<TimerRouteParams>();
   const timerInput = deserializeTimerConfig(rawConfigParams);
-  const [lastCheckpoint, setLastCheckpoint] = useState<CheckpointData | null>(
-    null
-  );
   const {
     hours,
     minutes,
     seconds,
     phase,
     currentRound,
+    checkpoints,
     modeAbbr,
     flags,
     pause,
@@ -40,8 +37,7 @@ export const Timer = () => {
     handleEndSession,
   } = useTimer(timerInput, {
     onBeep: () => playTone(659, 200),
-    onCheckpoint: (checkpoint) => {
-      setLastCheckpoint(checkpoint);
+    onCheckpoint: () => {
       playToneSequence([
         { durationMs: 80, frequencyHz: 880, silenceAfterMs: 120 },
         { durationMs: 80, frequencyHz: 880, silenceAfterMs: 0 },
@@ -98,7 +94,7 @@ export const Timer = () => {
       case TimerMode.AMRAP: {
         return {
           color: colors.red,
-          value: lastCheckpoint?.lap ? 'RND' : undefined,
+          value: checkpoints.at(-1)?.lap ? 'RND' : undefined,
         };
       }
 
@@ -119,7 +115,7 @@ export const Timer = () => {
         };
       }
     }
-  }, [timerInput, phase, lastCheckpoint]);
+  }, [timerInput, phase, checkpoints]);
 
   const timerContextValueState = useMemo<ContextFormatType>(() => {
     if (phase === TimerPhase.PREPARATION) {
@@ -130,7 +126,7 @@ export const Timer = () => {
     switch (timerInput.mode) {
       case TimerMode.AMRAP: {
         return {
-          value: lastCheckpoint?.lap ?? undefined,
+          value: checkpoints.at(-1)?.lap ?? undefined,
         };
       }
 
@@ -146,7 +142,7 @@ export const Timer = () => {
         };
       }
     }
-  }, [timerInput, phase, currentRound, lastCheckpoint]);
+  }, [timerInput, phase, currentRound, checkpoints]);
 
   if (status === TimerStatus.PAUSED || status === TimerStatus.FINISHED) {
     return (
@@ -174,13 +170,17 @@ export const Timer = () => {
         <TimerFace
           hours={hours}
           lap={
+            checkpoints &&
+            checkpoints.length > 0 &&
             timerInput.mode === TimerMode.STOP_WATCH
-              ? lastCheckpoint?.lap
+              ? checkpoints.at(-1)?.lap
               : undefined
           }
           split={
+            checkpoints &&
+            checkpoints.length > 0 &&
             timerInput.mode === TimerMode.STOP_WATCH
-              ? lastCheckpoint?.lapDeltaMs
+              ? checkpoints.at(-1)?.lapDeltaMs
               : undefined
           }
           minutes={minutes}
