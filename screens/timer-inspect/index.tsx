@@ -138,32 +138,17 @@ export const TimerInspect = () => {
         <View style={dataBoxStyles.container}>
           <Text>flags</Text>
           <View style={dataBoxStyles.dataWrapper}>
-            <View style={dataBoxStyles.dataElementWrapper}>
-              <Text colorSubtone="600" fontType="mono">
-                isPreparing
-              </Text>
-              <Text fontType="mono">{flags.isPreparing.toString()}</Text>
-            </View>
-            <View style={dataBoxStyles.dataElementWrapper}>
-              <Text colorSubtone="600" fontType="mono">
-                showsPhaseIndicator
-              </Text>
-              <Text fontType="mono">
-                {flags.showsPhaseIndicator.toString()}
-              </Text>
-            </View>
-            <View style={dataBoxStyles.dataElementWrapper}>
-              <Text colorSubtone="600" fontType="mono">
-                showsRoundCounter
-              </Text>
-              <Text fontType="mono">{flags.showsRoundCounter.toString()}</Text>
-            </View>
-            <View style={dataBoxStyles.dataElementWrapper}>
-              <Text colorSubtone="600" fontType="mono">
-                showsMinuteDigits
-              </Text>
-              <Text fontType="mono">{flags.showsMinuteDigits.toString()}</Text>
-            </View>
+            {Object.entries(flags).map(([key, value]) => (
+              <View
+                key={`${key}-${value}`}
+                style={dataBoxStyles.dataElementWrapper}
+              >
+                <Text colorSubtone="600" fontType="mono">
+                  {key}
+                </Text>
+                <Text fontType="mono">{String(value)}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
