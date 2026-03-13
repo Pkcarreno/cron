@@ -1,23 +1,23 @@
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from '@/components/text';
 import Button from '@/components/button';
-import type { TimerMode } from '@/helpers/timer/factory';
+import { TimerMode } from '@/helpers/timer/factory';
 import { formatFullTimeToString } from '@/helpers/timer/utils/formatter';
 import { Logo } from '@/components/logo';
-import type { timerType, UIWorkoutSummary } from '@/hooks/use-timer';
+import type { UIWorkoutSummary } from '@/hooks/use-timer';
+import { colors } from '@/helpers/colors';
+import { Col, Grid, Row } from '@/components/grid';
 
 interface Props {
   summary: UIWorkoutSummary | undefined;
   mode: TimerMode;
-  flags: timerType['flags'];
   handleEndSession: () => void;
   handleResumeSession: () => void;
 }
 
 export const SummaryFace: React.FC<Props> = ({
   summary,
-  flags,
   mode,
   handleEndSession,
   handleResumeSession,
@@ -47,7 +47,12 @@ export const SummaryFace: React.FC<Props> = ({
       </View>
 
       <View style={styles.content}>
-        <RenderData summary={summary} flags={flags} />
+        <RenderData summary={summary} />
+
+        <RenderCheckpoints
+          summary={summary}
+          lapLabel={TimerMode.AMRAP === mode ? 'Round' : 'Lap'}
+        />
 
         <View style={styles.mention}>
           <Text colorSubtone="600" size={12}>
@@ -70,9 +75,9 @@ export const SummaryFace: React.FC<Props> = ({
   );
 };
 
-type RenderDataProps = Pick<Props, 'summary' | 'flags'>;
+type RenderDataProps = Pick<Props, 'summary'>;
 
-const RenderData: React.FC<RenderDataProps> = ({ summary, flags }) => {
+const RenderData: React.FC<RenderDataProps> = ({ summary }) => {
   if (!summary) {
     return (
       <View style={styles.data}>
@@ -110,7 +115,7 @@ const RenderData: React.FC<RenderDataProps> = ({ summary, flags }) => {
         </Text>
       </View>
 
-      {flags.showsSummaryRoundCounter && (
+      {summary.roundsCompleted > 1 && (
         <View style={styles.data}>
           <Text size={16}>Rounds</Text>
           <Text
@@ -124,6 +129,66 @@ const RenderData: React.FC<RenderDataProps> = ({ summary, flags }) => {
         </View>
       )}
     </View>
+  );
+};
+
+interface RenderCheckpointsProps {
+  summary?: UIWorkoutSummary;
+  lapLabel: string;
+}
+
+const RenderCheckpoints: React.FC<RenderCheckpointsProps> = ({
+  summary,
+  lapLabel,
+}) => {
+  if (!summary || summary.checkpoints.length === 0) {
+    return;
+  }
+
+  return (
+    <ScrollView stickyHeaderIndices={[0]} style={checkpointsStyle.container}>
+      <Grid
+        columns={3}
+        gap={12}
+        style={[checkpointsStyle.header, checkpointsStyle.containerPadding]}
+      >
+        <Row>
+          <Col style={checkpointsStyle.gridColumnLeft}>
+            <Text colorSubtone="300" weight="600">
+              {lapLabel}
+            </Text>
+          </Col>
+          <Col style={checkpointsStyle.gridColumnCenter}>
+            <Text colorSubtone="300" weight="600">
+              Time
+            </Text>
+          </Col>
+          <Col style={checkpointsStyle.gridColumnRight}>
+            <Text colorSubtone="300" weight="600">
+              Split
+            </Text>
+          </Col>
+        </Row>
+      </Grid>
+      <Grid columns={3} gap={12} style={checkpointsStyle.containerPadding}>
+        {summary.checkpoints.map((item) => {
+          const activeTime = formatFullTimeToString(item.activeTimeMs);
+          return (
+            <Row key={item.lap}>
+              <Col style={checkpointsStyle.gridColumnLeft}>
+                <Text fontType="mono">{item.lap}</Text>
+              </Col>
+              <Col style={checkpointsStyle.gridColumnCenter}>
+                <Text fontType="mono">{activeTime}</Text>
+              </Col>
+              <Col style={checkpointsStyle.gridColumnRight}>
+                <Text fontType="mono">{`+${(item.splitTimeMs / 1000).toFixed(3)}s`}</Text>
+              </Col>
+            </Row>
+          );
+        })}
+      </Grid>
+    </ScrollView>
   );
 };
 
@@ -163,5 +228,29 @@ const styles = StyleSheet.create({
   },
   numberText: {
     fontVariant: ['tabular-nums'],
+  },
+});
+
+const checkpointsStyle = StyleSheet.create({
+  container: {
+    backgroundColor: colors.neutral[800],
+    borderRadius: 8,
+    paddingHorizontal: 12,
+  },
+  containerPadding: {
+    paddingVertical: 4,
+  },
+  gridColumnCenter: {
+    alignItems: 'center',
+  },
+
+  gridColumnLeft: {
+    alignItems: 'flex-start',
+  },
+  gridColumnRight: {
+    alignItems: 'flex-end',
+  },
+  header: {
+    backgroundColor: colors.neutral[800],
   },
 });

@@ -1,5 +1,4 @@
 import { colors } from '@/helpers/colors';
-import { TimerPhase } from '@/helpers/timer/strategy';
 import { useIsLowBattery } from '@/hooks/use-is-low-battery';
 import type { timerType } from '@/hooks/use-timer';
 import { useKeepAwake } from 'expo-keep-awake';
@@ -7,36 +6,68 @@ import type { FC } from 'react';
 import { useMemo } from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { ContextFormatType } from '@/screens/timer/types';
 
 interface Props extends Pick<
   timerType,
-  'flags' | 'minutes' | 'seconds' | 'currentRound' | 'phase' | 'modeAbbr'
+  'flags' | 'hours' | 'minutes' | 'seconds' | 'modeAbbr'
 > {
+  lap: number | undefined;
+  split: number | undefined;
   currentTime: string;
+  contextLabel: ContextFormatType['value'];
+  contextLabelColor?: ContextFormatType['color'];
+  contextValue: ContextFormatType['value'];
+  contextValueColor?: ContextFormatType['color'];
 }
 
 export const TimerFace: FC<Props> = ({
+  hours,
   minutes,
   seconds,
   modeAbbr,
-  currentRound,
-  phase,
+  contextLabel,
+  contextLabelColor,
+  contextValue,
+  contextValueColor,
   currentTime,
+  lap,
+  split,
   flags,
 }) => {
   const insets = useSafeAreaInsets();
   const isLowBattery = useIsLowBattery();
 
-  const phaseColor = useMemo(() => {
-    if (phase === TimerPhase.REST) {
-      return contextInfoStyles.phaseTextColorGreen;
-    }
-    if (phase === TimerPhase.WORK) {
-      return contextInfoStyles.phaseTextColorBlue;
+  const contextLabelTextExternalStyles = useMemo(() => {
+    if (contextLabelColor) {
+      return {
+        color: contextLabelColor,
+      };
     }
 
-    return contextInfoStyles.phaseTextColorGray;
-  }, [phase]);
+    return {};
+  }, [contextLabelColor]);
+
+  const contextValueTextExternalStyles = useMemo(() => {
+    if (contextValueColor) {
+      return {
+        color: contextValueColor,
+      };
+    }
+
+    return {};
+  }, [contextValueColor]);
+
+  const quickAccessInfo = useMemo(
+    () =>
+      [
+        isLowBattery ? '[BAT LOW]' : null,
+        hours ? `${hours}H` : null,
+        lap && lap > 0 ? `L${lap.toString().padStart(2, '0')}` : null,
+        split && split > 0 ? `+${(split / 1000).toFixed(3)}s` : null,
+      ].filter(Boolean),
+    [hours, lap, split, isLowBattery]
+  );
 
   useKeepAwake();
 
@@ -54,15 +85,6 @@ export const TimerFace: FC<Props> = ({
       >
         <View style={statusBarStyles.leftWrapper}>
           <Text style={statusBarStyles.text}>{modeAbbr}</Text>
-          <Text
-            style={[
-              statusBarStyles.text,
-              statusBarStyles.lowBatAlertText,
-              !isLowBattery && styles.hide,
-            ]}
-          >
-            low bat
-          </Text>
         </View>
         <View style={statusBarStyles.rightWrapper}>
           <Text style={[statusBarStyles.text, statusBarStyles.localTimeText]}>
@@ -81,22 +103,43 @@ export const TimerFace: FC<Props> = ({
           },
         ]}
       >
-        <View style={contextInfoStyles.container}>
-          <View style={contextInfoStyles.phaseStatusWrapper}>
-            {flags.showsPhaseIndicator && (
-              <Text style={[contextInfoStyles.phaseStatusWorkText, phaseColor]}>
-                {phase}
-              </Text>
-            )}
+        {!flags.isPreparing && (
+          <View style={quickAccessStyles.container}>
+            {quickAccessInfo.map((data, index) => (
+              <View key={data} style={quickAccessStyles.itemWrapper}>
+                <Text style={statusBarStyles.text}>{data}</Text>
+
+                {index < quickAccessInfo.length - 1 && (
+                  <Text style={statusBarStyles.text}> | </Text>
+                )}
+              </View>
+            ))}
           </View>
-          {flags.showsRoundCounter && (
-            <View style={contextInfoStyles.roundCounterWrapper}>
-              <Text style={contextInfoStyles.roundCounterText}>
-                {currentRound}
-              </Text>
-            </View>
-          )}
+        )}
+
+        <View style={contextInfoStyles.container}>
+          <View style={contextInfoStyles.labelWrapper}>
+            <Text
+              style={[
+                contextInfoStyles.labelText,
+                contextLabelTextExternalStyles,
+              ]}
+            >
+              {contextLabel}
+            </Text>
+          </View>
+          <View style={contextInfoStyles.valueWrapper}>
+            <Text
+              style={[
+                contextInfoStyles.valueText,
+                contextValueTextExternalStyles,
+              ]}
+            >
+              {contextValue}
+            </Text>
+          </View>
         </View>
+
         <View style={timeStyles.container}>
           <View
             style={[
@@ -161,10 +204,6 @@ const statusBarStyles = StyleSheet.create({
   localTimeText: {
     color: colors.neutral[500],
   },
-  lowBatAlertText: {
-    color: colors.red,
-    opacity: 0.7,
-  },
   rightWrapper: {
     flex: 1,
     flexDirection: 'row',
@@ -190,30 +229,35 @@ const contextInfoStyles = StyleSheet.create({
     paddingVertical: 12,
     width: '100%',
   },
-  phaseStatusWorkText: {
+  labelText: {
+    color: colors.neutral[400],
     fontFamily: 'Geist Mono',
     fontSize: contextFontSize,
     fontWeight: '900',
     lineHeight: contextFontSize,
   },
-  phaseStatusWrapper: {},
-  phaseTextColorBlue: {
-    color: colors.blue,
-  },
-  phaseTextColorGray: {
-    color: colors.neutral[400],
-  },
-  phaseTextColorGreen: {
-    color: colors.green,
-  },
-  roundCounterText: {
+  labelWrapper: {},
+  valueText: {
     color: colors.neutral[400],
     fontFamily: 'Geist Mono',
     fontSize: roundFontSize,
     fontWeight: '400',
     lineHeight: roundFontSize,
   },
-  roundCounterWrapper: {},
+  valueWrapper: {},
+});
+
+const quickAccessStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: 16,
+  },
+  itemWrapper: {
+    flexDirection: 'row',
+    gap: 8,
+  },
 });
 
 const timeStyles = StyleSheet.create({

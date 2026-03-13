@@ -10,12 +10,21 @@ import { useGetCurrentTime } from '@/hooks/use-get-current-time';
 import { TimerStatus, useTimer } from '@/hooks/use-timer';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { TimerMode } from '@/helpers/timer/factory';
+import type { CheckpointData } from '@/helpers/timer/controller';
+import { colors } from '@/helpers/colors';
+import type { ContextFormatType } from './types';
 
+// oxlint-disable eslint/max-statements
 export const Timer = () => {
   const rawConfigParams = useLocalSearchParams<TimerRouteParams>();
   const timerInput = deserializeTimerConfig(rawConfigParams);
+  const [lastCheckpoint, setLastCheckpoint] = useState<CheckpointData | null>(
+    null
+  );
   const {
+    hours,
     minutes,
     seconds,
     phase,
@@ -25,11 +34,19 @@ export const Timer = () => {
     pause,
     start,
     reset,
+    recordCheckpoint,
     status,
     getSummary,
     handleEndSession,
   } = useTimer(timerInput, {
     onBeep: () => playTone(659, 200),
+    onCheckpoint: (checkpoint) => {
+      setLastCheckpoint(checkpoint);
+      playToneSequence([
+        { durationMs: 80, frequencyHz: 880, silenceAfterMs: 120 },
+        { durationMs: 80, frequencyHz: 880, silenceAfterMs: 0 },
+      ]);
+    },
     onFinish: (summary) => {
       if (summary.fullyCompleted) {
         playToneSequence([
@@ -71,12 +88,71 @@ export const Timer = () => {
     };
   }, [start, reset]);
 
+  const timerContextLabelState = useMemo<ContextFormatType>(() => {
+    if (phase === TimerPhase.PREPARATION) {
+      return {
+        value: undefined,
+      };
+    }
+    switch (timerInput.mode) {
+      case TimerMode.AMRAP: {
+        return {
+          color: colors.red,
+          value: lastCheckpoint?.lap ? 'RND' : undefined,
+        };
+      }
+
+      case TimerMode.INTERVAL: {
+        const isActivePhase =
+          phase === TimerPhase.WORK || phase === TimerPhase.REST;
+        const value = isActivePhase ? phase : undefined;
+        const color = phase === TimerPhase.WORK ? colors.blue : colors.green;
+        return {
+          color,
+          value,
+        };
+      }
+
+      default: {
+        return {
+          value: undefined,
+        };
+      }
+    }
+  }, [timerInput, phase, lastCheckpoint]);
+
+  const timerContextValueState = useMemo<ContextFormatType>(() => {
+    if (phase === TimerPhase.PREPARATION) {
+      return {
+        value: undefined,
+      };
+    }
+    switch (timerInput.mode) {
+      case TimerMode.AMRAP: {
+        return {
+          value: lastCheckpoint?.lap ?? undefined,
+        };
+      }
+
+      case TimerMode.INTERVAL: {
+        return {
+          value: currentRound,
+        };
+      }
+
+      default: {
+        return {
+          value: undefined,
+        };
+      }
+    }
+  }, [timerInput, phase, currentRound, lastCheckpoint]);
+
   if (status === TimerStatus.PAUSED || status === TimerStatus.FINISHED) {
     return (
       <SummaryFace
         summary={getSummary()}
         mode={timerInput.mode}
-        flags={flags}
         handleEndSession={handleFinish}
         handleResumeSession={start}
       />
@@ -88,12 +164,31 @@ export const Timer = () => {
       <StatusBar hidden={true} />
       <HideNavigationBar />
 
-      <PressableArea onLongPress={pause} deadZone={14}>
+      <PressableArea
+        onLongPress={pause}
+        onDoublePress={
+          flags.hasCheckpointsBehavior ? recordCheckpoint : undefined
+        }
+        deadZone={14}
+      >
         <TimerFace
-          phase={phase}
+          hours={hours}
+          lap={
+            timerInput.mode === TimerMode.STOP_WATCH
+              ? lastCheckpoint?.lap
+              : undefined
+          }
+          split={
+            timerInput.mode === TimerMode.STOP_WATCH
+              ? lastCheckpoint?.splitTimeMs
+              : undefined
+          }
           minutes={minutes}
           seconds={seconds}
-          currentRound={currentRound}
+          contextLabel={timerContextLabelState.value}
+          contextLabelColor={timerContextLabelState.color}
+          contextValue={timerContextValueState.value}
+          contextValueColor={timerContextValueState.color}
           currentTime={currentTime}
           modeAbbr={modeAbbr}
           flags={flags}
