@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import {
   convertTimeToMs,
+  formatDuration,
   formatFullTimeToString,
   formatTimeForDisplay,
   getModeAbbreviation,
@@ -153,6 +154,43 @@ describe('formatter', () => {
       const result = formatFullTimeToString(totalMilliseconds);
 
       expect(result).toBe('25:01:05');
+    });
+  });
+
+  describe('formatDuration function', () => {
+    it('formatea milisegundos correctamente (< 1000ms)', () => {
+      expect(formatDuration(500, false)).toBe('500ms');
+      expect(formatDuration(500, true)).toBe('+500ms');
+      expect(formatDuration(-500, false)).toBe('-500ms');
+      expect(formatDuration(-500, true)).toBe('-500ms');
+    });
+
+    it('formatea segundos y recorta ceros al final (< 60s)', () => {
+      expect(formatDuration(4345, false)).toBe('4.345s');
+      expect(formatDuration(4300, false)).toBe('4.3s');
+      expect(formatDuration(4300, true)).toBe('+4.3s');
+      expect(formatDuration(-4345, false)).toBe('-4.345s');
+    });
+
+    it('formatea minutos con precisión de dos decimales en los segundos (M:SS.ss)', () => {
+      expect(formatDuration(330_340, false)).toBe('5:30.34');
+      expect(formatDuration(330_340, true)).toBe('+5:30.34');
+      expect(formatDuration(-330_340, false)).toBe('-5:30.34');
+    });
+
+    it('formatea horas con minutos y precisión de dos decimales en los segundos (H:MM:SS.ss)', () => {
+      expect(formatDuration(3_930_340, false)).toBe('1:05:30.34');
+      expect(formatDuration(3_930_340, true)).toBe('+1:05:30.34');
+      expect(formatDuration(-3_930_340, false)).toBe('-1:05:30.34');
+    });
+
+    it('maneja el valor cero correctamente', () => {
+      expect(formatDuration(0, false)).toBe('0ms');
+      expect(formatDuration(0, true)).toBe('+0ms');
+    });
+
+    it('añade un cero inicial a los segundos si son menores a 10 en formato de minutos/horas', () => {
+      expect(formatDuration(65_500, false)).toBe('1:05.50');
     });
   });
 
