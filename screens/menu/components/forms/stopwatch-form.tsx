@@ -4,8 +4,8 @@ import { DEFAULT_PREPARATION_MS } from '@/screens/menu/schema';
 import type { FormHandle } from '@/screens/menu/schema';
 import { TimerMode } from '@/helpers/timer/factory';
 import type { TimerConfig } from '@/helpers/timer/factory';
-import { FieldDescription, FieldSet } from '@/components/field';
-import { ScrollView } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/text';
 
 interface StopWatchFormProps {
   ref?: Ref<FormHandle>;
@@ -24,13 +24,50 @@ export const StopWatchForm = ({ onSubmit, ref }: StopWatchFormProps) => {
   }));
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false}>
-      <FieldSet>
-        <FieldDescription>
-          This timer will run indefinitely until you stop it. Long press the
-          screen to finish and see your session summary.
-        </FieldDescription>
-      </FieldSet>
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+    >
+      <View style={styles.contentWrapper}>
+        <View style={styles.header}>
+          <Text color="white" size={22} weight="700">
+            All set!
+          </Text>
+        </View>
+        <View style={styles.content}>
+          <Text colorSubtone="300">
+            You are in control. The timer will only end when you choose to stop
+            it.
+          </Text>
+          <View>
+            <Text>Quick tips:</Text>
+            <Text>- Long press anywhere to finish the timer.</Text>
+            <Text>- Double tap to log a checkpoint.</Text>
+          </View>
+        </View>
+      </View>
     </ScrollView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  content: {
+    gap: 8,
+  },
+  contentContainer: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  contentWrapper: {
+    gap: 12,
+    paddingHorizontal: 20,
+  },
+  header: {
+    alignItems: 'center',
+  },
+});
