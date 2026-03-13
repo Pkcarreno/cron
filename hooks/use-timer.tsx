@@ -22,10 +22,7 @@ export enum TimerStatus {
 
 export interface TimerFlags {
   isPreparing: boolean;
-  showsPhaseIndicator: boolean;
-  showsRoundCounter: boolean;
   showsMinuteDigits: boolean;
-  showsSummaryRoundCounter: boolean;
   hasCheckpointsBehavior: boolean;
 }
 
@@ -44,9 +41,6 @@ export interface TimerEventHandlers {
 
 const getTimerFlags = (config: TimerConfig, phase: TimerPhase): TimerFlags => {
   const isPreparing = phase === TimerPhase.PREPARATION;
-  const isIntervalMode = config.mode === TimerMode.INTERVAL;
-  const hasMultipleRounds = 'totalRounds' in config && config.totalRounds > 1;
-  const isStopwatchMode = config.mode === TimerMode.STOP_WATCH;
 
   return {
     hasCheckpointsBehavior:
@@ -54,9 +48,6 @@ const getTimerFlags = (config: TimerConfig, phase: TimerPhase): TimerFlags => {
       (config.mode === TimerMode.STOP_WATCH || config.mode === TimerMode.AMRAP),
     isPreparing,
     showsMinuteDigits: !isPreparing,
-    showsPhaseIndicator: isIntervalMode && !isPreparing,
-    showsRoundCounter: hasMultipleRounds && !isPreparing,
-    showsSummaryRoundCounter: !isStopwatchMode,
   };
 };
 
