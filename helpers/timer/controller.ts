@@ -288,6 +288,8 @@ export class TimerController {
   public reset() {
     this.emit(TimerEventType.RESET);
     this.checkpoints = [];
+    this.previousState = null;
+    this.lastKnownElapsedMs = 0;
     this.engine.reset();
   }
 }
