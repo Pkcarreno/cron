@@ -123,8 +123,20 @@ const useTimerController = (
       }
     );
 
-    return () => controller.dispose();
-  }, [setTimerState, setStatus, checkpointsRef, controllerRef]);
+    return () => {
+      controller.dispose();
+      checkpointsRef.current = [];
+      startedAtRef.current = null;
+      endedAtRef.current = null;
+    };
+  }, [
+    setTimerState,
+    setStatus,
+    checkpointsRef,
+    controllerRef,
+    startedAtRef,
+    endedAtRef,
+  ]);
 
   return { checkpointsRef, controllerRef, endedAtRef, startedAtRef };
 };
@@ -192,6 +204,7 @@ export const useTimer = (
   return {
     ...timerState,
     ...formattedTime,
+    checkpoints: checkpointsRef.current,
     flags,
     getSummary,
     handleEndSession,
