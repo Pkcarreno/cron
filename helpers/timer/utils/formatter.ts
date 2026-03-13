@@ -6,12 +6,26 @@ export const convertTimeToMs = (minutes: number, seconds = 0): number =>
 const pad = (num: number) => num.toString().padStart(2, '0');
 
 export const formatTimeForDisplay = (
-  totalMs: number
+  totalMs: number,
+  includeHours = false
 ): {
+  hours?: string;
   minutes: string;
   seconds: string;
 } => {
   const totalSeconds = Math.ceil(totalMs / 1000);
+
+  if (includeHours) {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    return {
+      hours: hours === 0 ? undefined : pad(hours),
+      minutes: pad(minutes),
+      seconds: pad(seconds),
+    };
+  }
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
 

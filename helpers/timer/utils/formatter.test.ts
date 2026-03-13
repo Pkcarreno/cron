@@ -32,6 +32,36 @@ describe('formatter', () => {
       const result = convertTimeToMs(0, 0);
       expect(result).toBe(0);
     });
+
+    it('returns undefined for hours when includeHours is true but time is under 1 hour', () => {
+      const totalMilliseconds = 300_000;
+      const result = formatTimeForDisplay(totalMilliseconds, true);
+      expect(result).toStrictEqual({
+        hours: undefined,
+        minutes: '05',
+        seconds: '00',
+      });
+    });
+
+    it('returns formatted hours when includeHours is true and time is exactly 1 hour', () => {
+      const totalMilliseconds = 3_600_000;
+      const result = formatTimeForDisplay(totalMilliseconds, true);
+      expect(result).toStrictEqual({
+        hours: '01',
+        minutes: '00',
+        seconds: '00',
+      });
+    });
+
+    it('calculates hours, minutes, and seconds correctly when time exceeds an hour', () => {
+      const totalMilliseconds = 4_530_000;
+      const result = formatTimeForDisplay(totalMilliseconds, true);
+      expect(result).toStrictEqual({
+        hours: '01',
+        minutes: '15',
+        seconds: '30',
+      });
+    });
   });
 
   describe('formatTimeForDisplay function', () => {
