@@ -105,15 +105,21 @@ export const TimerFace: FC<Props> = ({
       >
         {!flags.isPreparing && (
           <View style={quickAccessStyles.container}>
-            {quickAccessInfo.map((data, index) => (
-              <View key={data} style={quickAccessStyles.itemWrapper}>
-                <Text style={statusBarStyles.text}>{data}</Text>
+            {quickAccessInfo.length > 0 ? (
+              quickAccessInfo.map((data, index) => (
+                <View key={data} style={quickAccessStyles.itemWrapper}>
+                  <Text style={statusBarStyles.text}>{data}</Text>
 
-                {index < quickAccessInfo.length - 1 && (
-                  <Text style={statusBarStyles.text}> | </Text>
-                )}
+                  {index < quickAccessInfo.length - 1 && (
+                    <Text style={statusBarStyles.text}> | </Text>
+                  )}
+                </View>
+              ))
+            ) : (
+              <View style={quickAccessStyles.itemWrapper}>
+                <Text style={statusBarStyles.text}>{'\u2003'}</Text>
               </View>
-            ))}
+            )}
           </View>
         )}
 
@@ -125,7 +131,7 @@ export const TimerFace: FC<Props> = ({
                 contextLabelTextExternalStyles,
               ]}
             >
-              {contextLabel}
+              {contextLabel ?? '\u2003'}
             </Text>
           </View>
           <View style={contextInfoStyles.valueWrapper}>
@@ -135,7 +141,7 @@ export const TimerFace: FC<Props> = ({
                 contextValueTextExternalStyles,
               ]}
             >
-              {contextValue}
+              {contextValue ?? '\u2003'}
             </Text>
           </View>
         </View>
