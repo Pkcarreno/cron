@@ -160,7 +160,10 @@ export const useTimer = (
   const { controllerRef, startedAtRef, endedAtRef, checkpointsRef } =
     useTimerController(config, setTimerState, setStatus, handlers);
 
-  const { minutes, seconds } = formatTimeForDisplay(timerState.displayTimeMs);
+  const formattedTime = formatTimeForDisplay(
+    timerState.displayTimeMs,
+    config.mode === TimerMode.STOP_WATCH
+  );
 
   const modeAbbr = useMemo(
     () => getModeAbbreviation(config.mode),
@@ -197,10 +200,10 @@ export const useTimer = (
 
   return {
     ...timerState,
+    ...formattedTime,
     flags,
     getSummary,
     handleEndSession,
-    minutes,
     modeAbbr,
     pause: useCallback(() => {
       setStatus(TimerStatus.PAUSED);
@@ -211,7 +214,6 @@ export const useTimer = (
       setStatus(TimerStatus.READY);
       controllerRef.current?.reset();
     }, [controllerRef]),
-    seconds,
     start: useCallback(() => {
       setStatus(TimerStatus.RUNNING);
       controllerRef.current?.start();
