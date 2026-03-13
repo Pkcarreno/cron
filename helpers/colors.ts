@@ -2,6 +2,7 @@ export const colors = {
   black: '#000000',
   blue: '#0E76FF',
   green: '#008153',
+  greenHighlight: '#B1D732',
   neutral: {
     100: '#f5f5f5',
     200: '#e5e5e5',
@@ -17,6 +18,7 @@ export const colors = {
   },
   orange: '#E7801F',
   red: '#B91126',
+  redHighlight: '#eb6f92',
   transparent: 'transparent',
   white: '#ffffff',
 };
