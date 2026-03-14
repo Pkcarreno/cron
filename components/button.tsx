@@ -1,15 +1,23 @@
 /* oxlint-disable react-native/no-unused-styles */
 import { colors } from '@/helpers/colors';
-import type { PressableStateCallbackType, ViewStyle } from 'react-native';
+import type {
+  PressableProps,
+  PressableStateCallbackType,
+  ViewStyle,
+} from 'react-native';
 import { Pressable, StyleSheet } from 'react-native';
 import { Text } from './text';
 import { useCallback } from 'react';
 
-type ButtonVariant = 'primary' | 'secondary' | 'outline';
-type ButtonSize = 'md' | 'sm';
+type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
+type ButtonSize = 'md' | 'sm' | 'icon';
 
-export interface ButtonProps extends React.ComponentProps<typeof Pressable> {
-  title: string;
+export interface IconProps {
+  color: string;
+  size: number;
+}
+
+interface BaseButtonProps extends Omit<PressableProps, 'title'> {
   onPress?: () => void;
   disabled?: boolean;
   variant?: ButtonVariant;
@@ -17,15 +25,22 @@ export interface ButtonProps extends React.ComponentProps<typeof Pressable> {
   style?: ViewStyle;
 }
 
-const Button = ({
+type ButtonContentProps =
+  | { title: string; icon?: never }
+  | { title?: string; icon: React.ComponentType<IconProps> };
+
+export type ButtonProps = BaseButtonProps & ButtonContentProps;
+
+const Button: React.FC<ButtonProps> = ({
   title,
+  icon: Icon,
   onPress,
   disabled = false,
   variant = 'primary',
   size = 'md',
   style,
   ...rest
-}: ButtonProps) => {
+}) => {
   const pressableStyles = useCallback(
     ({ pressed }: PressableStateCallbackType) => [
       styles.base,
@@ -46,16 +61,25 @@ const Button = ({
       {...rest}
       style={pressableStyles}
     >
-      <Text
-        style={[
-          styles.text,
-          variantStyles[`${variant}Text`],
-          sizeStyles[`${size}TextSize`],
-          disabled && styles.disabledText,
-        ]}
-      >
-        {title}
-      </Text>
+      {Icon && (
+        <Icon
+          color={variantStyles[`${variant}Text`].color}
+          size={sizeStyles[`${size}TextSize`].fontSize}
+        />
+      )}
+
+      {title && (
+        <Text
+          style={[
+            styles.text,
+            variantStyles[`${variant}Text`],
+            sizeStyles[`${size}TextSize`],
+            disabled && styles.disabledText,
+          ]}
+        >
+          {title}
+        </Text>
+      )}
     </Pressable>
   );
 };
@@ -90,6 +114,12 @@ const styles = StyleSheet.create({
 });
 
 const variantStyles = StyleSheet.create({
+  ghost: {
+    backgroundColor: colors.neutral[950],
+  },
+  ghostText: {
+    color: colors.neutral[300],
+  },
   outline: {
     backgroundColor: colors.transparent,
     borderColor: colors.neutral[500],
@@ -112,6 +142,12 @@ const variantStyles = StyleSheet.create({
 });
 
 const sizeStyles = StyleSheet.create({
+  icon: {
+    padding: 12,
+  },
+  iconTextSize: {
+    fontSize: 22,
+  },
   md: {
     padding: 24,
   },
