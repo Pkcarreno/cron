@@ -8,12 +8,12 @@ import {
   formatFullTimeToString,
 } from '@/helpers/timer/utils/formatter';
 import { Logo } from '@/components/logo';
-import type { UIWorkoutSummary } from '@/hooks/use-timer';
+import type { UISessionSummary } from '@/hooks/use-timer';
 import { colors } from '@/helpers/colors';
 import { Col, Grid, Row } from '@/components/grid';
 
 interface Props {
-  summary: UIWorkoutSummary | undefined;
+  summary: UISessionSummary | undefined;
   mode: TimerMode;
   handleEndSession: () => void;
   handleResumeSession: () => void;
@@ -67,7 +67,7 @@ export const SummaryFace: React.FC<Props> = ({
       <View style={styles.footer}>
         {!summary?.fullyCompleted && (
           <Button
-            title="Resume workout"
+            title="Resume session"
             variant="secondary"
             onPress={handleResumeSession}
           />
@@ -90,7 +90,7 @@ const RenderData: React.FC<RenderDataProps> = ({ summary }) => {
   }
 
   const totalTime = formatFullTimeToString(summary.totalSessionTimeMs);
-  const activeTime = formatFullTimeToString(summary.activeWorkoutTimeMs);
+  const activeTime = formatFullTimeToString(summary.activeSessionTimeMs);
 
   return (
     <View style={styles.dataWrapper}>
@@ -136,7 +136,7 @@ const RenderData: React.FC<RenderDataProps> = ({ summary }) => {
 };
 
 interface RenderCheckpointsProps {
-  summary?: UIWorkoutSummary;
+  summary?: UISessionSummary;
   lapLabel: string;
 }
 

@@ -23,9 +23,9 @@ export interface CheckpointData {
   lapDeltaMs: number;
 }
 
-export interface WorkoutSummary {
+export interface SessionSummary {
   totalSessionTimeMs: number;
-  activeWorkoutTimeMs: number;
+  activeSessionTimeMs: number;
   roundsCompleted: number;
   fullyCompleted: boolean;
   checkpoints: CheckpointData[];
@@ -35,7 +35,7 @@ export interface TimerEventMap {
   [TimerEventType.START]: [];
   [TimerEventType.PAUSE]: [];
   [TimerEventType.RESET]: [];
-  [TimerEventType.FINISH]: [summary: WorkoutSummary];
+  [TimerEventType.FINISH]: [summary: SessionSummary];
   [TimerEventType.GO]: [];
   [TimerEventType.PHASE_CHANGE]: [newPhase: TimerPhase];
   [TimerEventType.ROUND_CHANGE]: [newRound: number];
@@ -115,7 +115,7 @@ export class TimerController {
     }
   }
 
-  private generateSummary(fullyCompleted: boolean): WorkoutSummary {
+  private generateSummary(fullyCompleted: boolean): SessionSummary {
     const finalState = this.previousState || {
       currentRound: 0,
       displayTimeMs: 0,
@@ -123,13 +123,13 @@ export class TimerController {
 
     const totalSessionMs = this.lastKnownElapsedMs;
 
-    const activeWorkoutMs = Math.max(
+    const activeSessionMs = Math.max(
       0,
       totalSessionMs - this.preparationTimeMs
     );
 
     return {
-      activeWorkoutTimeMs: activeWorkoutMs,
+      activeSessionTimeMs: activeSessionMs,
       checkpoints: [...this.checkpoints],
       fullyCompleted,
       roundsCompleted: finalState.currentRound,
@@ -179,7 +179,7 @@ export class TimerController {
       return;
     }
 
-    // detect workout start
+    // detect session start
     if (
       oldState.phase === TimerPhase.PREPARATION &&
       newState.phase === TimerPhase.WORK
@@ -218,7 +218,7 @@ export class TimerController {
     }
   }
 
-  public getSummary(): WorkoutSummary {
+  public getSummary(): SessionSummary {
     const currentState = this.previousState || {
       isFinished: false,
     };

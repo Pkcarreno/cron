@@ -1,6 +1,6 @@
 import type {
   CheckpointData,
-  WorkoutSummary,
+  SessionSummary,
 } from '@/helpers/timer/controller';
 import { TimerController, TimerEventType } from '@/helpers/timer/controller';
 import type { TimerConfig } from '@/helpers/timer/factory';
@@ -32,7 +32,7 @@ export interface UICheckpoint extends CheckpointData {
 
 export interface TimerEventHandlers {
   onGo?: () => void;
-  onFinish?: (summary: WorkoutSummary) => void;
+  onFinish?: (summary: SessionSummary) => void;
   onPhaseChange?: (phase: TimerPhase) => void;
   onRoundChange?: (round: number) => void;
   onBeep?: (second: number) => void;
@@ -106,7 +106,7 @@ const useTimerController = (
     controller.on(TimerEventType.ROUND_CHANGE, (newRound: number) => {
       handlersRef.current?.onRoundChange?.(newRound);
     });
-    controller.on(TimerEventType.FINISH, (summary: WorkoutSummary) => {
+    controller.on(TimerEventType.FINISH, (summary: SessionSummary) => {
       setStatus(TimerStatus.FINISHED);
       endedAtRef.current = new Date();
       handlersRef.current?.onFinish?.(summary);
@@ -141,7 +141,7 @@ const useTimerController = (
   return { checkpointsRef, controllerRef, endedAtRef, startedAtRef };
 };
 
-export interface UIWorkoutSummary extends Omit<WorkoutSummary, 'checkpoints'> {
+export interface UISessionSummary extends Omit<SessionSummary, 'checkpoints'> {
   startedAt: Date | null;
   endedAt: Date | null;
   checkpoints: UICheckpoint[];
@@ -184,7 +184,7 @@ export const useTimer = (
     // oxlint-disable eslint/exhaustive-deps
   }, []);
 
-  const getSummary = useCallback((): UIWorkoutSummary | undefined => {
+  const getSummary = useCallback((): UISessionSummary | undefined => {
     const coreSummary = controllerRef.current?.getSummary();
     if (!coreSummary) {
       return;

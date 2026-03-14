@@ -276,7 +276,7 @@ describe('timerController', () => {
     });
   });
 
-  describe('workout Summary and Manual Termination', () => {
+  describe('session Summary and Manual Termination', () => {
     const DEFAULT_PREPARATION_MS = 10_000;
 
     it('provides a summary with fullyCompleted set to true when timer finishes automatically', () => {
@@ -299,7 +299,7 @@ describe('timerController', () => {
       expect(summaryPayload.totalSessionTimeMs).toBe(
         targetTimeMs + DEFAULT_PREPARATION_MS
       );
-      expect(summaryPayload.activeWorkoutTimeMs).toBe(targetTimeMs);
+      expect(summaryPayload.activeSessionTimeMs).toBe(targetTimeMs);
       expect(summaryPayload.roundsCompleted).toBe(1);
       expect(summaryPayload.fullyCompleted).toBeTruthy();
     });
@@ -316,8 +316,8 @@ describe('timerController', () => {
 
       controller.start();
 
-      const workoutDurationMs = 120_000;
-      jest.advanceTimersByTime(workoutDurationMs);
+      const sessionDurationMs = 120_000;
+      jest.advanceTimersByTime(sessionDurationMs);
 
       expect(finishSpy).not.toHaveBeenCalled();
 
@@ -327,7 +327,7 @@ describe('timerController', () => {
 
       const [summaryPayload] = finishSpy.mock.lastCall;
 
-      expect(summaryPayload.activeWorkoutTimeMs).toBe(workoutDurationMs);
+      expect(summaryPayload.activeSessionTimeMs).toBe(sessionDurationMs);
       expect(summaryPayload.fullyCompleted).toBeFalsy();
 
       const ticksBeforeAdvancing = tickSpy.mock.calls.length;
@@ -337,10 +337,10 @@ describe('timerController', () => {
       expect(ticksAfterAdvancing).toBe(ticksBeforeAdvancing);
     });
 
-    it('returns the current workout statistics without pausing or destroying the engine', () => {
-      const workoutTargetMs = 10_000;
+    it('returns the current session statistics without pausing or destroying the engine', () => {
+      const sessionTargetMs = 10_000;
       const preparationMs = 3000;
-      const strategy = new UpStrategy(workoutTargetMs);
+      const strategy = new UpStrategy(sessionTargetMs);
       const controller = new TimerController(strategy, preparationMs);
 
       const tickSpy = jest.fn();
@@ -353,7 +353,7 @@ describe('timerController', () => {
       const currentSummary = controller.getSummary();
 
       expect(currentSummary.totalSessionTimeMs).toBe(5000);
-      expect(currentSummary.activeWorkoutTimeMs).toBe(2000);
+      expect(currentSummary.activeSessionTimeMs).toBe(2000);
       expect(currentSummary.roundsCompleted).toBe(1);
       expect(currentSummary.fullyCompleted).toBeFalsy();
 
@@ -457,7 +457,7 @@ describe('timerController', () => {
       });
     });
 
-    it('includes the complete checkpoint history in the generated workout summary', () => {
+    it('includes the complete checkpoint history in the generated session summary', () => {
       const strategy = new StopwatchStrategy();
       const controller = new TimerController(strategy, 0);
 
