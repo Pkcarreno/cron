@@ -176,7 +176,7 @@ export const Timer = () => {
               ? checkpoints.at(-1)?.lap
               : undefined
           }
-          split={
+          delta={
             checkpoints &&
             checkpoints.length > 0 &&
             timerInput.mode === TimerMode.STOP_WATCH

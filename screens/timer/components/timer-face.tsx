@@ -7,13 +7,14 @@ import { useMemo } from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ContextFormatType } from '@/screens/timer/types';
+import { formatDuration } from '@/helpers/timer/utils/formatter';
 
 interface Props extends Pick<
   timerType,
   'flags' | 'hours' | 'minutes' | 'seconds' | 'modeAbbr'
 > {
   lap: number | undefined;
-  split: number | undefined;
+  delta: number | undefined;
   currentTime: string;
   contextLabel: ContextFormatType['value'];
   contextLabelColor?: ContextFormatType['color'];
@@ -32,7 +33,7 @@ export const TimerFace: FC<Props> = ({
   contextValueColor,
   currentTime,
   lap,
-  split,
+  delta,
   flags,
 }) => {
   const insets = useSafeAreaInsets();
@@ -64,9 +65,9 @@ export const TimerFace: FC<Props> = ({
         isLowBattery ? '[BAT LOW]' : null,
         hours ? `${hours}H` : null,
         lap && lap > 0 ? `L${lap.toString().padStart(2, '0')}` : null,
-        split && split > 0 ? `+${(split / 1000).toFixed(3)}s` : null,
+        delta ? formatDuration(delta, true) : null,
       ].filter(Boolean),
-    [hours, lap, split, isLowBattery]
+    [hours, lap, delta, isLowBattery]
   );
 
   useKeepAwake();
