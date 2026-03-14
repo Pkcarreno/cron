@@ -94,7 +94,6 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
       foregroundImage: './assets/adaptive-icon.png',
     },
     backgroundColor: '#000000',
-    edgeToEdgeEnabled: true,
     package: Env.EXPO_PUBLIC_PACKAGE,
     permissions: ['android.permission.VIBRATE'],
     predictiveBackGestureEnabled: false,
@@ -117,7 +116,6 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
     supportsTablet: true,
   },
   name: Env.EXPO_PUBLIC_NAME,
-  newArchEnabled: true,
   orientation: 'portrait',
   owner: 'pkcarreno',
   plugins: [
@@ -343,6 +341,7 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
     ],
     'expo-router',
     'react-native-audio-api',
+    'expo-image',
   ],
   scheme: Env.EXPO_PUBLIC_SCHEME,
   slug: 'cron',
