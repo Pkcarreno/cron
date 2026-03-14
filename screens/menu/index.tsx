@@ -8,15 +8,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { FormPager } from './components/form-pager';
 import { useTimerForms } from './hooks/use-timer-form';
 import { TIMER_MODES } from './schema';
+import { Link } from 'expo-router';
+import { SlidersIcon } from 'phosphor-react-native';
 
 export const Menu = () => {
-  const [inspectMode, setInspectMode] = useState(false);
   const [currentMode, setCurrentMode] = useState<TimerMode>(TIMER_MODES[0]);
-  const { pages, startTimer } = useTimerForms(inspectMode);
-
-  const handleToggleInspectMode = useCallback(() => {
-    setInspectMode((prev) => !prev);
-  }, [setInspectMode]);
+  const { pages, startTimer } = useTimerForms(false);
 
   const handleStart = useCallback(
     () => startTimer(currentMode),
@@ -43,14 +40,11 @@ export const Menu = () => {
       </View>
 
       <View style={styles.footer}>
-        <Button
-          title={`toggle inspect mode: ${inspectMode.toString()}`}
-          variant="outline"
-          size="sm"
-          onPress={handleToggleInspectMode}
-        />
+        <Link href="/settings" asChild>
+          <Button size="icon" icon={SlidersIcon} variant="ghost" />
+        </Link>
 
-        <Button title="Start" onPress={handleStart} />
+        <Button style={styles.fullSpace} title="Start" onPress={handleStart} />
       </View>
     </SafeAreaView>
   );
@@ -70,8 +64,12 @@ const styles = StyleSheet.create({
     paddingLeft: 28,
   },
   footer: {
+    flexDirection: 'row',
     gap: 8,
     paddingHorizontal: 20,
+  },
+  fullSpace: {
+    flex: 1,
   },
   header: {
     alignItems: 'center',
