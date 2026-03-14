@@ -2,18 +2,12 @@ import type { PressableProps, PressableStateCallbackType } from 'react-native';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from './text';
 import { colors } from '@/helpers/colors';
-import { useCallback, useMemo, useRef } from 'react';
-import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetView,
-} from '@gorhom/bottom-sheet';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCallback, useMemo, useState } from 'react';
 import Button from './button';
 import InputThumbwheel from './input-thumbwheel';
 import { z } from 'zod';
 import { useField, useForm } from '@tanstack/react-form';
+import { Sheet, SheetContent, SheetTrigger } from './sheet';
 
 type onChangeValueType = (value: number) => void;
 
@@ -33,13 +27,9 @@ export const InputNumber: React.FC<InputNumberProps> = ({
   suffix,
   ...props
 }) => {
-  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const [openSheet, setOpenSheet] = useState(false);
 
   const renderValue = useMemo(() => value.toString().padStart(2, '0'), [value]);
-
-  const handlePresentModalPress = useCallback(() => {
-    bottomSheetModalRef.current?.present(0);
-  }, []);
 
   const pressableStyles = useCallback(
     ({ pressed }: PressableStateCallbackType) => [
@@ -50,36 +40,33 @@ export const InputNumber: React.FC<InputNumberProps> = ({
     [editable]
   );
 
+  const handleOnClose = useCallback(() => setOpenSheet(false), []);
+
   return (
-    <>
+    <Sheet open={openSheet} onOpenChange={setOpenSheet}>
       <View style={styles.container}>
-        <Pressable
-          style={pressableStyles}
-          onPress={handlePresentModalPress}
-          disabled={!editable}
-        >
-          <View style={styles.valueWrapper}>
-            <Text
-              color="white"
-              weight="700"
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              style={styles.value}
-            >
-              {renderValue}
-            </Text>
-          </View>
-        </Pressable>
+        <SheetTrigger asChild>
+          <Pressable style={pressableStyles} disabled={!editable}>
+            <View style={styles.valueWrapper}>
+              <Text
+                color="white"
+                weight="700"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                style={styles.value}
+              >
+                {renderValue}
+              </Text>
+            </View>
+          </Pressable>
+        </SheetTrigger>
         <Text style={styles.suffix} size={16} colorSubtone="500" weight="300">
           {suffix}
         </Text>
       </View>
-      <SheetContent
-        value={value}
-        sheetModalRef={bottomSheetModalRef}
-        {...props}
-      />
-    </>
+
+      <NumberPickerSheet value={value} onClose={handleOnClose} {...props} />
+    </Sheet>
   );
 };
 
@@ -126,81 +113,27 @@ const styles = StyleSheet.create({
   },
 });
 
-const renderBackdrop = (props: BottomSheetBackdropProps) => (
-  <BottomSheetBackdrop
-    {...props}
-    disappearsOnIndex={-1}
-    appearsOnIndex={0}
-    pressBehavior="close"
-  />
-);
-
-interface SheetContentProps extends Pick<
+export interface NumberPickerSheetProps extends Pick<
   InputNumberProps,
   'value' | 'onChangeValue' | 'valueSuffix' | 'min' | 'max'
 > {
-  sheetModalRef: React.RefObject<BottomSheetModal | null>;
+  onClose?: () => void;
 }
 
-const SheetContent: React.FC<SheetContentProps> = ({
-  sheetModalRef,
+export const NumberPickerSheet: React.FC<NumberPickerSheetProps> = ({
   ...props
-}) => {
-  const { bottom } = useSafeAreaInsets();
+}) => (
+  <SheetContent enableDynamicSizing={true} snapPoints={[]}>
+    <NumberPickerForm {...props} />
+  </SheetContent>
+);
 
-  const bottomSheetViewStyles = useMemo(
-    () => ({
-      paddingBottom: bottom + 16,
-    }),
-    [bottom]
-  );
-
-  return (
-    <BottomSheetModal
-      ref={sheetModalRef}
-      index={0}
-      enableDynamicSizing={true}
-      backdropComponent={renderBackdrop}
-      backgroundStyle={sheetStyles.background}
-      handleIndicatorStyle={sheetStyles.indicator}
-    >
-      <BottomSheetView style={[sheetStyles.container, bottomSheetViewStyles]}>
-        <SheetForm sheetModalRef={sheetModalRef} {...props} />
-      </BottomSheetView>
-    </BottomSheetModal>
-  );
-};
-
-const sheetStyles = StyleSheet.create({
-  background: {
-    backgroundColor: colors.neutral[800],
-    borderRadius: 24,
-  },
-  container: {
-    flex: 1,
-    gap: 16,
-    paddingHorizontal: 20,
-  },
-  indicator: {
-    backgroundColor: colors.neutral[600],
-    height: 5,
-    width: 40,
-  },
-});
-
-const SheetForm: React.FC<
+const NumberPickerForm: React.FC<
   Pick<
-    SheetContentProps,
-    'sheetModalRef' | 'value' | 'onChangeValue' | 'valueSuffix' | 'min' | 'max'
+    NumberPickerSheetProps,
+    'value' | 'onChangeValue' | 'valueSuffix' | 'min' | 'max' | 'onClose'
   >
-> = ({
-  sheetModalRef,
-  value,
-  onChangeValue,
-  valueSuffix,
-  min = 0,
-  max = 99,
-}) => {
+> = ({ value, onChangeValue, valueSuffix, min = 0, max = 99, onClose }) => {
   const form = useForm({
     defaultValues: {
       number: value,
@@ -221,9 +154,9 @@ const SheetForm: React.FC<
     try {
       form.handleSubmit();
     } finally {
-      sheetModalRef.current?.dismiss();
+      onClose?.();
     }
-  }, [form, sheetModalRef]);
+  }, [form, onClose]);
 
   const numberField = useField({
     form,
