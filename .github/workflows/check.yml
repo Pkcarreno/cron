@@ -19,7 +19,7 @@ jobs:
 
       - uses: ./.github/actions/setup-node-pnpm-install
 
-      - uses: oxc-project/oxlint-action@v3
+      - uses: oxc-project/oxlint-action@latest
 
   typecheck:
     name: Typecheck
