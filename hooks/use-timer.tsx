@@ -11,6 +11,8 @@ import {
   formatTimeForDisplay,
   getModeAbbreviation,
 } from '@/helpers/timer/utils/formatter';
+import { preparationTimeMsAtom } from '@/stores/settings';
+import { useAtom } from 'jotai/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export enum TimerStatus {
@@ -55,11 +57,12 @@ const useTimerInstance = (
   config: TimerConfig
 ): React.RefObject<TimerController | null> => {
   const controllerRef = useRef<TimerController | null>(null);
+  const [preparationTimeMs] = useAtom(preparationTimeMsAtom);
 
   if (!controllerRef.current) {
     controllerRef.current = new TimerController(
       createTimerStrategy(config),
-      10_000
+      preparationTimeMs
     );
   }
 
