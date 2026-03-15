@@ -17,6 +17,7 @@ updates:
       - dependency-name: '@types/react'
       - dependency-name: '@types/jest'
       - dependency-name: 'jest-expo'
+      - dependency-name: 'jest'
     groups:
       js-packages:
         patterns:
