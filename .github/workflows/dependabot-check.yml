@@ -1,0 +1,18 @@
+name: Checks on Update (Dependabot)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-update:
+    name: Verify Expo Compatibility on Update
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup-node-pnpm-install
+
+      - name: Enforce Expo SDK constraints on new versions
+        run: pnpm exec expo install --check

@@ -1,0 +1,23 @@
+version: 2
+updates:
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    ignore:
+      - dependency-name: 'expo'
+      - dependency-name: 'expo-*'
+      - dependency-name: '@expo/*'
+      - dependency-name: 'react'
+      - dependency-name: 'react-native'
+      - dependency-name: 'react-native-*'
+      - dependency-name: '@rn-primitives/*'
+      - dependency-name: '@gorhom/bottom-sheet'
+      - dependency-name: 'phosphor-react-native'
+      - dependency-name: '@types/react'
+      - dependency-name: '@types/jest'
+      - dependency-name: 'jest-expo'
+    groups:
+      js-packages:
+        patterns:
+          - '*'
