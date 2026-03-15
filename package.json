@@ -24,6 +24,7 @@
     "@gorhom/bottom-sheet": "^5.2.8",
     "@rn-primitives/dropdown-menu": "^1.2.0",
     "@rn-primitives/portal": "^1.3.0",
+    "@rn-primitives/switch": "^1.2.0",
     "@tanstack/react-form": "^1.28.4",
     "expo": "~55.0.6",
     "expo-battery": "~55.0.8",
