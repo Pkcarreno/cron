@@ -16,7 +16,14 @@
     "react-native/no-raw-text": [
       "error",
       {
-        "skip": ["Link", "FieldTitle", "FieldLabel", "FieldDescription"]
+        "skip": [
+          "Link",
+          "FieldTitle",
+          "FieldLabel",
+          "FieldDescription",
+          "MenuTopic",
+          "MenuItemText"
+        ]
       }
     ],
     "react-native/no-single-element-style-arrays": "error",
