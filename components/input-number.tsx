@@ -27,8 +27,6 @@ export const InputNumber: React.FC<InputNumberProps> = ({
   suffix,
   ...props
 }) => {
-  const [openSheet, setOpenSheet] = useState(false);
-
   const renderValue = useMemo(() => value.toString().padStart(2, '0'), [value]);
 
   const pressableStyles = useCallback(
@@ -40,10 +38,8 @@ export const InputNumber: React.FC<InputNumberProps> = ({
     [editable]
   );
 
-  const handleOnClose = useCallback(() => setOpenSheet(false), []);
-
   return (
-    <Sheet open={openSheet} onOpenChange={setOpenSheet}>
+    <NumberPickerSheet value={value} withoutTrigger {...props}>
       <View style={styles.container}>
         <SheetTrigger asChild>
           <Pressable style={pressableStyles} disabled={!editable}>
@@ -64,9 +60,7 @@ export const InputNumber: React.FC<InputNumberProps> = ({
           {suffix}
         </Text>
       </View>
-
-      <NumberPickerSheet value={value} onClose={handleOnClose} {...props} />
-    </Sheet>
+    </NumberPickerSheet>
   );
 };
 
@@ -113,27 +107,54 @@ const styles = StyleSheet.create({
   },
 });
 
-export interface NumberPickerSheetProps extends Pick<
-  InputNumberProps,
-  'value' | 'onChangeValue' | 'valueSuffix' | 'min' | 'max'
-> {
-  onClose?: () => void;
+export interface NumberPickerSheetProps
+  extends
+    React.PropsWithChildren,
+    Pick<
+      InputNumberProps,
+      'value' | 'onChangeValue' | 'valueSuffix' | 'min' | 'max'
+    > {
+  withoutTrigger?: boolean;
 }
 
 export const NumberPickerSheet: React.FC<NumberPickerSheetProps> = ({
+  children,
+  onChangeValue,
+  withoutTrigger = false,
   ...props
-}) => (
-  <SheetContent enableDynamicSizing={true} snapPoints={[]}>
-    <NumberPickerForm {...props} />
-  </SheetContent>
-);
+}) => {
+  const [openSheet, setOpenSheet] = useState(false);
+
+  const handleOnChange = useCallback<onChangeValueType>(
+    (value) => {
+      if (onChangeValue) {
+        onChangeValue(value);
+        setOpenSheet(false);
+      }
+    },
+    [onChangeValue, setOpenSheet]
+  );
+
+  return (
+    <Sheet open={openSheet} onOpenChange={setOpenSheet}>
+      {withoutTrigger ? (
+        children
+      ) : (
+        <SheetTrigger asChild>{children}</SheetTrigger>
+      )}
+      <SheetContent enableDynamicSizing={true} snapPoints={[]}>
+        <NumberPickerForm onChangeValue={handleOnChange} {...props} />
+      </SheetContent>
+    </Sheet>
+  );
+};
 
 const NumberPickerForm: React.FC<
   Pick<
     NumberPickerSheetProps,
-    'value' | 'onChangeValue' | 'valueSuffix' | 'min' | 'max' | 'onClose'
+    'value' | 'onChangeValue' | 'valueSuffix' | 'min' | 'max'
   >
-> = ({ value, onChangeValue, valueSuffix, min = 0, max = 99, onClose }) => {
+> = ({ value, onChangeValue, valueSuffix, min = 0, max = 99 }) => {
   const form = useForm({
     defaultValues: {
       number: value,
@@ -151,12 +172,8 @@ const NumberPickerForm: React.FC<
   });
 
   const handleSubmit = useCallback(() => {
-    try {
-      form.handleSubmit();
-    } finally {
-      onClose?.();
-    }
-  }, [form, onClose]);
+    form.handleSubmit();
+  }, [form]);
 
   const numberField = useField({
     form,
