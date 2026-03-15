@@ -13,7 +13,6 @@ describe('config-serializer', () => {
       const config: TimerConfig = {
         durationMs: 240_000,
         mode: TimerMode.AMRAP,
-        preparationMs: 10_000,
       };
 
       const result = serializeTimerConfig(config);
@@ -21,7 +20,6 @@ describe('config-serializer', () => {
       expect(result).toStrictEqual({
         durationMs: '240000',
         mode: TimerMode.AMRAP,
-        preparationMs: '10000',
       });
     });
 
@@ -44,7 +42,6 @@ describe('config-serializer', () => {
       const params: TimerRouteParams = {
         durationMs: '240000',
         mode: TimerMode.AMRAP,
-        preparationMs: '10000',
       };
 
       const result = deserializeTimerConfig(params);
@@ -52,7 +49,6 @@ describe('config-serializer', () => {
       expect(result).toStrictEqual({
         durationMs: 240_000,
         mode: TimerMode.AMRAP,
-        preparationMs: 10_000,
       });
     });
 

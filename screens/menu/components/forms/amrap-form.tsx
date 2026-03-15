@@ -9,11 +9,7 @@ import {
   FieldSet,
 } from '@/components/field';
 import { formOptions } from '@tanstack/form-core';
-import {
-  amrapDefaults,
-  amrapSchema,
-  DEFAULT_PREPARATION_MS,
-} from '@/screens/menu/schema';
+import { amrapDefaults, amrapSchema } from '@/screens/menu/schema';
 import type { FormHandle } from '@/screens/menu/schema';
 import { TimerMode } from '@/helpers/timer/factory';
 import type { TimerConfig } from '@/helpers/timer/factory';
@@ -39,7 +35,6 @@ export const AmrapForm = ({ onSubmit, ref }: AmrapFormProps) => {
       const config: TimerConfig = {
         durationMs: value.durationMs,
         mode: TimerMode.AMRAP,
-        preparationMs: DEFAULT_PREPARATION_MS,
       };
       onSubmit(config);
     },

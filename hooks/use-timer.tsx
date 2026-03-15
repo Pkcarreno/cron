@@ -59,7 +59,7 @@ const useTimerInstance = (
   if (!controllerRef.current) {
     controllerRef.current = new TimerController(
       createTimerStrategy(config),
-      config.preparationMs
+      10_000
     );
   }
 

@@ -9,11 +9,7 @@ import {
   FieldSet,
 } from '@/components/field';
 import { formOptions } from '@tanstack/form-core';
-import {
-  intervalDefaults,
-  intervalSchema,
-  DEFAULT_PREPARATION_MS,
-} from '@/screens/menu/schema';
+import { intervalDefaults, intervalSchema } from '@/screens/menu/schema';
 import type { FormHandle } from '@/screens/menu/schema';
 import { TimerMode } from '@/helpers/timer/factory';
 import type { TimerConfig } from '@/helpers/timer/factory';
@@ -40,7 +36,6 @@ export const IntervalForm = ({ onSubmit, ref }: IntervalFormProps) => {
     onSubmit: ({ value }) => {
       const config: TimerConfig = {
         mode: TimerMode.INTERVAL,
-        preparationMs: DEFAULT_PREPARATION_MS,
         restMs: value.restMs,
         totalRounds: value.totalRounds,
         workMs: value.workMs,

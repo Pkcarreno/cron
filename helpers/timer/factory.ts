@@ -45,34 +45,30 @@ export const createTimerStrategy = (config: TimerConfig): TimerStrategy => {
   }
 };
 
-interface BaseTimerConfig {
-  preparationMs: number;
-}
-
-export interface AmrapConfig extends BaseTimerConfig {
+export interface AmrapConfig {
   mode: TimerMode.AMRAP;
   durationMs: number;
 }
 
-export interface ForTimeConfig extends BaseTimerConfig {
+export interface ForTimeConfig {
   mode: TimerMode.FOR_TIME;
   timecapMs: number;
 }
 
-export interface EmomConfig extends BaseTimerConfig {
+export interface EmomConfig {
   mode: TimerMode.EMOM;
   roundDurationMs: number;
   totalRounds: number;
 }
 
-export interface IntervalConfig extends BaseTimerConfig {
+export interface IntervalConfig {
   mode: TimerMode.INTERVAL;
   workMs: number;
   restMs: number;
   totalRounds: number;
 }
 
-export interface StopWatchConfig extends BaseTimerConfig {
+export interface StopWatchConfig {
   mode: TimerMode.STOP_WATCH;
 }
 

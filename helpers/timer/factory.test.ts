@@ -8,13 +8,10 @@ import { UpStrategy } from '@/helpers/timer/strategies/up-strategy';
 import { StopwatchStrategy } from '@/helpers/timer/strategies/stopwatch-strategy';
 
 describe('timerFactory', () => {
-  const DEFAULT_PREPARATION_MS = 10_000;
-
   it('creates DownStrategy when mode is AMRAP', () => {
     const config: TimerConfig = {
       durationMs: 600_000,
       mode: TimerMode.AMRAP,
-      preparationMs: DEFAULT_PREPARATION_MS,
     };
 
     const strategy = createTimerStrategy(config);
@@ -25,7 +22,6 @@ describe('timerFactory', () => {
   it('creates UpStrategy when mode is FOR_TIME', () => {
     const config: TimerConfig = {
       mode: TimerMode.FOR_TIME,
-      preparationMs: DEFAULT_PREPARATION_MS,
       timecapMs: 1_200_000,
     };
 
@@ -37,7 +33,6 @@ describe('timerFactory', () => {
   it('creates RoundStrategy when mode is EMOM', () => {
     const config: TimerConfig = {
       mode: TimerMode.EMOM,
-      preparationMs: DEFAULT_PREPARATION_MS,
       roundDurationMs: 600_000,
       totalRounds: 10,
     };
@@ -50,7 +45,6 @@ describe('timerFactory', () => {
   it('creates IntervalStrategy when mode is INTERVAL', () => {
     const config: TimerConfig = {
       mode: TimerMode.INTERVAL,
-      preparationMs: DEFAULT_PREPARATION_MS,
       restMs: 30_000,
       totalRounds: 4,
       workMs: 30_000,
@@ -64,7 +58,6 @@ describe('timerFactory', () => {
   it('creates StopWatchStrategy when mode is STOP_WATCH', () => {
     const config: TimerConfig = {
       mode: TimerMode.STOP_WATCH,
-      preparationMs: DEFAULT_PREPARATION_MS,
     };
 
     const strategy = createTimerStrategy(config);
@@ -75,7 +68,6 @@ describe('timerFactory', () => {
   it('throws error when wrong mode is inserted', () => {
     const config = {
       mode: 'demo',
-      preparationMs: DEFAULT_PREPARATION_MS,
       totalRounds: 4,
     };
 

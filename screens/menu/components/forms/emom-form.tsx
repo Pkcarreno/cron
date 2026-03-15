@@ -9,11 +9,7 @@ import {
   FieldSet,
 } from '@/components/field';
 import { formOptions } from '@tanstack/form-core';
-import {
-  emomDefaults,
-  emomSchema,
-  DEFAULT_PREPARATION_MS,
-} from '@/screens/menu/schema';
+import { emomDefaults, emomSchema } from '@/screens/menu/schema';
 import type { FormHandle } from '@/screens/menu/schema';
 import { TimerMode } from '@/helpers/timer/factory';
 import type { TimerConfig } from '@/helpers/timer/factory';
@@ -40,7 +36,6 @@ export const EmomForm = ({ onSubmit, ref }: EmomFormProps) => {
     onSubmit: ({ value }) => {
       const config: TimerConfig = {
         mode: TimerMode.EMOM,
-        preparationMs: DEFAULT_PREPARATION_MS,
         roundDurationMs: value.roundDurationMs,
         totalRounds: value.totalRounds,
       };

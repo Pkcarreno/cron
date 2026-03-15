@@ -9,11 +9,7 @@ import {
   FieldSet,
 } from '@/components/field';
 import { formOptions } from '@tanstack/form-core';
-import {
-  forTimeDefaults,
-  forTimeSchema,
-  DEFAULT_PREPARATION_MS,
-} from '@/screens/menu/schema';
+import { forTimeDefaults, forTimeSchema } from '@/screens/menu/schema';
 import type { FormHandle } from '@/screens/menu/schema';
 import { TimerMode } from '@/helpers/timer/factory';
 import type { TimerConfig } from '@/helpers/timer/factory';
@@ -38,7 +34,6 @@ export const ForTimeForm = ({ onSubmit, ref }: ForTimeFormProps) => {
     onSubmit: ({ value }) => {
       const config: TimerConfig = {
         mode: TimerMode.FOR_TIME,
-        preparationMs: DEFAULT_PREPARATION_MS,
         timecapMs: value.timecapMs,
       };
       onSubmit(config);
