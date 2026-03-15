@@ -13,7 +13,7 @@ import { SlidersIcon } from 'phosphor-react-native';
 
 export const Menu = () => {
   const [currentMode, setCurrentMode] = useState<TimerMode>(TIMER_MODES[0]);
-  const { pages, startTimer } = useTimerForms(false);
+  const { pages, startTimer } = useTimerForms();
 
   const handleStart = useCallback(
     () => startTimer(currentMode),
