@@ -26,6 +26,14 @@ export default function RootLayout() {
             screenOptions={{
               contentStyle: styles.contentStyle,
               headerShown: false,
+              headerStyle: {
+                backgroundColor: colors.neutral[950],
+              },
+              headerTintColor: colors.neutral[400],
+              headerTitleStyle: {
+                fontFamily: 'Geist',
+                fontWeight: '600',
+              },
             }}
           />
 
