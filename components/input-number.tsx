@@ -7,6 +7,7 @@ import Button from './button';
 import InputThumbwheel from './input-thumbwheel';
 import { z } from 'zod';
 import { useField, useForm } from '@tanstack/react-form';
+import type { TriggerRenderProp } from './sheet';
 import { Sheet, SheetContent, SheetTrigger } from './sheet';
 
 type onChangeValueType = (value: number) => void;
@@ -42,19 +43,25 @@ export const InputNumber: React.FC<InputNumberProps> = ({
     <NumberPickerSheet value={value} withoutTrigger {...props}>
       <View style={styles.container}>
         <SheetTrigger asChild>
-          <Pressable style={pressableStyles} disabled={!editable}>
-            <View style={styles.valueWrapper}>
-              <Text
-                color="white"
-                weight="700"
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                style={styles.value}
-              >
-                {renderValue}
-              </Text>
-            </View>
-          </Pressable>
+          {(triggerProps) => (
+            <Pressable
+              style={pressableStyles}
+              disabled={!editable}
+              {...triggerProps}
+            >
+              <View style={styles.valueWrapper}>
+                <Text
+                  color="white"
+                  weight="700"
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  style={styles.value}
+                >
+                  {renderValue}
+                </Text>
+              </View>
+            </Pressable>
+          )}
         </SheetTrigger>
         <Text style={styles.suffix} size={16} colorSubtone="500" weight="300">
           {suffix}
@@ -107,20 +114,25 @@ const styles = StyleSheet.create({
   },
 });
 
-export interface NumberPickerSheetProps
-  extends
-    React.PropsWithChildren,
-    Pick<
-      InputNumberProps,
-      'value' | 'onChangeValue' | 'valueSuffix' | 'min' | 'max'
-    > {
-  withoutTrigger?: boolean;
-}
+type NumberPickerSheetBaseProps = Pick<
+  InputNumberProps,
+  'value' | 'onChangeValue' | 'valueSuffix' | 'min' | 'max'
+>;
+
+export type NumberPickerSheetProps = NumberPickerSheetBaseProps &
+  (
+    | {
+        withoutTrigger?: false | undefined;
+        children: TriggerRenderProp;
+      }
+    | {
+        withoutTrigger: true;
+        children?: React.ReactNode;
+      }
+  );
 
 export const NumberPickerSheet: React.FC<NumberPickerSheetProps> = ({
-  children,
   onChangeValue,
-  withoutTrigger = false,
   ...props
 }) => {
   const [openSheet, setOpenSheet] = useState(false);
@@ -129,18 +141,19 @@ export const NumberPickerSheet: React.FC<NumberPickerSheetProps> = ({
     (value) => {
       if (onChangeValue) {
         onChangeValue(value);
-        setOpenSheet(false);
+        console.log('onChangeValue', value);
       }
+      setOpenSheet(false);
     },
     [onChangeValue, setOpenSheet]
   );
 
   return (
     <Sheet open={openSheet} onOpenChange={setOpenSheet}>
-      {withoutTrigger ? (
-        children
+      {props.withoutTrigger ? (
+        props.children
       ) : (
-        <SheetTrigger asChild>{children}</SheetTrigger>
+        <SheetTrigger asChild>{props.children}</SheetTrigger>
       )}
       <SheetContent enableDynamicSizing={true} snapPoints={[]}>
         <NumberPickerForm onChangeValue={handleOnChange} {...props} />

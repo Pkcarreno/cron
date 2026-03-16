@@ -107,9 +107,21 @@ export const Sheet: React.FC<SheetProps> = ({
   );
 };
 
-export interface SheetTriggerProps extends PressableProps {
-  asChild?: boolean;
-}
+export type TriggerRenderProp = (props: {
+  onPress: (e: GestureResponderEvent) => void;
+}) => React.ReactNode;
+
+export type SheetTriggerProps = Omit<PressableProps, 'children'> &
+  (
+    | {
+        asChild?: false | undefined;
+        children: React.ReactNode;
+      }
+    | {
+        asChild: true;
+        children: TriggerRenderProp;
+      }
+  );
 
 export const SheetTrigger: React.FC<SheetTriggerProps> = ({
   children,
@@ -129,26 +141,13 @@ export const SheetTrigger: React.FC<SheetTriggerProps> = ({
     [setOpen, onPress]
   );
 
-  if (asChild && React.isValidElement(children)) {
-    const child = React.Children.only(
-      children
-    ) as React.ReactElement<PressableProps>;
-
-    return React.cloneElement(child, {
-      ...props,
-      ...child.props,
-      onPress: (e: GestureResponderEvent) => {
-        handlePress(e);
-        if (child.props && typeof child.props.onPress === 'function') {
-          child.props.onPress(e);
-        }
-      },
-    });
+  if (asChild && typeof children === 'function') {
+    return children({ ...props, onPress: handlePress });
   }
 
   return (
     <Pressable onPress={handlePress} {...props}>
-      {children}
+      {children as React.ReactNode}
     </Pressable>
   );
 };

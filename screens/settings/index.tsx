@@ -56,12 +56,14 @@ export const Settings = () => {
               valueSuffix="sec"
               onChangeValue={handlePreparationTimeChange}
             >
-              <MenuPressableItem>
-                <MenuItemText>Preparation</MenuItemText>
-                <MenuItemText colorSubtone="400">
-                  {formatDuration(preparationTimeMs)}
-                </MenuItemText>
-              </MenuPressableItem>
+              {(triggerProps) => (
+                <MenuPressableItem {...triggerProps}>
+                  <MenuItemText>Preparation</MenuItemText>
+                  <MenuItemText colorSubtone="400">
+                    {formatDuration(preparationTimeMs)}
+                  </MenuItemText>
+                </MenuPressableItem>
+              )}
             </NumberPickerSheet>
           </MenuGroup>
         </Menu>
