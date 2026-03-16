@@ -17,6 +17,7 @@
     "build:development:android:local": "eas build --profile development --platform android --local",
     "build:preview:android:local": "eas build --profile preview --platform android --local",
     "build:production:android:local": "eas build --profile production --platform android --local",
+    "nuke": "rm -rf ./node_modules && rm -rf ./ios && rm -rf ./android",
     "preinstall": "npx only-allow pnpm",
     "prepare": "lefthook install"
   },
