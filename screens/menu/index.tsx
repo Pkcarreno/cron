@@ -22,12 +22,7 @@ export const Menu = () => {
   );
 
   return (
-    <View
-      style={[
-        styles.container,
-        { paddingBottom: inset.bottom, paddingTop: inset.top },
-      ]}
-    >
+    <View style={[styles.container, { paddingTop: inset.top }]}>
       <View style={styles.header}>
         <Text weight="700" color="white" size={48}>
           Cron
@@ -43,7 +38,7 @@ export const Menu = () => {
           onValueChange={setCurrentMode}
           options={pages}
         >
-          <View style={styles.footer}>
+          <View style={[styles.footer, { paddingBottom: inset.bottom + 12 }]}>
             <Link href="/settings" asChild>
               <Button size="icon" icon={SlidersIcon} variant="ghost" />
             </Link>
@@ -75,7 +70,6 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     gap: 8,
-    paddingBottom: 12,
     paddingHorizontal: 20,
     paddingTop: 16,
   },
