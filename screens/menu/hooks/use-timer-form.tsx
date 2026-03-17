@@ -12,7 +12,7 @@ import type { FormHandle } from '@/screens/menu/schema';
 import { TIMER_MODES } from '@/screens/menu/schema';
 import { serializeTimerConfig } from '@/helpers/timer/utils/config-serializer';
 import { useAtom } from 'jotai/react';
-import { isRawTimerAtom } from '@/stores/settings';
+import { isRawTimerEnabledAtom } from '@/stores/settings';
 
 const FORM_COMPONENTS = {
   [TimerMode.FOR_TIME]: ForTimeForm,
@@ -24,7 +24,7 @@ const FORM_COMPONENTS = {
 
 export const useTimerForms = () => {
   const router = useRouter();
-  const [isRawTimer] = useAtom(isRawTimerAtom);
+  const [isRawTimerEnabled] = useAtom(isRawTimerEnabledAtom);
 
   const formRefs = useRef(
     new Map(TIMER_MODES.map((mode) => [mode, createRef<FormHandle>()]))
@@ -34,10 +34,10 @@ export const useTimerForms = () => {
     (config: TimerConfig) => {
       router.push({
         params: serializeTimerConfig(config),
-        pathname: isRawTimer ? '/timer/inspector' : '/timer',
+        pathname: isRawTimerEnabled ? '/timer/inspector' : '/timer',
       });
     },
-    [isRawTimer, router]
+    [isRawTimerEnabled, router]
   );
 
   const pages = useMemo<FormTabOption<TimerMode>[]>(

@@ -1,7 +1,7 @@
 import { atomWithMMKV } from './storage';
 
-export const isRawTimerAtom = atomWithMMKV<boolean>(
-  'settings.isRawTimer',
+export const isRawTimerEnabledAtom = atomWithMMKV<boolean>(
+  'settings.isRawTimerEnabled',
   false
 );
 

@@ -12,7 +12,10 @@ import { Text } from '@/components/text';
 import Env from '@/env';
 import { colors } from '@/helpers/colors';
 import { formatDuration } from '@/helpers/timer/utils/formatter';
-import { isRawTimerAtom, preparationTimeMsAtom } from '@/stores/settings';
+import {
+  isRawTimerEnabledAtom,
+  preparationTimeMsAtom,
+} from '@/stores/settings';
 import { Link, Stack } from 'expo-router';
 import { useAtom } from 'jotai/react';
 import { CaretRightIcon } from 'phosphor-react-native';
@@ -20,7 +23,9 @@ import { useCallback } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 export const Settings = () => {
-  const [isRawTimer, setIsRawTimer] = useAtom(isRawTimerAtom);
+  const [isRawTimerEnabled, setIsRawTimerEnabled] = useAtom(
+    isRawTimerEnabledAtom
+  );
   const [preparationTimeMs, setPreparationTimeMs] = useAtom(
     preparationTimeMsAtom
   );
@@ -99,7 +104,10 @@ export const Settings = () => {
           <MenuGroup>
             <MenuItem>
               <MenuItemText>Enable Raw Timer</MenuItemText>
-              <Switch checked={isRawTimer} onCheckedChange={setIsRawTimer} />
+              <Switch
+                checked={isRawTimerEnabled}
+                onCheckedChange={setIsRawTimerEnabled}
+              />
             </MenuItem>
           </MenuGroup>
         </Menu>
