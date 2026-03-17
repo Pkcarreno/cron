@@ -28,7 +28,7 @@ type triggerHapticType =
     };
 
 export const triggerHaptic = (config: triggerHapticType) => {
-  if (store.get(hasHapticEnabledAtom)) {
+  if (!store.get(hasHapticEnabledAtom)) {
     return;
   }
 
@@ -58,7 +58,7 @@ export const triggerAndroidHaptic = (
   type: Haptics.AndroidHaptics,
   fallback?: triggerHapticType
 ) => {
-  if (store.get(hasHapticEnabledAtom)) {
+  if (!store.get(hasHapticEnabledAtom)) {
     return;
   }
 

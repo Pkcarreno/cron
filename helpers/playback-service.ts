@@ -93,7 +93,7 @@ const executeTone = async (
 };
 
 export const playTone = async (frequencyHz: number, durationMs: number) => {
-  if (store.get(isSoundEnabledAtom)) {
+  if (!store.get(isSoundEnabledAtom)) {
     return;
   }
 
@@ -102,7 +102,7 @@ export const playTone = async (frequencyHz: number, durationMs: number) => {
 };
 
 export const playToneSequence = async (steps: ToneSequenceStep[]) => {
-  if (store.get(isSoundEnabledAtom)) {
+  if (!store.get(isSoundEnabledAtom)) {
     return;
   }
 
