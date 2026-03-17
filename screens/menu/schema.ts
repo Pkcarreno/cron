@@ -61,7 +61,6 @@ export type StopWatchFormValues = z.infer<typeof stopWatchSchema>;
 export interface FormHandle {
   submit: () => void;
 }
-export const DEFAULT_PREPARATION_MS = 10 * 1000;
 
 export const TIMER_MODES = [
   TimerMode.FOR_TIME,
