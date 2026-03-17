@@ -32,7 +32,7 @@ export const stopWatchSchema = z.object({}) satisfies z.ZodType<
 >;
 
 export const emomDefaults: z.infer<typeof emomSchema> = {
-  roundDurationMs: 45 * 1000,
+  roundDurationMs: 60 * 1000,
   totalRounds: 3,
 };
 
