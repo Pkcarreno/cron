@@ -1,3 +1,5 @@
+import { hasHapticEnabledAtom } from '@/stores/settings';
+import { store } from '@/stores/storage';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 
@@ -26,6 +28,10 @@ type triggerHapticType =
     };
 
 export const triggerHaptic = (config: triggerHapticType) => {
+  if (store.get(hasHapticEnabledAtom)) {
+    return;
+  }
+
   switch (config.type) {
     case triggerType.Impact: {
       Haptics.impactAsync(config.mode);
@@ -52,6 +58,10 @@ export const triggerAndroidHaptic = (
   type: Haptics.AndroidHaptics,
   fallback?: triggerHapticType
 ) => {
+  if (store.get(hasHapticEnabledAtom)) {
+    return;
+  }
+
   if (isCompatibleAndroid) {
     Haptics.performAndroidHapticsAsync(type);
   } else if (fallback) {

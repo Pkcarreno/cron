@@ -1,3 +1,5 @@
+import { isSoundEnabledAtom } from '@/stores/settings';
+import { store } from '@/stores/storage';
 import type { OscillatorNode } from 'react-native-audio-api';
 import { AudioContext } from 'react-native-audio-api';
 
@@ -91,11 +93,19 @@ const executeTone = async (
 };
 
 export const playTone = async (frequencyHz: number, durationMs: number) => {
+  if (store.get(isSoundEnabledAtom)) {
+    return;
+  }
+
   stopAudio();
   await executeTone(frequencyHz, durationMs, playbackToken);
 };
 
 export const playToneSequence = async (steps: ToneSequenceStep[]) => {
+  if (store.get(isSoundEnabledAtom)) {
+    return;
+  }
+
   stopAudio();
   const token = playbackToken;
 
