@@ -25,10 +25,15 @@ const forTimeFormOpts = formOptions({
 
 interface ForTimeFormProps {
   ref?: Ref<FormHandle>;
+  paddingBottom: number;
   onSubmit: (config: TimerConfig) => void;
 }
 
-export const ForTimeForm = ({ onSubmit, ref }: ForTimeFormProps) => {
+export const ForTimeForm = ({
+  onSubmit,
+  paddingBottom,
+  ref,
+}: ForTimeFormProps) => {
   const form = useAppForm({
     ...forTimeFormOpts,
     onSubmit: ({ value }) => {
@@ -47,7 +52,10 @@ export const ForTimeForm = ({ onSubmit, ref }: ForTimeFormProps) => {
   }));
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false}>
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom }}
+    >
       <FieldSet>
         <FieldGroup>
           <form.AppField name="timecapMs">

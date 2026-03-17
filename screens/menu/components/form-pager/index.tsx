@@ -1,5 +1,11 @@
-import React, { useEffect, useRef, useMemo } from 'react';
-import type { NativeSyntheticEvent } from 'react-native';
+import React, {
+  useEffect,
+  useRef,
+  useMemo,
+  useState,
+  useCallback,
+} from 'react';
+import type { LayoutChangeEvent, NativeSyntheticEvent } from 'react-native';
 import { View, StyleSheet } from 'react-native';
 import type { PagerViewOnPageScrollEventData } from 'react-native-pager-view';
 import PagerView from 'react-native-pager-view';
@@ -33,10 +39,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/dropdown-menu';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const AnimatedPagerView = createAnimatedComponent(PagerView);
 
-interface FormPagerProps<T extends string> {
+interface FormPagerProps<T extends string> extends React.PropsWithChildren {
   options: FormTabOption<T>[];
   value?: T;
   onValueChange?: (value: T) => void;
@@ -46,6 +53,7 @@ export const FormPager = <T extends string>({
   value,
   onValueChange,
   options,
+  children,
 }: FormPagerProps<T>) => {
   const {
     pagerRef,
@@ -65,6 +73,16 @@ export const FormPager = <T extends string>({
     handleOnPressDropdownMenuItem,
     handleOnDropdownStateChange,
   } = useFormPager(options, value, onValueChange);
+
+  const [footerHeight, setFooterHeight] = useState(0);
+
+  const handleFooterMeasuraOnLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      const { height } = event.nativeEvent.layout;
+      setFooterHeight(height);
+    },
+    []
+  );
 
   const propIndex = useMemo(() => {
     if (value) {
@@ -232,10 +250,26 @@ export const FormPager = <T extends string>({
       >
         {options.map((option) => (
           <View key={`page-${option.value || 'undef'}`} style={styles.page}>
-            {option.content}
+            {typeof option.content === 'function'
+              ? option.content({ bottom: footerHeight + 12 })
+              : option.content}
           </View>
         ))}
       </AnimatedPagerView>
+
+      <LinearGradient
+        onLayout={handleFooterMeasuraOnLayout}
+        style={styles.footer}
+        colors={[
+          'transparent',
+          'rgba(0, 0, 0, 0.6)',
+          'rgba(0, 0, 0, 0.8)',
+          'black',
+        ]}
+        locations={[0, 0.08, 0.16, 1]}
+      >
+        {children}
+      </LinearGradient>
     </View>
   );
 };
@@ -244,6 +278,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     gap: 12,
+  },
+  footer: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
   },
   page: {
     flex: 1,

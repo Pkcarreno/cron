@@ -25,10 +25,11 @@ const amrapFormOpts = formOptions({
 
 interface AmrapFormProps {
   ref?: Ref<FormHandle>;
+  paddingBottom: number;
   onSubmit: (config: TimerConfig) => void;
 }
 
-export const AmrapForm = ({ onSubmit, ref }: AmrapFormProps) => {
+export const AmrapForm = ({ onSubmit, paddingBottom, ref }: AmrapFormProps) => {
   const form = useAppForm({
     ...amrapFormOpts,
     onSubmit: ({ value }) => {
@@ -47,7 +48,10 @@ export const AmrapForm = ({ onSubmit, ref }: AmrapFormProps) => {
   }));
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false}>
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom }}
+    >
       <FieldSet>
         <FieldGroup>
           <form.AppField name="durationMs">

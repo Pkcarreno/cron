@@ -27,10 +27,15 @@ const intervalFormOpts = formOptions({
 
 interface IntervalFormProps {
   ref?: Ref<FormHandle>;
+  paddingBottom: number;
   onSubmit: (config: TimerConfig) => void;
 }
 
-export const IntervalForm = ({ onSubmit, ref }: IntervalFormProps) => {
+export const IntervalForm = ({
+  onSubmit,
+  paddingBottom,
+  ref,
+}: IntervalFormProps) => {
   const form = useAppForm({
     ...intervalFormOpts,
     onSubmit: ({ value }) => {
@@ -60,7 +65,10 @@ export const IntervalForm = ({ onSubmit, ref }: IntervalFormProps) => {
   );
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false}>
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom }}
+    >
       <FieldSet>
         <FieldGroup>
           <Field>

@@ -45,9 +45,10 @@ export const useTimerForms = () => {
       TIMER_MODES.map((mode) => {
         const FormComponent = FORM_COMPONENTS[mode];
         return {
-          content: (
+          content: (inset) => (
             <FormComponent
               ref={formRefs.current.get(mode)}
+              paddingBottom={inset.bottom}
               onSubmit={handleSubmitConfig}
             />
           ),

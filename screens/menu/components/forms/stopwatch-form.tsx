@@ -8,10 +8,15 @@ import { Text } from '@/components/text';
 
 interface StopWatchFormProps {
   ref?: Ref<FormHandle>;
+  paddingBottom: number;
   onSubmit: (config: TimerConfig) => void;
 }
 
-export const StopWatchForm = ({ onSubmit, ref }: StopWatchFormProps) => {
+export const StopWatchForm = ({
+  onSubmit,
+  paddingBottom,
+  ref,
+}: StopWatchFormProps) => {
   useImperativeHandle(ref, () => ({
     submit: () => {
       const config: TimerConfig = {
@@ -25,7 +30,7 @@ export const StopWatchForm = ({ onSubmit, ref }: StopWatchFormProps) => {
     <ScrollView
       showsVerticalScrollIndicator={false}
       style={styles.container}
-      contentContainerStyle={styles.contentContainer}
+      contentContainerStyle={[styles.contentContainer, { paddingBottom }]}
     >
       <View style={styles.contentWrapper}>
         <View style={styles.header}>

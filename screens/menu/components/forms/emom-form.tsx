@@ -27,10 +27,11 @@ const emomFormOpts = formOptions({
 
 interface EmomFormProps {
   ref?: Ref<FormHandle>;
+  paddingBottom: number;
   onSubmit: (config: TimerConfig) => void;
 }
 
-export const EmomForm = ({ onSubmit, ref }: EmomFormProps) => {
+export const EmomForm = ({ onSubmit, paddingBottom, ref }: EmomFormProps) => {
   const form = useAppForm({
     ...emomFormOpts,
     onSubmit: ({ value }) => {
@@ -58,7 +59,10 @@ export const EmomForm = ({ onSubmit, ref }: EmomFormProps) => {
   );
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false}>
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom }}
+    >
       <FieldSet>
         <FieldGroup>
           <Field>
