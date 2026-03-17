@@ -141,7 +141,6 @@ export const NumberPickerSheet: React.FC<NumberPickerSheetProps> = ({
     (value) => {
       if (onChangeValue) {
         onChangeValue(value);
-        console.log('onChangeValue', value);
       }
       setOpenSheet(false);
     },
