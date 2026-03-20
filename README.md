@@ -5,14 +5,12 @@ HIIT timer app.
 Features:
 
 - Timers:
-  - FOR TIME
-  - AMRAP
-  - EMOM (rounds)
-  - INTERVALS
-  - STOP WATCH
-- No ads
-- Easy to read
-- Checkpoint logs (AMRAP & STOP WATCH)
+  - FOR TIME: countdown to beat a target time
+  - AMRAP: tracks rounds in a fixed time window
+  - EMOM: rounds with a configurable interval duration
+  - INTERVALS: alternating work/rest rounds
+  - STOP WATCH: open-ended with checkpoint logging
+- Big numbers, easy-to-read timer face
 
 ## usage
 
