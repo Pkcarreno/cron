@@ -35,14 +35,15 @@ jobs:
 
       - name: Bump version, push branch and create PR
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           BRANCH_NAME="release/${{ github.event.inputs.release-type }}-${{ github.run_id }}"
           git checkout -b $BRANCH_NAME
           pnpm version ${{ github.event.inputs.release-type }} -m "chore(release): %s"
+          NEW_VERSION=$(node -p "require('./package.json').version")
           git push origin $BRANCH_NAME --follow-tags
           gh pr create \
             --base master \
             --head $BRANCH_NAME \
-            --title "chore(release): bump ${{ github.event.inputs.release-type }} version" \
-            --body "Automated PR to update the application version."
+            --title "chore(release): bump version to v$NEW_VERSION" \
+            --body "Automated PR to update the application version to v$NEW_VERSION."
