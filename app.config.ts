@@ -97,6 +97,7 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
     package: Env.EXPO_PUBLIC_PACKAGE,
     permissions: ['android.permission.VIBRATE'],
     predictiveBackGestureEnabled: false,
+    versionCode: Env.EXPO_PUBLIC_BUILD_NUMBER,
   },
   backgroundColor: '#000000',
   description: 'Hiit Timer App',
@@ -111,6 +112,7 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
   icon: appIconsData.icon,
   ios: {
     backgroundColor: '#000000',
+    buildNumber: Env.EXPO_PUBLIC_BUILD_NUMBER.toString(),
     bundleIdentifier: Env.EXPO_PUBLIC_BUNDLE_ID,
     icon: appIconsData.ios.icon,
     supportsTablet: true,

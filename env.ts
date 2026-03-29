@@ -5,6 +5,7 @@ import packageJSON from './package.json';
 // Single unified environment schema
 const envSchema = z.object({
   EXPO_PUBLIC_APP_ENV: z.enum(['development', 'preview', 'production']),
+  EXPO_PUBLIC_BUILD_NUMBER: z.number(),
   EXPO_PUBLIC_BUNDLE_ID: z.string(),
   EXPO_PUBLIC_NAME: z.string(),
   EXPO_PUBLIC_PACKAGE: z.string(),
@@ -46,6 +47,9 @@ const STRICT_ENV_VALIDATION = process.env.STRICT_ENV_VALIDATION === '1';
 // Build env object
 const _env: z.infer<typeof envSchema> = {
   EXPO_PUBLIC_APP_ENV,
+  EXPO_PUBLIC_BUILD_NUMBER: process.env.GITHUB_RUN_NUMBER
+    ? Number.parseInt(process.env.GITHUB_RUN_NUMBER, 10)
+    : 1,
   EXPO_PUBLIC_BUNDLE_ID: BUNDLE_IDS[EXPO_PUBLIC_APP_ENV],
   EXPO_PUBLIC_NAME: NAME[EXPO_PUBLIC_APP_ENV],
   EXPO_PUBLIC_PACKAGE: PACKAGES[EXPO_PUBLIC_APP_ENV],
