@@ -136,6 +136,12 @@ export const Timer = () => {
         };
       }
 
+      case TimerMode.EMOM: {
+        return {
+          value: currentRound,
+        };
+      }
+
       default: {
         return {
           value: undefined,

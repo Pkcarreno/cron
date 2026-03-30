@@ -94,9 +94,13 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
       foregroundImage: './assets/adaptive-icon.png',
     },
     backgroundColor: '#000000',
+    blockedPermissions:
+      Env.EXPO_PUBLIC_APP_ENV === 'development'
+        ? []
+        : ['android.permission.INTERNET'],
     package: Env.EXPO_PUBLIC_PACKAGE,
     permissions: ['android.permission.VIBRATE'],
-    predictiveBackGestureEnabled: false,
+    predictiveBackGestureEnabled: true,
     versionCode: Env.EXPO_PUBLIC_BUILD_NUMBER,
   },
   backgroundColor: '#000000',

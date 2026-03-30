@@ -52,20 +52,16 @@ jobs:
           VERSION=$(jq -r '.version' package.json)
           echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
 
-      - name: Build AAB
-        env:
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
-        run: eas build --platform android --profile production-store --local --output build.aab --non-interactive
+      # - name: Build AAB
+      #   run: eas build --platform android --profile production-store --local --output build.aab --non-interactive
 
       # - name: Submit to Play Store
       #   run: eas submit --platform android --path build.aab --profile production --non-interactive
 
-      - name: Clear Metro cache
-        run: rm -rf ${TMPDIR:-/tmp}/metro-cache
+      # - name: Clear Metro cache
+      #   run: rm -rf ${TMPDIR:-/tmp}/metro-cache
 
       - name: Build APK
-        env:
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
         run: eas build --platform android --profile production-apk --local --output cron-v${{ env.APP_VERSION }}.apk --non-interactive
 
       - name: Create GitHub Release

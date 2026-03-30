@@ -18,7 +18,11 @@ Features:
 
 ### installation
 
-_Work In Progress_
+[<img src="https://github.com/NeoApplications/Neo-Backup/blob/129b3fbe588690ebe5b0fdb17a65233a20251c74/badge_github.png?raw=true"
+    alt="Get it on GitHub"
+    height="80">](https://github.com/Pkcarreno/cron/releases) [<img src="https://github.com/ImranR98/Obtainium/blob/49b42f6796d1bccc5bc948756b7cac9bb8a6c47b/assets/graphics/badge_obtainium.png?raw=true"
+     alt="Get it on Obtainium"
+     height="80">](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/Pkcarreno/cron)
 
 ### workflow
 
