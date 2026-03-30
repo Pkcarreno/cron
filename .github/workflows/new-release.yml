@@ -53,8 +53,6 @@ jobs:
           echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
 
       # - name: Build AAB
-      #   env:
-      #     GITHUB_RUN_NUMBER: ${{ github.run_number }}
       #   run: eas build --platform android --profile production-store --local --output build.aab --non-interactive
 
       # - name: Submit to Play Store
@@ -64,8 +62,6 @@ jobs:
       #   run: rm -rf ${TMPDIR:-/tmp}/metro-cache
 
       - name: Build APK
-        env:
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
         run: eas build --platform android --profile production-apk --local --output cron-v${{ env.APP_VERSION }}.apk --non-interactive
 
       - name: Create GitHub Release
