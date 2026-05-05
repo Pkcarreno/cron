@@ -1,4 +1,11 @@
-import { describe, beforeEach, afterEach, expect, it } from "@jest/globals";
+import {
+  describe,
+  beforeEach,
+  afterEach,
+  expect,
+  it,
+  jest,
+} from "@jest/globals";
 
 import { TickEngine } from "@/helpers/timer/tick-engine";
 
@@ -33,10 +40,12 @@ describe("tickEngine", () => {
 
     expect(mockTickCallback).toHaveBeenCalledTimes(51);
 
-    const [lastEventPayload] = mockTickCallback.mock.lastCall;
-
-    expect(lastEventPayload.deltaMs).toBe(1);
-    expect(lastEventPayload.totalElapsedMs).toBe(50);
+    expect(mockTickCallback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deltaMs: 1,
+        totalElapsedMs: 50,
+      })
+    );
   });
 
   it("stops emitting ticks after pause is called", () => {
@@ -63,9 +72,11 @@ describe("tickEngine", () => {
     engine.start();
     jest.advanceTimersByTime(50);
 
-    const [lastEventPayload] = mockTickCallback.mock.lastCall;
-
-    expect(lastEventPayload.totalElapsedMs).toBe(150);
+    expect(mockTickCallback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        totalElapsedMs: 150,
+      })
+    );
   });
 
   it("resets total elapsed time back to zero", () => {
@@ -76,8 +87,10 @@ describe("tickEngine", () => {
     engine.start();
     jest.advanceTimersByTime(50);
 
-    const [lastEventPayload] = mockTickCallback.mock.lastCall;
-
-    expect(lastEventPayload.totalElapsedMs).toBe(50);
+    expect(mockTickCallback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        totalElapsedMs: 50,
+      })
+    );
   });
 });

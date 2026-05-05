@@ -1,3 +1,12 @@
+import {
+  describe,
+  expect,
+  it,
+  beforeEach,
+  afterEach,
+  jest,
+} from "@jest/globals";
+
 import { TimerController, TimerEventType } from "@/helpers/timer/controller";
 import { UpStrategy } from "@/helpers/timer/strategies/up-strategy";
 import { TimerPhase } from "@/helpers/timer/strategy";
@@ -41,9 +50,12 @@ describe("timerController", () => {
 
       expect(tickSpy).toHaveBeenCalledTimes(101);
 
-      const [statePayload] = tickSpy.mock.lastCall;
-      expect(statePayload).toHaveProperty("displayTimeMs");
-      expect(statePayload).toHaveProperty("phase");
+      expect(tickSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          displayTimeMs: expect.any(Number),
+          phase: TimerPhase.WORK,
+        })
+      );
     });
   });
 
@@ -125,38 +137,50 @@ describe("timerController", () => {
       controller.start();
 
       jest.advanceTimersByTime(10);
-      let [currentState] = tickSpy.mock.lastCall;
 
-      expect(currentState.phase).toBe(TimerPhase.WORK);
-      expect(currentState.currentRound).toBe(1);
+      expect(tickSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          currentRound: 1,
+          phase: TimerPhase.WORK,
+        })
+      );
 
       // advance to complete the first work phase, now time is 2000ms
       jest.advanceTimersByTime(1990);
-      [currentState] = tickSpy.mock.lastCall;
 
-      expect(currentState.phase).toBe(TimerPhase.REST);
-      expect(currentState.currentRound).toBe(1);
+      expect(tickSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          currentRound: 1,
+          phase: TimerPhase.REST,
+        })
+      );
       expect(phaseChangeSpy).toHaveBeenCalledTimes(1);
       expect(roundChangeSpy).not.toHaveBeenCalled();
 
       // advance to complete the first rest phase, now time is 3000ms
       jest.advanceTimersByTime(1000);
-      [currentState] = tickSpy.mock.lastCall;
 
-      expect(currentState.phase).toBe(TimerPhase.WORK);
-      expect(currentState.currentRound).toBe(2);
+      expect(tickSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          currentRound: 2,
+          phase: TimerPhase.WORK,
+        })
+      );
       expect(phaseChangeSpy).toHaveBeenCalledTimes(2);
       expect(roundChangeSpy).toHaveBeenCalledWith(2);
 
       // advance to complete the last rest phase, now time is 9000ms
       jest.advanceTimersByTime(6000);
-      [currentState] = tickSpy.mock.lastCall;
 
-      expect(currentState.phase).toBe(TimerPhase.DONE);
-      expect(currentState.currentRound).toBe(3);
+      expect(tickSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          currentRound: 3,
+          isFinished: true,
+          phase: TimerPhase.DONE,
+        })
+      );
       expect(phaseChangeSpy).toHaveBeenCalledTimes(5);
       expect(roundChangeSpy).toHaveBeenCalledWith(3);
-      expect(currentState.isFinished).toBeTruthy();
 
       expect(finishSpy).toHaveBeenCalledTimes(1);
     });
@@ -294,15 +318,14 @@ describe("timerController", () => {
 
       expect(finishSpy).toHaveBeenCalledTimes(1);
 
-      const [summaryPayload] = finishSpy.mock.lastCall;
-
-      expect(summaryPayload).toBeDefined();
-      expect(summaryPayload.totalSessionTimeMs).toBe(
-        targetTimeMs + DEFAULT_PREPARATION_MS
+      expect(finishSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          activeSessionTimeMs: targetTimeMs,
+          fullyCompleted: true,
+          roundsCompleted: 1,
+          totalSessionTimeMs: targetTimeMs + DEFAULT_PREPARATION_MS,
+        })
       );
-      expect(summaryPayload.activeSessionTimeMs).toBe(targetTimeMs);
-      expect(summaryPayload.roundsCompleted).toBe(1);
-      expect(summaryPayload.fullyCompleted).toBeTruthy();
     });
 
     it("provides a summary with fullyCompleted set to false when finishTimer is called manually", () => {
@@ -326,10 +349,12 @@ describe("timerController", () => {
 
       expect(finishSpy).toHaveBeenCalledTimes(1);
 
-      const [summaryPayload] = finishSpy.mock.lastCall;
-
-      expect(summaryPayload.activeSessionTimeMs).toBe(sessionDurationMs);
-      expect(summaryPayload.fullyCompleted).toBeFalsy();
+      expect(finishSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          activeSessionTimeMs: sessionDurationMs,
+          fullyCompleted: false,
+        })
+      );
 
       const ticksBeforeAdvancing = tickSpy.mock.calls.length;
       jest.advanceTimersByTime(5000);
