@@ -1,5 +1,8 @@
-import { useCallback, useImperativeHandle } from 'react';
-import type { Ref } from 'react';
+import { formOptions } from "@tanstack/form-core";
+import { useCallback, useImperativeHandle } from "react";
+import type { Ref } from "react";
+import { ScrollView } from "react-native";
+
 import {
   Field,
   FieldContent,
@@ -7,16 +10,15 @@ import {
   FieldGroup,
   FieldLabel,
   FieldSet,
-} from '@/components/field';
-import { formOptions } from '@tanstack/form-core';
-import { emomDefaults, emomSchema } from '@/screens/menu/schema';
-import type { FormHandle } from '@/screens/menu/schema';
-import { TimerMode } from '@/helpers/timer/factory';
-import type { TimerConfig } from '@/helpers/timer/factory';
-import { useAppForm } from './form-utils';
-import { ScrollView } from 'react-native';
-import { Col, Grid, Row } from '@/components/grid';
-import { EmomPresetButton } from '@/screens/menu/components/preset-button';
+} from "@/components/field";
+import { Col, Grid, Row } from "@/components/grid";
+import { TimerMode } from "@/helpers/timer/factory";
+import type { TimerConfig } from "@/helpers/timer/factory";
+import { EmomPresetButton } from "@/screens/menu/components/preset-button";
+import { emomDefaults, emomSchema } from "@/screens/menu/schema";
+import type { FormHandle } from "@/screens/menu/schema";
+
+import { useAppForm } from "./form-utils";
 
 const emomFormOpts = formOptions({
   defaultValues: emomDefaults,

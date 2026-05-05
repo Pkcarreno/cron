@@ -1,7 +1,8 @@
-import { isSoundEnabledAtom } from '@/stores/settings';
-import { store } from '@/stores/storage';
-import type { OscillatorNode } from 'react-native-audio-api';
-import { AudioContext } from 'react-native-audio-api';
+import type { OscillatorNode } from "react-native-audio-api";
+import { AudioContext } from "react-native-audio-api";
+
+import { isSoundEnabledAtom } from "@/stores/settings";
+import { store } from "@/stores/storage";
 
 let audioContext: AudioContext | null = null;
 let currentOscillator: OscillatorNode | null = null;
@@ -19,7 +20,7 @@ const getAudioContext = async () => {
   if (!audioContext) {
     audioContext = new AudioContext();
   }
-  if (audioContext.state === 'suspended') {
+  if (audioContext.state === "suspended") {
     await audioContext.resume();
   }
   return audioContext;
@@ -59,7 +60,7 @@ const createAndStartOscillator = (
   durationMs: number
 ) => {
   const osc = ctx.createOscillator();
-  osc.type = 'triangle';
+  osc.type = "triangle";
   osc.frequency.value = frequencyHz;
   osc.connect(ctx.destination);
 

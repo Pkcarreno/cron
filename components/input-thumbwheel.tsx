@@ -1,25 +1,27 @@
+import { AndroidHaptics, ImpactFeedbackStyle } from "expo-haptics";
 import React, {
   useRef,
   useEffect,
   useCallback,
   useState,
   useMemo,
-} from 'react';
+} from "react";
 import type {
   NativeSyntheticEvent,
   NativeScrollEvent,
   LayoutChangeEvent,
-} from 'react-native';
-import { View, StyleSheet } from 'react-native';
-import { FlatList } from 'react-native-gesture-handler';
-import { colors } from '@/helpers/colors';
-import { Text } from './text';
-import { AndroidHaptics, ImpactFeedbackStyle } from 'expo-haptics';
+} from "react-native";
+import { View, StyleSheet } from "react-native";
+import { FlatList } from "react-native-gesture-handler";
+
+import { colors } from "@/helpers/colors";
 import {
   triggerAndroidHaptic,
   triggerHaptic,
   triggerType,
-} from '@/helpers/haptics';
+} from "@/helpers/haptics";
+
+import { Text } from "./text";
 
 const TICK_WIDTH = 16;
 
@@ -310,17 +312,17 @@ const Tick = React.memo(({ index, min, step }: TickProps) => {
   );
 });
 
-Tick.displayName = 'Tick';
+Tick.displayName = "Tick";
 
 const styles = StyleSheet.create({
   centerIndicator: {
     backgroundColor: colors.red,
     borderRadius: 8,
     height: 44,
-    left: '50%',
+    left: "50%",
     marginLeft: -1.5,
     marginTop: -12,
-    position: 'absolute',
+    position: "absolute",
     width: 3,
     zIndex: 10,
   },
@@ -328,23 +330,23 @@ const styles = StyleSheet.create({
     backgroundColor: colors.neutral[400],
     borderRadius: 16,
     height: 80,
-    justifyContent: 'center',
-    overflow: 'hidden',
+    justifyContent: "center",
+    overflow: "hidden",
   },
 });
 
 const tickStyles = StyleSheet.create({
   container: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingBottom: 10,
     width: TICK_WIDTH,
   },
   label: {
     bottom: 5,
     left: (TICK_WIDTH - 60) / 2,
-    position: 'absolute',
-    textAlign: 'center',
+    position: "absolute",
+    textAlign: "center",
     width: 60,
   },
   line: {

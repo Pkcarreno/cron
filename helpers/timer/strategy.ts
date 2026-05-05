@@ -1,10 +1,10 @@
-import type { TickEvent } from '@/helpers/timer/tick-engine';
+import type { TickEvent } from "@/helpers/timer/tick-engine";
 
 export enum TimerPhase {
-  PREPARATION = 'PREPARATION',
-  WORK = 'WORK',
-  REST = 'REST',
-  DONE = 'DONE',
+  PREPARATION = "PREPARATION",
+  WORK = "WORK",
+  REST = "REST",
+  DONE = "DONE",
 }
 
 export interface TimerState {

@@ -1,7 +1,8 @@
-import { DropdownMenuItem } from '@/components/dropdown-menu';
-import { useCallback } from 'react';
-import type { GestureResponderEvent, LayoutChangeEvent } from 'react-native';
-import { Pressable, View } from 'react-native';
+import { useCallback } from "react";
+import type { GestureResponderEvent, LayoutChangeEvent } from "react-native";
+import { Pressable, View } from "react-native";
+
+import { DropdownMenuItem } from "@/components/dropdown-menu";
 
 export interface ViewWithIndexOnLayoutType {
   event: LayoutChangeEvent;
@@ -10,7 +11,7 @@ export interface ViewWithIndexOnLayoutType {
 
 export interface ViewWithIndexOnLayoutProps extends Omit<
   React.ComponentProps<typeof View>,
-  'onLayout'
+  "onLayout"
 > {
   index: number;
   onLayout?: (value: ViewWithIndexOnLayoutType) => void;

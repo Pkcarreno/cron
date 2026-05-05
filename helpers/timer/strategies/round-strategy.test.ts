@@ -1,13 +1,14 @@
-import { describe, expect, it } from '@jest/globals';
-import { RoundStrategy } from '@/helpers/timer/strategies/round-strategy';
-import { TimerPhase } from '@/helpers/timer/strategy';
-import type { TickEvent } from '@/helpers/timer/tick-engine';
+import { describe, expect, it } from "@jest/globals";
 
-describe('roundStrategy', () => {
+import { RoundStrategy } from "@/helpers/timer/strategies/round-strategy";
+import { TimerPhase } from "@/helpers/timer/strategy";
+import type { TickEvent } from "@/helpers/timer/tick-engine";
+
+describe("roundStrategy", () => {
   const ROUND_DURATION_MS = 60_000;
   const TOTAL_ROUNDS = 3;
 
-  it('calculates remaining time and sets round one correctly during first round', () => {
+  it("calculates remaining time and sets round one correctly during first round", () => {
     const strategy = new RoundStrategy(ROUND_DURATION_MS, TOTAL_ROUNDS);
     const mockTickEvent: TickEvent = { deltaMs: 1000, totalElapsedMs: 15_000 };
 
@@ -20,7 +21,7 @@ describe('roundStrategy', () => {
     expect(state.isFinished).toBeFalsy();
   });
 
-  it('increments round and reset countdown when entering second round', () => {
+  it("increments round and reset countdown when entering second round", () => {
     const strategy = new RoundStrategy(ROUND_DURATION_MS, TOTAL_ROUNDS);
     const mockTickEvent: TickEvent = { deltaMs: 1000, totalElapsedMs: 70_000 };
 
@@ -33,7 +34,7 @@ describe('roundStrategy', () => {
     expect(state.isFinished).toBeFalsy();
   });
 
-  it('returns finished state when all rounds are completed', () => {
+  it("returns finished state when all rounds are completed", () => {
     const strategy = new RoundStrategy(ROUND_DURATION_MS, TOTAL_ROUNDS);
     const totalDurationMs = ROUND_DURATION_MS * TOTAL_ROUNDS;
     const mockTickEvent: TickEvent = {

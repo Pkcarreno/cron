@@ -1,9 +1,11 @@
-import { describe, expect, it } from '@jest/globals';
-import { TimerPhase } from '@/helpers/timer/strategy';
-import { StopwatchStrategy } from './stopwatch-strategy';
+import { describe, expect, it } from "@jest/globals";
 
-describe('stopwatchStrategy', () => {
-  it('mirrors the elapsed time infinitely without artificial rounds', () => {
+import { TimerPhase } from "@/helpers/timer/strategy";
+
+import { StopwatchStrategy } from "./stopwatch-strategy";
+
+describe("stopwatchStrategy", () => {
+  it("mirrors the elapsed time infinitely without artificial rounds", () => {
     const strategy = new StopwatchStrategy();
 
     const timeMs = 9_000_000;

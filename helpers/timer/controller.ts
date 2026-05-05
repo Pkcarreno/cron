@@ -1,19 +1,19 @@
-import type { TickEvent } from '@/helpers/timer/tick-engine';
-import { TickEngine } from '@/helpers/timer/tick-engine';
-import type { TimerState, TimerStrategy } from '@/helpers/timer/strategy';
-import { TimerPhase } from '@/helpers/timer/strategy';
+import type { TimerState, TimerStrategy } from "@/helpers/timer/strategy";
+import { TimerPhase } from "@/helpers/timer/strategy";
+import type { TickEvent } from "@/helpers/timer/tick-engine";
+import { TickEngine } from "@/helpers/timer/tick-engine";
 
 export enum TimerEventType {
-  START = 'START',
-  PAUSE = 'PAUSE',
-  RESET = 'RESET',
-  FINISH = 'FINISH',
-  GO = 'GO',
-  PHASE_CHANGE = 'PHASE_CHANGE',
-  ROUND_CHANGE = 'ROUND_CHANGE',
-  BEEP = 'BEEP',
-  TICK = 'TICK',
-  CHECKPOINT = 'CHECKPOINT',
+  START = "START",
+  PAUSE = "PAUSE",
+  RESET = "RESET",
+  FINISH = "FINISH",
+  GO = "GO",
+  PHASE_CHANGE = "PHASE_CHANGE",
+  ROUND_CHANGE = "ROUND_CHANGE",
+  BEEP = "BEEP",
+  TICK = "TICK",
+  CHECKPOINT = "CHECKPOINT",
 }
 
 export interface CheckpointData {
@@ -271,7 +271,7 @@ export class TimerController {
       try {
         listener(...args);
       } catch (error) {
-        console.error('[TimerController] error on emit callback', error);
+        console.error("[TimerController] error on emit callback", error);
       }
     }
   }

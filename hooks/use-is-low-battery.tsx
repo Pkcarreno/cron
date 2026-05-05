@@ -1,4 +1,4 @@
-import { useBatteryLevel } from 'expo-battery';
+import { useBatteryLevel } from "expo-battery";
 
 export const useIsLowBattery = () => {
   const batteryLevel = useBatteryLevel();

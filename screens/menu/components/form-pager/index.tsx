@@ -1,45 +1,47 @@
+import { LinearGradient } from "expo-linear-gradient";
+import { CaretDownIcon } from "phosphor-react-native";
 import React, {
   useEffect,
   useRef,
   useMemo,
   useState,
   useCallback,
-} from 'react';
-import type { LayoutChangeEvent, NativeSyntheticEvent } from 'react-native';
-import { View, StyleSheet } from 'react-native';
-import type { PagerViewOnPageScrollEventData } from 'react-native-pager-view';
-import PagerView from 'react-native-pager-view';
+} from "react";
+import type { LayoutChangeEvent, NativeSyntheticEvent } from "react-native";
+import { View, StyleSheet } from "react-native";
+import type { PagerViewOnPageScrollEventData } from "react-native-pager-view";
+import PagerView from "react-native-pager-view";
 import Animated, {
   useAnimatedStyle,
   interpolate,
   Extrapolation,
   createAnimatedComponent,
   withTiming,
-} from 'react-native-reanimated';
-import { Text } from '@/components/text';
-import { colors } from '@/helpers/colors';
-import { CaretDownIcon } from 'phosphor-react-native';
-import {
-  DropdownMenuItemWithIndex,
-  PressableWithIndex,
-  ViewWithIndexOnLayout,
-} from './components/utils';
-import type { FormTabOption } from './types';
-import { AnimatedTabWrapper } from './components/animated-tab';
-import {
-  ICON_SPACE,
-  sharedStyles,
-  TAB_FONT_SIZE,
-  TAB_ICON_SIZE,
-} from './shared';
-import { useFormPager } from './use-form-pager';
+} from "react-native-reanimated";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from '@/components/dropdown-menu';
-import { LinearGradient } from 'expo-linear-gradient';
+} from "@/components/dropdown-menu";
+import { Text } from "@/components/text";
+import { colors } from "@/helpers/colors";
+
+import { AnimatedTabWrapper } from "./components/animated-tab";
+import {
+  DropdownMenuItemWithIndex,
+  PressableWithIndex,
+  ViewWithIndexOnLayout,
+} from "./components/utils";
+import {
+  ICON_SPACE,
+  sharedStyles,
+  TAB_FONT_SIZE,
+  TAB_ICON_SIZE,
+} from "./shared";
+import type { FormTabOption } from "./types";
+import { useFormPager } from "./use-form-pager";
 
 const AnimatedPagerView = createAnimatedComponent(PagerView);
 
@@ -141,7 +143,7 @@ export const FormPager = <T extends string>({
   const chevronAnimatedStyle = useAnimatedStyle(() => ({
     transform: [
       {
-        rotate: withTiming(isDropdownOpen.value ? '180deg' : '0deg', {
+        rotate: withTiming(isDropdownOpen.value ? "180deg" : "0deg", {
           duration: 150,
         }),
       },
@@ -153,7 +155,7 @@ export const FormPager = <T extends string>({
       <View style={hiddenMeasureStyles.container}>
         {options.map((option, index) => (
           <ViewWithIndexOnLayout
-            key={`measure-${option.value || 'undef'}`}
+            key={`measure-${option.value || "undef"}`}
             index={index}
             onLayout={handleMeasureOnLayout}
             style={sharedStyles.pillLayout}
@@ -175,7 +177,7 @@ export const FormPager = <T extends string>({
         <Animated.View style={[tabBarStyles.movingTrack, textRowAnimatedStyle]}>
           {options.map((option, index) => (
             <PressableWithIndex
-              key={`inactive-${option.value || 'undef'}`}
+              key={`inactive-${option.value || "undef"}`}
               index={index}
               onAction={handleOnPressInactiveTab}
             >
@@ -202,7 +204,7 @@ export const FormPager = <T extends string>({
               >
                 {options.map((option, index) => (
                   <AnimatedTabWrapper
-                    key={`active-${option.value || 'undef'}`}
+                    key={`active-${option.value || "undef"}`}
                     index={index}
                     scrollPosition={scrollPosition}
                     baseWidth={tabWidths[index]}
@@ -249,8 +251,8 @@ export const FormPager = <T extends string>({
         onPageSelected={handlePageSelected}
       >
         {options.map((option) => (
-          <View key={`page-${option.value || 'undef'}`} style={styles.page}>
-            {typeof option.content === 'function'
+          <View key={`page-${option.value || "undef"}`} style={styles.page}>
+            {typeof option.content === "function"
               ? option.content({ bottom: footerHeight + 12 })
               : option.content}
           </View>
@@ -261,10 +263,10 @@ export const FormPager = <T extends string>({
         onLayout={handleFooterMeasuraOnLayout}
         style={styles.footer}
         colors={[
-          'transparent',
-          'rgba(0, 0, 0, 0.6)',
-          'rgba(0, 0, 0, 0.8)',
-          'black',
+          "transparent",
+          "rgba(0, 0, 0, 0.6)",
+          "rgba(0, 0, 0, 0.8)",
+          "black",
         ]}
         locations={[0, 0.08, 0.16, 1]}
       >
@@ -282,7 +284,7 @@ const styles = StyleSheet.create({
   footer: {
     bottom: 0,
     left: 0,
-    position: 'absolute',
+    position: "absolute",
     right: 0,
   },
   page: {
@@ -296,10 +298,10 @@ const styles = StyleSheet.create({
 
 const hiddenMeasureStyles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
+    flexDirection: "row",
     opacity: 0,
-    pointerEvents: 'none',
-    position: 'absolute',
+    pointerEvents: "none",
+    position: "absolute",
   },
 });
 
@@ -307,32 +309,32 @@ const tabBarStyles = StyleSheet.create({
   activeZone: {
     backgroundColor: colors.white,
     borderRadius: 12,
-    height: '100%',
+    height: "100%",
     left: 0,
-    overflow: 'hidden',
-    position: 'absolute',
+    overflow: "hidden",
+    position: "absolute",
     zIndex: 2,
   },
   container: {
     marginHorizontal: 20,
-    position: 'relative',
+    position: "relative",
   },
   dropdownIcon: {
-    height: '100%',
-    justifyContent: 'center',
-    position: 'absolute',
+    height: "100%",
+    justifyContent: "center",
+    position: "absolute",
     right: 12,
   },
   movingTrack: {
     backgroundColor: colors.neutral[700],
     borderRadius: 12,
-    flexDirection: 'row',
-    height: '100%',
+    flexDirection: "row",
+    height: "100%",
     left: 0,
-    position: 'absolute',
+    position: "absolute",
   },
   textRow: {
-    flexDirection: 'row',
-    height: '100%',
+    flexDirection: "row",
+    height: "100%",
   },
 });

@@ -1,14 +1,15 @@
-import { describe, expect, it } from '@jest/globals';
-import { IntervalStrategy } from '@/helpers/timer/strategies/interval-strategy';
-import { TimerPhase } from '@/helpers/timer/strategy';
-import type { TickEvent } from '@/helpers/timer/tick-engine';
+import { describe, expect, it } from "@jest/globals";
 
-describe('intervalStrategy', () => {
+import { IntervalStrategy } from "@/helpers/timer/strategies/interval-strategy";
+import { TimerPhase } from "@/helpers/timer/strategy";
+import type { TickEvent } from "@/helpers/timer/tick-engine";
+
+describe("intervalStrategy", () => {
   const WORK_TIME_MS = 20_000;
   const REST_TIME_MS = 10_000;
   const TOTAL_PHASES = 3;
 
-  it('sets phase to work and calculates countdown during first work phase', () => {
+  it("sets phase to work and calculates countdown during first work phase", () => {
     const strategy = new IntervalStrategy(
       WORK_TIME_MS,
       REST_TIME_MS,
@@ -25,7 +26,7 @@ describe('intervalStrategy', () => {
     expect(state.isFinished).toBeFalsy();
   });
 
-  it('sets phase to rest and increments round during first rest phase', () => {
+  it("sets phase to rest and increments round during first rest phase", () => {
     const strategy = new IntervalStrategy(
       WORK_TIME_MS,
       REST_TIME_MS,
@@ -42,7 +43,7 @@ describe('intervalStrategy', () => {
     expect(state.isFinished).toBeFalsy();
   });
 
-  it('sets phase to work and increments round during second work phase', () => {
+  it("sets phase to work and increments round during second work phase", () => {
     const strategy = new IntervalStrategy(
       WORK_TIME_MS,
       REST_TIME_MS,
@@ -62,7 +63,7 @@ describe('intervalStrategy', () => {
     expect(state.isFinished).toBeFalsy();
   });
 
-  it('returns finished state when total phases are completed ending on an odd round', () => {
+  it("returns finished state when total phases are completed ending on an odd round", () => {
     const strategy = new IntervalStrategy(
       WORK_TIME_MS,
       REST_TIME_MS,
@@ -84,7 +85,7 @@ describe('intervalStrategy', () => {
     expect(state.isFinished).toBeTruthy();
   });
 
-  it('returns finished state when total phases are completed ending on an even round', () => {
+  it("returns finished state when total phases are completed ending on an even round", () => {
     const evenTotalPhases = 4;
     const strategy = new IntervalStrategy(
       WORK_TIME_MS,

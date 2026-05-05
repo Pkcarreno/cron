@@ -1,16 +1,17 @@
-import { useEffect } from 'react';
-import * as SwitchPrimitives from '@rn-primitives/switch';
-import type { StyleProp, ViewStyle } from 'react-native';
-import { StyleSheet } from 'react-native';
+import * as SwitchPrimitives from "@rn-primitives/switch";
+import { useEffect } from "react";
+import type { Ref } from "react";
+import type { StyleProp, ViewStyle } from "react-native";
+import { StyleSheet } from "react-native";
 import {
   createAnimatedComponent,
   interpolateColor,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
-} from 'react-native-reanimated';
-import type { Ref } from 'react';
-import { colors } from '@/helpers/colors';
+} from "react-native-reanimated";
+
+import { colors } from "@/helpers/colors";
 
 interface SwitchProps extends SwitchPrimitives.RootProps {
   style?: StyleProp<ViewStyle>;
@@ -60,13 +61,13 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   root: {
-    alignItems: 'center',
+    alignItems: "center",
     borderColor: colors.transparent,
     borderRadius: 9999,
     borderWidth: 1,
-    display: 'flex',
+    display: "flex",
     elevation: 2,
-    flexDirection: 'row',
+    flexDirection: "row",
     flexShrink: 0,
     height: 18.4,
     shadowColor: colors.neutral[500],

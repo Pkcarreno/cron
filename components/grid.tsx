@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useMemo } from 'react';
-import type { ViewProps, DimensionValue } from 'react-native';
-import { View, StyleSheet } from 'react-native';
+import React, { createContext, useContext, useMemo } from "react";
+import type { ViewProps, DimensionValue } from "react-native";
+import { View, StyleSheet } from "react-native";
 
 const GridContext = createContext({ columns: 12, gap: 0 });
 
@@ -60,10 +60,10 @@ export const Row: React.FC<RowProps> = ({ style, ...props }) => {
 
 const styles = StyleSheet.create({
   grid: {
-    width: '100%',
+    width: "100%",
   },
   row: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
   },
 });

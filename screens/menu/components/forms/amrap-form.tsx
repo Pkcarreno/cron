@@ -1,5 +1,8 @@
-import { useImperativeHandle } from 'react';
-import type { Ref } from 'react';
+import { formOptions } from "@tanstack/form-core";
+import { useImperativeHandle } from "react";
+import type { Ref } from "react";
+import { ScrollView } from "react-native";
+
 import {
   Field,
   FieldContent,
@@ -7,14 +10,13 @@ import {
   FieldGroup,
   FieldLabel,
   FieldSet,
-} from '@/components/field';
-import { formOptions } from '@tanstack/form-core';
-import { amrapDefaults, amrapSchema } from '@/screens/menu/schema';
-import type { FormHandle } from '@/screens/menu/schema';
-import { TimerMode } from '@/helpers/timer/factory';
-import type { TimerConfig } from '@/helpers/timer/factory';
-import { useAppForm } from './form-utils';
-import { ScrollView } from 'react-native';
+} from "@/components/field";
+import { TimerMode } from "@/helpers/timer/factory";
+import type { TimerConfig } from "@/helpers/timer/factory";
+import { amrapDefaults, amrapSchema } from "@/screens/menu/schema";
+import type { FormHandle } from "@/screens/menu/schema";
+
+import { useAppForm } from "./form-utils";
 
 const amrapFormOpts = formOptions({
   defaultValues: amrapDefaults,

@@ -1,18 +1,19 @@
-import type { FormTabOption } from '@/screens/menu/components/form-pager/types';
-import { ForTimeForm } from '@/screens/menu/components/forms/for-time-form';
-import { AmrapForm } from '@/screens/menu/components/forms/amrap-form';
-import { EmomForm } from '@/screens/menu/components/forms/emom-form';
-import { IntervalForm } from '@/screens/menu/components/forms/interval-form';
-import { StopWatchForm } from '@/screens/menu/components/forms/stopwatch-form';
-import type { TimerConfig } from '@/helpers/timer/factory';
-import { TimerMode } from '@/helpers/timer/factory';
-import { useRouter } from 'expo-router';
-import { createRef, useCallback, useMemo, useRef } from 'react';
-import type { FormHandle } from '@/screens/menu/schema';
-import { TIMER_MODES } from '@/screens/menu/schema';
-import { serializeTimerConfig } from '@/helpers/timer/utils/config-serializer';
-import { useAtom } from 'jotai/react';
-import { isRawTimerEnabledAtom } from '@/stores/settings';
+import { useRouter } from "expo-router";
+import { useAtom } from "jotai/react";
+import { createRef, useCallback, useMemo, useRef } from "react";
+
+import type { TimerConfig } from "@/helpers/timer/factory";
+import { TimerMode } from "@/helpers/timer/factory";
+import { serializeTimerConfig } from "@/helpers/timer/utils/config-serializer";
+import type { FormTabOption } from "@/screens/menu/components/form-pager/types";
+import { AmrapForm } from "@/screens/menu/components/forms/amrap-form";
+import { EmomForm } from "@/screens/menu/components/forms/emom-form";
+import { ForTimeForm } from "@/screens/menu/components/forms/for-time-form";
+import { IntervalForm } from "@/screens/menu/components/forms/interval-form";
+import { StopWatchForm } from "@/screens/menu/components/forms/stopwatch-form";
+import type { FormHandle } from "@/screens/menu/schema";
+import { TIMER_MODES } from "@/screens/menu/schema";
+import { isRawTimerEnabledAtom } from "@/stores/settings";
 
 const FORM_COMPONENTS = {
   [TimerMode.FOR_TIME]: ForTimeForm,
@@ -34,7 +35,7 @@ export const useTimerForms = () => {
     (config: TimerConfig) => {
       router.push({
         params: serializeTimerConfig(config),
-        pathname: isRawTimerEnabled ? '/timer/inspector' : '/timer',
+        pathname: isRawTimerEnabled ? "/timer/inspector" : "/timer",
       });
     },
     [isRawTimerEnabled, router]

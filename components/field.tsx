@@ -1,9 +1,11 @@
-import React, { useMemo } from 'react';
-import type { ViewProps } from 'react-native';
-import { View, StyleSheet } from 'react-native';
-import type { TextProps } from './text';
-import { Text } from './text';
-import { colors } from '@/helpers/colors';
+import React, { useMemo } from "react";
+import type { ViewProps } from "react-native";
+import { View, StyleSheet } from "react-native";
+
+import { colors } from "@/helpers/colors";
+
+import type { TextProps } from "./text";
+import { Text } from "./text";
 
 export const FieldSet = ({ style, ...props }: ViewProps) => (
   <View style={[styles.set, style]} {...props} />
@@ -12,7 +14,7 @@ export const FieldSet = ({ style, ...props }: ViewProps) => (
 export const FieldTitle = ({
   style,
   ...props
-}: Omit<TextProps, 'color' | 'weight' | 'colorSubtone'>) => (
+}: Omit<TextProps, "color" | "weight" | "colorSubtone">) => (
   <Text color="white" weight="500" style={[styles.title, style]} {...props} />
 );
 
@@ -31,21 +33,21 @@ export const FieldContent = ({ style, ...props }: ViewProps) => (
 export const FieldLabel = ({
   style,
   ...props
-}: Omit<TextProps, 'color' | 'weight' | 'colorSubtone'>) => (
+}: Omit<TextProps, "color" | "weight" | "colorSubtone">) => (
   <Text colorSubtone="200" style={[styles.label, style]} {...props} />
 );
 
 export const FieldDescription = ({
   style,
   ...props
-}: Omit<TextProps, 'color' | 'weight' | 'colorSubtone'>) => (
+}: Omit<TextProps, "color" | "weight" | "colorSubtone">) => (
   <Text size={12} style={[styles.description, style]} {...props} />
 );
 
 export const FieldSeparator = ({
   style,
   ...props
-}: Omit<ViewProps, 'children'>) => (
+}: Omit<ViewProps, "children">) => (
   <View style={[styles.separator, style]} {...props}>
     <View style={styles.separatorLine} />
   </View>
@@ -78,7 +80,7 @@ export const FieldError = ({
         {uniqueErrors.map((error) =>
           error?.message ? (
             <Text key={error.message} style={styles.errorListItem}>
-              {'\u2022'} {error.message}
+              {"\u2022"} {error.message}
             </Text>
           ) : null
         )}
@@ -104,16 +106,16 @@ const styles = StyleSheet.create({
   description: {
     color: colors.neutral[500],
     fontSize: 14,
-    fontWeight: '400',
+    fontWeight: "400",
     lineHeight: 20,
     paddingHorizontal: 8,
-    textAlign: 'left',
+    textAlign: "left",
   },
   errorContainer: {
     paddingHorizontal: 8,
   },
   errorList: {
-    flexDirection: 'column',
+    flexDirection: "column",
     gap: 4,
     marginLeft: 16,
   },
@@ -124,7 +126,7 @@ const styles = StyleSheet.create({
   errorText: {
     color: colors.red,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   field: {
     gap: 8,
@@ -136,16 +138,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   separator: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
   },
   separatorLine: {
     backgroundColor: colors.neutral[700],
     height: 1,
-    position: 'absolute',
-    top: '50%',
-    width: '100%',
+    position: "absolute",
+    top: "50%",
+    width: "100%",
   },
   set: {
     gap: 16,
