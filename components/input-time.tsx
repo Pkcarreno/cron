@@ -1,11 +1,13 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from "react";
+
 import {
   convertTimeToMs,
   formatTimeForDisplay,
-} from '@/helpers/timer/utils/formatter';
-import { Col, Grid, Row } from './grid';
-import type { InputNumberProps } from './input-number';
-import { InputNumber } from './input-number';
+} from "@/helpers/timer/utils/formatter";
+
+import { Col, Grid, Row } from "./grid";
+import type { InputNumberProps } from "./input-number";
+import { InputNumber } from "./input-number";
 
 const MAX_MINUTES = 99;
 const MAX_SECONDS = 59;

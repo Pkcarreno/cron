@@ -1,16 +1,16 @@
-import { DownStrategy } from '@/helpers/timer/strategies/down-strategy';
-import { IntervalStrategy } from '@/helpers/timer/strategies/interval-strategy';
-import { RoundStrategy } from '@/helpers/timer/strategies/round-strategy';
-import { UpStrategy } from '@/helpers/timer/strategies/up-strategy';
-import type { TimerStrategy } from '@/helpers/timer/strategy';
-import { StopwatchStrategy } from '@/helpers/timer/strategies/stopwatch-strategy';
+import { DownStrategy } from "@/helpers/timer/strategies/down-strategy";
+import { IntervalStrategy } from "@/helpers/timer/strategies/interval-strategy";
+import { RoundStrategy } from "@/helpers/timer/strategies/round-strategy";
+import { StopwatchStrategy } from "@/helpers/timer/strategies/stopwatch-strategy";
+import { UpStrategy } from "@/helpers/timer/strategies/up-strategy";
+import type { TimerStrategy } from "@/helpers/timer/strategy";
 
 export enum TimerMode {
-  FOR_TIME = 'FOR_TIME',
-  AMRAP = 'AMRAP',
-  EMOM = 'EMOM',
-  INTERVAL = 'INTERVAL',
-  STOP_WATCH = 'STOP_WATCH',
+  FOR_TIME = "FOR_TIME",
+  AMRAP = "AMRAP",
+  EMOM = "EMOM",
+  INTERVAL = "INTERVAL",
+  STOP_WATCH = "STOP_WATCH",
 }
 
 export const createTimerStrategy = (config: TimerConfig): TimerStrategy => {
@@ -40,7 +40,7 @@ export const createTimerStrategy = (config: TimerConfig): TimerStrategy => {
     }
 
     default: {
-      throw new Error('Timer mode not supported.');
+      throw new Error("Timer mode not supported.");
     }
   }
 };

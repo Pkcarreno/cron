@@ -1,5 +1,6 @@
-import { Image } from 'expo-image';
-import AppLogo from '@/assets/logo.svg';
+import { Image } from "expo-image";
+
+import AppLogo from "@/assets/logo.svg";
 
 interface Props {
   size?: number;

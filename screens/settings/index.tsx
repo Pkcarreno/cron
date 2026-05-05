@@ -1,4 +1,10 @@
-import { NumberPickerSheet } from '@/components/input-number';
+import { Link, Stack } from "expo-router";
+import { useAtom } from "jotai/react";
+import { CaretRightIcon } from "phosphor-react-native";
+import { useCallback } from "react";
+import { ScrollView, StyleSheet, View } from "react-native";
+
+import { NumberPickerSheet } from "@/components/input-number";
 import {
   Menu,
   MenuGroup,
@@ -6,30 +12,25 @@ import {
   MenuItemText,
   MenuPressableItem,
   MenuTopic,
-} from '@/components/menu';
-import { Switch } from '@/components/switch';
-import { Text } from '@/components/text';
-import Env from '@/env';
-import { colors } from '@/helpers/colors';
-import { formatDuration } from '@/helpers/timer/utils/formatter';
+} from "@/components/menu";
+import { Switch } from "@/components/switch";
+import { Text } from "@/components/text";
+import Env from "@/env";
+import { colors } from "@/helpers/colors";
+import { formatDuration } from "@/helpers/timer/utils/formatter";
 import {
   hasHapticEnabledAtom,
   isRawTimerEnabledAtom,
   isSoundEnabledAtom,
   preparationTimeMsAtom,
-} from '@/stores/settings';
-import { Link, Stack } from 'expo-router';
-import { useAtom } from 'jotai/react';
-import { CaretRightIcon } from 'phosphor-react-native';
-import { useCallback } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+} from "@/stores/settings";
 
 export const Settings = () => (
   <>
     <Stack.Screen
       options={{
         headerShown: true,
-        title: 'Settings',
+        title: "Settings",
       }}
     />
 

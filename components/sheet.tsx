@@ -1,3 +1,12 @@
+import type {
+  BottomSheetModalProps,
+  BottomSheetBackdropProps,
+} from "@gorhom/bottom-sheet";
+import {
+  BottomSheetModal,
+  BottomSheetView,
+  BottomSheetBackdrop,
+} from "@gorhom/bottom-sheet";
 import React, {
   createContext,
   useContext,
@@ -7,26 +16,19 @@ import React, {
   useState,
   useImperativeHandle,
   useMemo,
-} from 'react';
+} from "react";
 import type {
   PressableProps,
   ViewProps,
   TextProps,
   GestureResponderEvent,
-} from 'react-native';
-import { Pressable, View, StyleSheet } from 'react-native';
-import type {
-  BottomSheetModalProps,
-  BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-} from '@gorhom/bottom-sheet';
-import { colors } from '@/helpers/colors';
-import { Text } from './text';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import { Pressable, View, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { colors } from "@/helpers/colors";
+
+import { Text } from "./text";
 
 interface SheetContextType {
   sheetRef: React.RefObject<BottomSheetModal | null>;
@@ -39,7 +41,7 @@ const SheetContext = createContext<SheetContextType | null>(null);
 const useSheetContext = () => {
   const context = useContext(SheetContext);
   if (!context) {
-    throw new Error('Sheet components must be used within a <Sheet>');
+    throw new Error("Sheet components must be used within a <Sheet>");
   }
   return context;
 };
@@ -111,7 +113,7 @@ export type TriggerRenderProp = (props: {
   onPress: (e: GestureResponderEvent) => void;
 }) => React.ReactNode;
 
-export type SheetTriggerProps = Omit<PressableProps, 'children'> &
+export type SheetTriggerProps = Omit<PressableProps, "children"> &
   (
     | {
         asChild?: false | undefined;
@@ -141,7 +143,7 @@ export const SheetTrigger: React.FC<SheetTriggerProps> = ({
     [setOpen, onPress]
   );
 
-  if (asChild && typeof children === 'function') {
+  if (asChild && typeof children === "function") {
     return children({ ...props, onPress: handlePress });
   }
 
@@ -161,7 +163,7 @@ export const SheetBackdrop: React.FC<BottomSheetBackdropProps> = (props) => (
   />
 );
 
-export interface SheetContentProps extends Omit<BottomSheetModalProps, 'ref'> {
+export interface SheetContentProps extends Omit<BottomSheetModalProps, "ref"> {
   children: React.ReactNode;
   ref?: React.Ref<BottomSheetModal>;
 }
@@ -169,7 +171,7 @@ export interface SheetContentProps extends Omit<BottomSheetModalProps, 'ref'> {
 export const SheetContent: React.FC<SheetContentProps> = ({
   children,
   onChange,
-  snapPoints = ['50%', '90%'],
+  snapPoints = ["50%", "90%"],
   backdropComponent = SheetBackdrop,
   ref,
   ...props
@@ -181,7 +183,7 @@ export const SheetContent: React.FC<SheetContentProps> = ({
     if (!ref) {
       return;
     }
-    if (typeof ref === 'function') {
+    if (typeof ref === "function") {
       ref(sheetRef.current);
     } else {
       (ref as React.RefObject<BottomSheetModal | null>).current =
@@ -190,7 +192,7 @@ export const SheetContent: React.FC<SheetContentProps> = ({
   }, [ref, sheetRef]);
 
   const handleChange = useCallback(
-    (...args: Parameters<NonNullable<BottomSheetModalProps['onChange']>>) => {
+    (...args: Parameters<NonNullable<BottomSheetModalProps["onChange"]>>) => {
       const [index] = args;
       if (index === -1) {
         setOpen(false);
@@ -260,8 +262,8 @@ const styles = StyleSheet.create({
   },
   description: {},
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+    flexDirection: "row",
+    justifyContent: "flex-end",
   },
   header: {
     paddingBottom: 8,

@@ -1,10 +1,20 @@
-import { UpStrategy } from '@/helpers/timer/strategies/up-strategy';
-import { TimerController, TimerEventType } from '@/helpers/timer/controller';
-import { TimerPhase } from '@/helpers/timer/strategy';
-import { IntervalStrategy } from './strategies/interval-strategy';
-import { StopwatchStrategy } from './strategies/stopwatch-strategy';
+import {
+  describe,
+  expect,
+  it,
+  beforeEach,
+  afterEach,
+  jest,
+} from "@jest/globals";
 
-describe('timerController', () => {
+import { TimerController, TimerEventType } from "@/helpers/timer/controller";
+import { UpStrategy } from "@/helpers/timer/strategies/up-strategy";
+import { TimerPhase } from "@/helpers/timer/strategy";
+
+import { IntervalStrategy } from "./strategies/interval-strategy";
+import { StopwatchStrategy } from "./strategies/stopwatch-strategy";
+
+describe("timerController", () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date(2026, 1, 1, 0, 0, 0));
@@ -15,8 +25,8 @@ describe('timerController', () => {
     jest.restoreAllMocks();
   });
 
-  describe('initialization and basic flow', () => {
-    it('emits start event when started', () => {
+  describe("initialization and basic flow", () => {
+    it("emits start event when started", () => {
       const strategy = new UpStrategy(10_000);
       const controller = new TimerController(strategy, 0);
 
@@ -28,7 +38,7 @@ describe('timerController', () => {
       expect(startSpy).toHaveBeenCalledTimes(1);
     });
 
-    it('emits tick events with the current state', () => {
+    it("emits tick events with the current state", () => {
       const strategy = new UpStrategy(10_000);
       const controller = new TimerController(strategy, 0);
 
@@ -40,14 +50,17 @@ describe('timerController', () => {
 
       expect(tickSpy).toHaveBeenCalledTimes(101);
 
-      const [statePayload] = tickSpy.mock.lastCall;
-      expect(statePayload).toHaveProperty('displayTimeMs');
-      expect(statePayload).toHaveProperty('phase');
+      expect(tickSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          displayTimeMs: expect.any(Number),
+          phase: TimerPhase.WORK,
+        })
+      );
     });
   });
 
-  describe('preparation phase, beeps and go', () => {
-    it('emits beeps only during the last 3 seconds of preparation', () => {
+  describe("preparation phase, beeps and go", () => {
+    it("emits beeps only during the last 3 seconds of preparation", () => {
       const strategy = new UpStrategy(10_000);
       const controller = new TimerController(strategy, 5000);
 
@@ -82,7 +95,7 @@ describe('timerController', () => {
       expect(goSpy).toHaveBeenCalledTimes(1);
     });
 
-    it('does not emit beeps during the work phase even in the last 3 seconds', () => {
+    it("does not emit beeps during the work phase even in the last 3 seconds", () => {
       const strategy = new UpStrategy(5000);
       const controller = new TimerController(strategy, 0);
 
@@ -97,8 +110,8 @@ describe('timerController', () => {
     });
   });
 
-  describe('lifecycle', () => {
-    it('walks through a complete interval strategy emitting the correct sequences', () => {
+  describe("lifecycle", () => {
+    it("walks through a complete interval strategy emitting the correct sequences", () => {
       const workTimeMs = 2000;
       const restTimeMs = 1000;
       const totalPhases = 3;
@@ -124,43 +137,55 @@ describe('timerController', () => {
       controller.start();
 
       jest.advanceTimersByTime(10);
-      let [currentState] = tickSpy.mock.lastCall;
 
-      expect(currentState.phase).toBe(TimerPhase.WORK);
-      expect(currentState.currentRound).toBe(1);
+      expect(tickSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          currentRound: 1,
+          phase: TimerPhase.WORK,
+        })
+      );
 
       // advance to complete the first work phase, now time is 2000ms
       jest.advanceTimersByTime(1990);
-      [currentState] = tickSpy.mock.lastCall;
 
-      expect(currentState.phase).toBe(TimerPhase.REST);
-      expect(currentState.currentRound).toBe(1);
+      expect(tickSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          currentRound: 1,
+          phase: TimerPhase.REST,
+        })
+      );
       expect(phaseChangeSpy).toHaveBeenCalledTimes(1);
       expect(roundChangeSpy).not.toHaveBeenCalled();
 
       // advance to complete the first rest phase, now time is 3000ms
       jest.advanceTimersByTime(1000);
-      [currentState] = tickSpy.mock.lastCall;
 
-      expect(currentState.phase).toBe(TimerPhase.WORK);
-      expect(currentState.currentRound).toBe(2);
+      expect(tickSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          currentRound: 2,
+          phase: TimerPhase.WORK,
+        })
+      );
       expect(phaseChangeSpy).toHaveBeenCalledTimes(2);
       expect(roundChangeSpy).toHaveBeenCalledWith(2);
 
       // advance to complete the last rest phase, now time is 9000ms
       jest.advanceTimersByTime(6000);
-      [currentState] = tickSpy.mock.lastCall;
 
-      expect(currentState.phase).toBe(TimerPhase.DONE);
-      expect(currentState.currentRound).toBe(3);
+      expect(tickSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          currentRound: 3,
+          isFinished: true,
+          phase: TimerPhase.DONE,
+        })
+      );
       expect(phaseChangeSpy).toHaveBeenCalledTimes(5);
       expect(roundChangeSpy).toHaveBeenCalledWith(3);
-      expect(currentState.isFinished).toBeTruthy();
 
       expect(finishSpy).toHaveBeenCalledTimes(1);
     });
 
-    it('emits finish event and stops processing other events when time is up', () => {
+    it("emits finish event and stops processing other events when time is up", () => {
       const testDurationMs = 5000;
       const strategy = new UpStrategy(testDurationMs);
       const controller = new TimerController(strategy, 0);
@@ -182,8 +207,8 @@ describe('timerController', () => {
     });
   });
 
-  describe('engine Controls', () => {
-    it('pauses the underlying engine and stops emitting ticks', () => {
+  describe("engine Controls", () => {
+    it("pauses the underlying engine and stops emitting ticks", () => {
       const strategy = new UpStrategy(10_000);
       const controller = new TimerController(strategy, 0);
 
@@ -215,8 +240,8 @@ describe('timerController', () => {
     });
   });
 
-  describe('resource Management & Cleanup', () => {
-    it('removes all listeners preventing zombie callbacks', () => {
+  describe("resource Management & Cleanup", () => {
+    it("removes all listeners preventing zombie callbacks", () => {
       const strategy = new UpStrategy(10_000);
       const controller = new TimerController(strategy, 0);
 
@@ -235,7 +260,7 @@ describe('timerController', () => {
       expect(tickSpy).not.toHaveBeenCalled();
     });
 
-    it('dispose() stops the engine AND clears listeners simultaneously', () => {
+    it("dispose() stops the engine AND clears listeners simultaneously", () => {
       const strategy = new UpStrategy(10_000);
       const controller = new TimerController(strategy, 0);
 
@@ -257,7 +282,7 @@ describe('timerController', () => {
       expect(callsAfterDispose).toBe(callsBeforeDispose);
     });
 
-    it('allows re-subscribing after cleaning listeners', () => {
+    it("allows re-subscribing after cleaning listeners", () => {
       const strategy = new UpStrategy(10_000);
       const controller = new TimerController(strategy, 0);
       const spy1 = jest.fn();
@@ -276,10 +301,10 @@ describe('timerController', () => {
     });
   });
 
-  describe('session Summary and Manual Termination', () => {
+  describe("session Summary and Manual Termination", () => {
     const DEFAULT_PREPARATION_MS = 10_000;
 
-    it('provides a summary with fullyCompleted set to true when timer finishes automatically', () => {
+    it("provides a summary with fullyCompleted set to true when timer finishes automatically", () => {
       const targetTimeMs = 5000;
       const strategy = new UpStrategy(targetTimeMs);
       const controller = new TimerController(strategy, DEFAULT_PREPARATION_MS);
@@ -293,18 +318,17 @@ describe('timerController', () => {
 
       expect(finishSpy).toHaveBeenCalledTimes(1);
 
-      const [summaryPayload] = finishSpy.mock.lastCall;
-
-      expect(summaryPayload).toBeDefined();
-      expect(summaryPayload.totalSessionTimeMs).toBe(
-        targetTimeMs + DEFAULT_PREPARATION_MS
+      expect(finishSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          activeSessionTimeMs: targetTimeMs,
+          fullyCompleted: true,
+          roundsCompleted: 1,
+          totalSessionTimeMs: targetTimeMs + DEFAULT_PREPARATION_MS,
+        })
       );
-      expect(summaryPayload.activeSessionTimeMs).toBe(targetTimeMs);
-      expect(summaryPayload.roundsCompleted).toBe(1);
-      expect(summaryPayload.fullyCompleted).toBeTruthy();
     });
 
-    it('provides a summary with fullyCompleted set to false when finishTimer is called manually', () => {
+    it("provides a summary with fullyCompleted set to false when finishTimer is called manually", () => {
       const strategy = new StopwatchStrategy();
       const controller = new TimerController(strategy, 0);
 
@@ -325,10 +349,12 @@ describe('timerController', () => {
 
       expect(finishSpy).toHaveBeenCalledTimes(1);
 
-      const [summaryPayload] = finishSpy.mock.lastCall;
-
-      expect(summaryPayload.activeSessionTimeMs).toBe(sessionDurationMs);
-      expect(summaryPayload.fullyCompleted).toBeFalsy();
+      expect(finishSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          activeSessionTimeMs: sessionDurationMs,
+          fullyCompleted: false,
+        })
+      );
 
       const ticksBeforeAdvancing = tickSpy.mock.calls.length;
       jest.advanceTimersByTime(5000);
@@ -337,7 +363,7 @@ describe('timerController', () => {
       expect(ticksAfterAdvancing).toBe(ticksBeforeAdvancing);
     });
 
-    it('returns the current session statistics without pausing or destroying the engine', () => {
+    it("returns the current session statistics without pausing or destroying the engine", () => {
       const sessionTargetMs = 10_000;
       const preparationMs = 3000;
       const strategy = new UpStrategy(sessionTargetMs);
@@ -367,8 +393,8 @@ describe('timerController', () => {
     });
   });
 
-  describe('checkpoints', () => {
-    it('records a single checkpoint and emits the event with correct initial split', () => {
+  describe("checkpoints", () => {
+    it("records a single checkpoint and emits the event with correct initial split", () => {
       const targetTimeMs = 10_000;
       const strategy = new UpStrategy(targetTimeMs);
       const controller = new TimerController(strategy, 0);
@@ -391,7 +417,7 @@ describe('timerController', () => {
       });
     });
 
-    it('calculates split times correctly across multiple consecutive checkpoints', () => {
+    it("calculates split times correctly across multiple consecutive checkpoints", () => {
       const strategy = new StopwatchStrategy();
       const controller = new TimerController(strategy, 0);
 
@@ -433,7 +459,7 @@ describe('timerController', () => {
       });
     });
 
-    it('excludes preparation time from the recorded active time', () => {
+    it("excludes preparation time from the recorded active time", () => {
       const targetTimeMs = 10_000;
       const preparationMs = 3000;
       const strategy = new UpStrategy(targetTimeMs);
@@ -457,7 +483,7 @@ describe('timerController', () => {
       });
     });
 
-    it('includes the complete checkpoint history in the generated session summary', () => {
+    it("includes the complete checkpoint history in the generated session summary", () => {
       const strategy = new StopwatchStrategy();
       const controller = new TimerController(strategy, 0);
 

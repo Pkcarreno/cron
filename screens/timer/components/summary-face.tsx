@@ -1,16 +1,17 @@
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text } from '@/components/text';
-import Button from '@/components/button';
-import { TimerMode } from '@/helpers/timer/factory';
+import { ScrollView, StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+import Button from "@/components/button";
+import { Col, Grid, Row } from "@/components/grid";
+import { Logo } from "@/components/logo";
+import { Text } from "@/components/text";
+import { colors } from "@/helpers/colors";
+import { TimerMode } from "@/helpers/timer/factory";
 import {
   formatDuration,
   formatFullTimeToString,
-} from '@/helpers/timer/utils/formatter';
-import { Logo } from '@/components/logo';
-import type { UISessionSummary } from '@/hooks/use-timer';
-import { colors } from '@/helpers/colors';
-import { Col, Grid, Row } from '@/components/grid';
+} from "@/helpers/timer/utils/formatter";
+import type { UISessionSummary } from "@/hooks/use-timer";
 
 interface Props {
   summary: UISessionSummary | undefined;
@@ -26,12 +27,12 @@ export const SummaryFace: React.FC<Props> = ({
   handleResumeSession,
 }) => {
   const formattedStartTime = summary?.startedAt?.toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
+    hour: "2-digit",
+    minute: "2-digit",
   });
   const formattedEndTime = summary?.endedAt?.toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
+    hour: "2-digit",
+    minute: "2-digit",
   });
 
   return (
@@ -54,7 +55,7 @@ export const SummaryFace: React.FC<Props> = ({
 
         <RenderCheckpoints
           summary={summary}
-          lapLabel={TimerMode.AMRAP === mode ? 'Round' : 'Lap'}
+          lapLabel={TimerMode.AMRAP === mode ? "Round" : "Lap"}
         />
 
         <View style={styles.mention}>
@@ -78,7 +79,7 @@ export const SummaryFace: React.FC<Props> = ({
   );
 };
 
-type RenderDataProps = Pick<Props, 'summary'>;
+type RenderDataProps = Pick<Props, "summary">;
 
 const RenderData: React.FC<RenderDataProps> = ({ summary }) => {
   if (!summary) {
@@ -182,7 +183,7 @@ const RenderCheckpoints: React.FC<RenderCheckpointsProps> = ({
         {summary.checkpoints.map((item) => {
           const isDeltaColored = item.lapDeltaMs !== 0;
           const deltaColor =
-            item.lapDeltaMs > 0 ? 'redHighlight' : 'greenHighlight';
+            item.lapDeltaMs > 0 ? "redHighlight" : "greenHighlight";
           return (
             <Row key={`${item.lap}-${item.elapsedTimeMs}`}>
               <Col style={checkpointsStyle.gridColumnLeft}>
@@ -227,9 +228,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   data: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   dataWrapper: {
     gap: 8,
@@ -238,18 +239,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   header: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   info: {
     gap: 4,
   },
   mention: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   numberText: {
-    fontVariant: ['tabular-nums'],
+    fontVariant: ["tabular-nums"],
   },
 });
 
@@ -263,13 +264,13 @@ const checkpointsStyle = StyleSheet.create({
     paddingVertical: 4,
   },
   gridColumnCenter: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   gridColumnLeft: {
-    alignItems: 'flex-start',
+    alignItems: "flex-start",
   },
   gridColumnRight: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   header: {
     backgroundColor: colors.neutral[900],

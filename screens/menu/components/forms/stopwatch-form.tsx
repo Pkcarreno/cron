@@ -1,10 +1,11 @@
-import { useImperativeHandle } from 'react';
-import type { Ref } from 'react';
-import type { FormHandle } from '@/screens/menu/schema';
-import { TimerMode } from '@/helpers/timer/factory';
-import type { TimerConfig } from '@/helpers/timer/factory';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { Text } from '@/components/text';
+import { useImperativeHandle } from "react";
+import type { Ref } from "react";
+import { ScrollView, StyleSheet, View } from "react-native";
+
+import { Text } from "@/components/text";
+import { TimerMode } from "@/helpers/timer/factory";
+import type { TimerConfig } from "@/helpers/timer/factory";
+import type { FormHandle } from "@/screens/menu/schema";
 
 interface StopWatchFormProps {
   ref?: Ref<FormHandle>;
@@ -62,15 +63,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   contentContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   contentWrapper: {
     gap: 12,
     paddingHorizontal: 20,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
   },
 });

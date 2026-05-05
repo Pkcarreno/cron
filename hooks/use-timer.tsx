@@ -1,25 +1,26 @@
+import { useAtom } from "jotai/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import type {
   CheckpointData,
   SessionSummary,
-} from '@/helpers/timer/controller';
-import { TimerController, TimerEventType } from '@/helpers/timer/controller';
-import type { TimerConfig } from '@/helpers/timer/factory';
-import { createTimerStrategy, TimerMode } from '@/helpers/timer/factory';
-import type { TimerState } from '@/helpers/timer/strategy';
-import { TimerPhase } from '@/helpers/timer/strategy';
+} from "@/helpers/timer/controller";
+import { TimerController, TimerEventType } from "@/helpers/timer/controller";
+import type { TimerConfig } from "@/helpers/timer/factory";
+import { createTimerStrategy, TimerMode } from "@/helpers/timer/factory";
+import type { TimerState } from "@/helpers/timer/strategy";
+import { TimerPhase } from "@/helpers/timer/strategy";
 import {
   formatTimeForDisplay,
   getModeAbbreviation,
-} from '@/helpers/timer/utils/formatter';
-import { preparationTimeMsAtom } from '@/stores/settings';
-import { useAtom } from 'jotai/react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+} from "@/helpers/timer/utils/formatter";
+import { preparationTimeMsAtom } from "@/stores/settings";
 
 export enum TimerStatus {
-  READY = 'READY',
-  RUNNING = 'RUNNING',
-  PAUSED = 'PAUSED',
-  FINISHED = 'FINISHED',
+  READY = "READY",
+  RUNNING = "RUNNING",
+  PAUSED = "PAUSED",
+  FINISHED = "FINISHED",
 }
 
 export interface TimerFlags {
@@ -144,7 +145,7 @@ const useTimerController = (
   return { checkpointsRef, controllerRef, endedAtRef, startedAtRef };
 };
 
-export interface UISessionSummary extends Omit<SessionSummary, 'checkpoints'> {
+export interface UISessionSummary extends Omit<SessionSummary, "checkpoints"> {
   startedAt: Date | null;
   endedAt: Date | null;
   checkpoints: UICheckpoint[];
@@ -159,7 +160,7 @@ export const useTimer = (
     displayTimeMs: 0,
     isFinished: false,
     phase: TimerPhase.PREPARATION,
-    totalRounds: 'totalRounds' in config ? config.totalRounds : 1,
+    totalRounds: "totalRounds" in config ? config.totalRounds : 1,
   });
   const [status, setStatus] = useState<TimerStatus>(TimerStatus.READY);
 

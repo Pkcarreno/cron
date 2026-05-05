@@ -66,7 +66,7 @@ export class TickEngine {
         handler(event);
       } catch (error) {
         console.error(
-          '[TickEngine] Silence error detected in a callback tick',
+          "[TickEngine] Silence error detected in a callback tick",
           error
         );
       }

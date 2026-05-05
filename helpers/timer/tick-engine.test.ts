@@ -1,7 +1,15 @@
-import { describe, beforeEach, afterEach, expect, it } from '@jest/globals';
-import { TickEngine } from '@/helpers/timer/tick-engine';
+import {
+  describe,
+  beforeEach,
+  afterEach,
+  expect,
+  it,
+  jest,
+} from "@jest/globals";
 
-describe('tickEngine', () => {
+import { TickEngine } from "@/helpers/timer/tick-engine";
+
+describe("tickEngine", () => {
   let engine: TickEngine;
   let mockTickCallback: jest.Mock;
 
@@ -20,25 +28,27 @@ describe('tickEngine', () => {
     jest.useRealTimers();
   });
 
-  it('does not emit ticks before starting', () => {
+  it("does not emit ticks before starting", () => {
     jest.advanceTimersByTime(100);
     expect(mockTickCallback).not.toHaveBeenCalled();
   });
 
-  it('emits tick events with correct delta and total elapsed time when running', () => {
+  it("emits tick events with correct delta and total elapsed time when running", () => {
     engine.start();
 
     jest.advanceTimersByTime(50);
 
     expect(mockTickCallback).toHaveBeenCalledTimes(51);
 
-    const [lastEventPayload] = mockTickCallback.mock.lastCall;
-
-    expect(lastEventPayload.deltaMs).toBe(1);
-    expect(lastEventPayload.totalElapsedMs).toBe(50);
+    expect(mockTickCallback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deltaMs: 1,
+        totalElapsedMs: 50,
+      })
+    );
   });
 
-  it('stops emitting ticks after pause is called', () => {
+  it("stops emitting ticks after pause is called", () => {
     engine.start();
     jest.advanceTimersByTime(50);
 
@@ -52,7 +62,7 @@ describe('tickEngine', () => {
     expect(callsAfterPause).toBe(callsBeforePause);
   });
 
-  it('resumes total elapsed time correctly after being paused', () => {
+  it("resumes total elapsed time correctly after being paused", () => {
     engine.start();
     jest.advanceTimersByTime(100);
     engine.pause();
@@ -62,12 +72,14 @@ describe('tickEngine', () => {
     engine.start();
     jest.advanceTimersByTime(50);
 
-    const [lastEventPayload] = mockTickCallback.mock.lastCall;
-
-    expect(lastEventPayload.totalElapsedMs).toBe(150);
+    expect(mockTickCallback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        totalElapsedMs: 150,
+      })
+    );
   });
 
-  it('resets total elapsed time back to zero', () => {
+  it("resets total elapsed time back to zero", () => {
     engine.start();
     jest.advanceTimersByTime(100);
 
@@ -75,8 +87,10 @@ describe('tickEngine', () => {
     engine.start();
     jest.advanceTimersByTime(50);
 
-    const [lastEventPayload] = mockTickCallback.mock.lastCall;
-
-    expect(lastEventPayload.totalElapsedMs).toBe(50);
+    expect(mockTickCallback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        totalElapsedMs: 50,
+      })
+    );
   });
 });

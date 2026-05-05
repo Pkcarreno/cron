@@ -1,25 +1,26 @@
-import { colors } from '@/helpers/colors';
-import { useIsLowBattery } from '@/hooks/use-is-low-battery';
-import type { timerType } from '@/hooks/use-timer';
-import { useKeepAwake } from 'expo-keep-awake';
-import type { FC } from 'react';
-import { useMemo } from 'react';
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { ContextFormatType } from '@/screens/timer/types';
-import { formatDuration } from '@/helpers/timer/utils/formatter';
+import { useKeepAwake } from "expo-keep-awake";
+import type { FC } from "react";
+import { useMemo } from "react";
+import { Dimensions, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { colors } from "@/helpers/colors";
+import { formatDuration } from "@/helpers/timer/utils/formatter";
+import { useIsLowBattery } from "@/hooks/use-is-low-battery";
+import type { timerType } from "@/hooks/use-timer";
+import type { ContextFormatType } from "@/screens/timer/types";
 
 interface Props extends Pick<
   timerType,
-  'flags' | 'hours' | 'minutes' | 'seconds' | 'modeAbbr'
+  "flags" | "hours" | "minutes" | "seconds" | "modeAbbr"
 > {
   lap: number | undefined;
   delta: number | undefined;
   currentTime: string;
-  contextLabel: ContextFormatType['value'];
-  contextLabelColor?: ContextFormatType['color'];
-  contextValue: ContextFormatType['value'];
-  contextValueColor?: ContextFormatType['color'];
+  contextLabel: ContextFormatType["value"];
+  contextLabelColor?: ContextFormatType["color"];
+  contextValue: ContextFormatType["value"];
+  contextValueColor?: ContextFormatType["color"];
 }
 
 export const TimerFace: FC<Props> = ({
@@ -62,9 +63,9 @@ export const TimerFace: FC<Props> = ({
   const quickAccessInfo = useMemo(
     () =>
       [
-        isLowBattery ? '[BAT LOW]' : null,
+        isLowBattery ? "[BAT LOW]" : null,
         hours ? `${hours}H` : null,
-        lap && lap > 0 ? `L${lap.toString().padStart(2, '0')}` : null,
+        lap && lap > 0 ? `L${lap.toString().padStart(2, "0")}` : null,
         delta ? formatDuration(delta, true) : null,
       ].filter(Boolean),
     [hours, lap, delta, isLowBattery]
@@ -118,7 +119,7 @@ export const TimerFace: FC<Props> = ({
               ))
             ) : (
               <View style={quickAccessStyles.itemWrapper}>
-                <Text style={statusBarStyles.text}>{'\u2003'}</Text>
+                <Text style={statusBarStyles.text}>{"\u2003"}</Text>
               </View>
             )}
           </View>
@@ -132,7 +133,7 @@ export const TimerFace: FC<Props> = ({
                 contextLabelTextExternalStyles,
               ]}
             >
-              {contextLabel ?? '\u2003'}
+              {contextLabel ?? "\u2003"}
             </Text>
           </View>
           <View style={contextInfoStyles.valueWrapper}>
@@ -142,7 +143,7 @@ export const TimerFace: FC<Props> = ({
                 contextValueTextExternalStyles,
               ]}
             >
-              {contextValue ?? '\u2003'}
+              {contextValue ?? "\u2003"}
             </Text>
           </View>
         </View>
@@ -177,7 +178,7 @@ export const TimerFace: FC<Props> = ({
   );
 };
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 const giantFontSize = width * 0.75;
 const contextFontSize = width * 0.25;
 const roundFontSize = width * 0.22;
@@ -196,16 +197,16 @@ const styles = StyleSheet.create({
 
 const statusBarStyles = StyleSheet.create({
   container: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
   },
   leftWrapper: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
-    justifyContent: 'flex-start',
+    justifyContent: "flex-start",
     paddingLeft: 16,
   },
   localTimeText: {
@@ -213,42 +214,42 @@ const statusBarStyles = StyleSheet.create({
   },
   rightWrapper: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
     paddingRight: 16,
   },
   text: {
     color: colors.neutral[400],
-    fontFamily: 'Geist Mono',
+    fontFamily: "Geist Mono",
     fontSize: 18,
-    fontWeight: '300',
+    fontWeight: "300",
   },
 });
 
 const contextInfoStyles = StyleSheet.create({
   container: {
-    alignItems: 'flex-end',
-    flexDirection: 'row',
+    alignItems: "flex-end",
+    flexDirection: "row",
     gap: 8,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    width: '100%',
+    width: "100%",
   },
   labelText: {
     color: colors.neutral[400],
-    fontFamily: 'Geist Mono',
+    fontFamily: "Geist Mono",
     fontSize: contextFontSize,
-    fontWeight: '900',
+    fontWeight: "900",
     lineHeight: contextFontSize,
   },
   labelWrapper: {},
   valueText: {
     color: colors.neutral[400],
-    fontFamily: 'Geist Mono',
+    fontFamily: "Geist Mono",
     fontSize: roundFontSize,
-    fontWeight: '400',
+    fontWeight: "400",
     lineHeight: roundFontSize,
   },
   valueWrapper: {},
@@ -256,37 +257,37 @@ const contextInfoStyles = StyleSheet.create({
 
 const quickAccessStyles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
     paddingHorizontal: 16,
   },
   itemWrapper: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
 });
 
 const timeStyles = StyleSheet.create({
   container: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   digits: {
     color: colors.white,
-    fontFamily: 'Geist Mono',
+    fontFamily: "Geist Mono",
     fontSize: giantFontSize,
-    fontWeight: '700',
+    fontWeight: "700",
     includeFontPadding: false,
     lineHeight: giantFontSize,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    width: '100%',
+    textAlign: "center",
+    textAlignVertical: "center",
+    width: "100%",
   },
   digitsWrapper: {
-    justifyContent: 'center',
-    overflow: 'visible',
-    width: '100%',
+    justifyContent: "center",
+    overflow: "visible",
+    width: "100%",
   },
 });

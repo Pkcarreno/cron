@@ -1,13 +1,14 @@
-import { NativeOnlyAnimatedView } from '@/components/native-only-animated-view';
-import { colors } from '@/helpers/colors';
-import { triggerAndroidHaptic, triggerType } from '@/helpers/haptics';
-import * as DropdownMenuPrimitive from '@rn-primitives/dropdown-menu';
-import { AndroidHaptics, ImpactFeedbackStyle } from 'expo-haptics';
-import * as React from 'react';
-import { Platform, StyleSheet } from 'react-native';
-import type { GestureResponderEvent, StyleProp, ViewStyle } from 'react-native';
-import { FadeIn } from 'react-native-reanimated';
-import { FullWindowOverlay as RNFullWindowOverlay } from 'react-native-screens';
+import * as DropdownMenuPrimitive from "@rn-primitives/dropdown-menu";
+import { AndroidHaptics, ImpactFeedbackStyle } from "expo-haptics";
+import * as React from "react";
+import { Platform, StyleSheet } from "react-native";
+import type { GestureResponderEvent, StyleProp, ViewStyle } from "react-native";
+import { FadeIn } from "react-native-reanimated";
+import { FullWindowOverlay as RNFullWindowOverlay } from "react-native-screens";
+
+import { NativeOnlyAnimatedView } from "@/components/native-only-animated-view";
+import { colors } from "@/helpers/colors";
+import { triggerAndroidHaptic, triggerType } from "@/helpers/haptics";
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 
@@ -35,7 +36,7 @@ const DropdownMenuTrigger = ({
 };
 
 const FullWindowOverlay =
-  Platform.OS === 'ios' ? RNFullWindowOverlay : React.Fragment;
+  Platform.OS === "ios" ? RNFullWindowOverlay : React.Fragment;
 
 const DropdownMenuContent = ({
   style,
@@ -109,23 +110,23 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 2,
     minWidth: 128,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   disabled: {
     opacity: 0.7,
   },
   item: {
-    alignItems: 'center',
+    alignItems: "center",
     backgroundColor: colors.neutral[700],
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: 8,
     paddingVertical: 8,
   },
   label: {
     color: colors.white,
-    fontFamily: 'Geist',
+    fontFamily: "Geist",
     fontSize: 16,
-    fontWeight: '400',
+    fontWeight: "400",
   },
   separator: {},
 });

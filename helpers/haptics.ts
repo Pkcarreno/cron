@@ -1,17 +1,18 @@
-import { hasHapticEnabledAtom } from '@/stores/settings';
-import { store } from '@/stores/storage';
-import * as Haptics from 'expo-haptics';
-import { Platform } from 'react-native';
+import * as Haptics from "expo-haptics";
+import { Platform } from "react-native";
+
+import { hasHapticEnabledAtom } from "@/stores/settings";
+import { store } from "@/stores/storage";
 
 const isCompatibleAndroid =
-  Platform.OS === 'android' &&
-  typeof Platform.Version === 'number' &&
+  Platform.OS === "android" &&
+  typeof Platform.Version === "number" &&
   Platform.Version >= 30;
 
 export enum triggerType {
-  Impact = 'Impact',
-  Notification = 'Notification',
-  Selection = 'Selection',
+  Impact = "Impact",
+  Notification = "Notification",
+  Selection = "Selection",
 }
 
 type triggerHapticType =
@@ -49,7 +50,7 @@ export const triggerHaptic = (config: triggerHapticType) => {
     }
 
     default: {
-      console.error('no trigger found');
+      console.error("no trigger found");
     }
   }
 };
@@ -67,6 +68,6 @@ export const triggerAndroidHaptic = (
   } else if (fallback) {
     triggerHaptic(fallback);
   } else {
-    console.warn('Haptics: no haptic found to be triggered');
+    console.warn("Haptics: no haptic found to be triggered");
   }
 };

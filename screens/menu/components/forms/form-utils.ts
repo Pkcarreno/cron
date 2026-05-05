@@ -1,7 +1,8 @@
-import { fieldContext, formContext } from '@/screens/menu/form-context';
-import { createFormHook } from '@tanstack/react-form';
-import { NumberField } from '@/screens/menu/components/number-field';
-import { TimeField } from '@/screens/menu/components/time-field';
+import { createFormHook } from "@tanstack/react-form";
+
+import { NumberField } from "@/screens/menu/components/number-field";
+import { TimeField } from "@/screens/menu/components/time-field";
+import { fieldContext, formContext } from "@/screens/menu/form-context";
 
 export const { useAppForm, withForm } = createFormHook({
   fieldComponents: {

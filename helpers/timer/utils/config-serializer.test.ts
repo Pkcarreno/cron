@@ -1,14 +1,15 @@
-import { describe, expect, it } from '@jest/globals';
-import type { TimerConfig } from '@/helpers/timer/factory';
-import { TimerMode } from '@/helpers/timer/factory';
-import type { TimerRouteParams } from '@/helpers/timer/utils/config-serializer';
+import { describe, expect, it } from "@jest/globals";
+
+import type { TimerConfig } from "@/helpers/timer/factory";
+import { TimerMode } from "@/helpers/timer/factory";
+import type { TimerRouteParams } from "@/helpers/timer/utils/config-serializer";
 import {
   deserializeTimerConfig,
   serializeTimerConfig,
-} from '@/helpers/timer/utils/config-serializer';
+} from "@/helpers/timer/utils/config-serializer";
 
-describe('config-serializer', () => {
-  describe('serializeTimerConfig (Config -> Params)', () => {
+describe("config-serializer", () => {
+  describe("serializeTimerConfig (Config -> Params)", () => {
     it("should convert numbers to strings while preserving 'mode'", () => {
       const config: TimerConfig = {
         durationMs: 240_000,
@@ -18,12 +19,12 @@ describe('config-serializer', () => {
       const result = serializeTimerConfig(config);
 
       expect(result).toStrictEqual({
-        durationMs: '240000',
+        durationMs: "240000",
         mode: TimerMode.AMRAP,
       });
     });
 
-    it('should omit undefined properties', () => {
+    it("should omit undefined properties", () => {
       const config: Partial<TimerConfig> = {
         // @ts-expect-error: Testing runtime behavior for explicitly undefined values
         durationMs: undefined,
@@ -33,14 +34,14 @@ describe('config-serializer', () => {
       const result = serializeTimerConfig(config as TimerConfig);
 
       expect(result).toStrictEqual({ mode: TimerMode.EMOM });
-      expect(result).not.toHaveProperty('durationMs');
+      expect(result).not.toHaveProperty("durationMs");
     });
   });
 
-  describe('deserializeTimerConfig (Params -> Config)', () => {
+  describe("deserializeTimerConfig (Params -> Config)", () => {
     it("should parse strings to numbers while preserving 'mode'", () => {
       const params: TimerRouteParams = {
-        durationMs: '240000',
+        durationMs: "240000",
         mode: TimerMode.AMRAP,
       };
 
@@ -52,7 +53,7 @@ describe('config-serializer', () => {
       });
     });
 
-    it('should omit undefined properties', () => {
+    it("should omit undefined properties", () => {
       const params: Partial<TimerRouteParams> = {
         durationMs: undefined,
         mode: TimerMode.AMRAP,
@@ -61,7 +62,7 @@ describe('config-serializer', () => {
       const result = deserializeTimerConfig(params as TimerRouteParams);
 
       expect(result).toStrictEqual({ mode: TimerMode.AMRAP });
-      expect(result).not.toHaveProperty('durationMs');
+      expect(result).not.toHaveProperty("durationMs");
     });
   });
 });

@@ -1,15 +1,15 @@
-import { z } from 'zod';
+import { z } from "zod";
 
-import packageJSON from './package.json';
+import packageJSON from "./package.json";
 
 const getBuildNumber = (): number => {
-  const [major, minor, patch] = packageJSON.version.split('.').map(Number);
+  const [major, minor, patch] = packageJSON.version.split(".").map(Number);
   return major * 10_000 + minor * 100 + patch;
 };
 
 // Single unified environment schema
 const envSchema = z.object({
-  EXPO_PUBLIC_APP_ENV: z.enum(['development', 'preview', 'production']),
+  EXPO_PUBLIC_APP_ENV: z.enum(["development", "preview", "production"]),
   EXPO_PUBLIC_BUILD_NUMBER: z.number(),
   EXPO_PUBLIC_BUNDLE_ID: z.string(),
   EXPO_PUBLIC_NAME: z.string(),
@@ -20,34 +20,34 @@ const envSchema = z.object({
 
 // Config records per environment
 const EXPO_PUBLIC_APP_ENV = (process.env.EXPO_PUBLIC_APP_ENV ??
-  'development') as z.infer<typeof envSchema>['EXPO_PUBLIC_APP_ENV'];
+  "development") as z.infer<typeof envSchema>["EXPO_PUBLIC_APP_ENV"];
 
 const BUNDLE_IDS = {
-  development: 'com.pkcarreno.cron.development',
-  preview: 'com.pkcarreno.cron.preview',
-  production: 'com.pkcarreno.cron',
+  development: "com.pkcarreno.cron.development",
+  preview: "com.pkcarreno.cron.preview",
+  production: "com.pkcarreno.cron",
 } as const;
 
 const PACKAGES = {
-  development: 'com.pkcarreno.cron.development',
-  preview: 'com.pkcarreno.cron.preview',
-  production: 'com.pkcarreno.cron',
+  development: "com.pkcarreno.cron.development",
+  preview: "com.pkcarreno.cron.preview",
+  production: "com.pkcarreno.cron",
 } as const;
 
 const SCHEMES = {
-  development: 'crn',
-  preview: 'crn.preview',
-  production: 'crn',
+  development: "crn",
+  preview: "crn.preview",
+  production: "crn",
 } as const;
 
 const NAME = {
-  development: 'cron dev',
-  preview: 'cron preview',
-  production: 'cron',
+  development: "cron dev",
+  preview: "cron preview",
+  production: "cron",
 } as const;
 
 // Check if strict validation is required (before prebuild)
-const STRICT_ENV_VALIDATION = process.env.STRICT_ENV_VALIDATION === '1';
+const STRICT_ENV_VALIDATION = process.env.STRICT_ENV_VALIDATION === "1";
 
 // Build env object
 const _env: z.infer<typeof envSchema> = {
@@ -74,10 +74,10 @@ const getValidatedEnv = (env: z.infer<typeof envSchema>) => {
 
     if (STRICT_ENV_VALIDATION) {
       console.error(errorMessage);
-      throw new Error('Invalid environment variables');
+      throw new Error("Invalid environment variables");
     }
   } else {
-    console.log('✅ Environment variables validated successfully');
+    console.log("✅ Environment variables validated successfully");
   }
 
   return parsed.success ? parsed.data : env;

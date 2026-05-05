@@ -1,12 +1,13 @@
-import { describe, expect, it } from '@jest/globals';
-import { DownStrategy } from '@/helpers/timer/strategies/down-strategy';
-import { TimerPhase } from '@/helpers/timer/strategy';
-import type { TickEvent } from '@/helpers/timer/tick-engine';
+import { describe, expect, it } from "@jest/globals";
 
-describe('downStrategy', () => {
+import { DownStrategy } from "@/helpers/timer/strategies/down-strategy";
+import { TimerPhase } from "@/helpers/timer/strategy";
+import type { TickEvent } from "@/helpers/timer/tick-engine";
+
+describe("downStrategy", () => {
   const TARGET_TIME_MS = 60_000;
 
-  it('calculates remaining time correctly before reaching zero', () => {
+  it("calculates remaining time correctly before reaching zero", () => {
     const strategy = new DownStrategy(TARGET_TIME_MS);
     const mockTickEvent: TickEvent = { deltaMs: 1000, totalElapsedMs: 15_000 };
 
@@ -19,7 +20,7 @@ describe('downStrategy', () => {
     expect(state.isFinished).toBeFalsy();
   });
 
-  it('returns finished state and caps display time at zero when target time is reached', () => {
+  it("returns finished state and caps display time at zero when target time is reached", () => {
     const strategy = new DownStrategy(TARGET_TIME_MS);
     const mockTickEvent: TickEvent = { deltaMs: 1000, totalElapsedMs: 60_000 };
 
@@ -30,7 +31,7 @@ describe('downStrategy', () => {
     expect(state.isFinished).toBeTruthy();
   });
 
-  it('prevents negative display time when elapsed time exceeds target time', () => {
+  it("prevents negative display time when elapsed time exceeds target time", () => {
     const strategy = new DownStrategy(TARGET_TIME_MS);
     const mockTickEvent: TickEvent = { deltaMs: 1000, totalElapsedMs: 65_000 };
 

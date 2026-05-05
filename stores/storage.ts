@@ -1,6 +1,6 @@
-import { atomWithStorage, createJSONStorage } from 'jotai/utils';
-import { getDefaultStore } from 'jotai/vanilla';
-import { createMMKV } from 'react-native-mmkv';
+import { atomWithStorage, createJSONStorage } from "jotai/utils";
+import { getDefaultStore } from "jotai/vanilla";
+import { createMMKV } from "react-native-mmkv";
 
 const storage = createMMKV();
 

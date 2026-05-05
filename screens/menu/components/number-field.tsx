@@ -1,11 +1,12 @@
-import { useCallback } from 'react';
-import { useFieldContext } from '@/screens/menu/form-context';
-import type { InputNumberProps } from '@/components/input-number';
-import { InputNumber } from '@/components/input-number';
-import { Col, Grid, Row } from '@/components/grid';
+import { useCallback } from "react";
+
+import { Col, Grid, Row } from "@/components/grid";
+import type { InputNumberProps } from "@/components/input-number";
+import { InputNumber } from "@/components/input-number";
+import { useFieldContext } from "@/screens/menu/form-context";
 
 export const NumberField = (
-  props: Omit<InputNumberProps, 'value' | 'onChangeValue'>
+  props: Omit<InputNumberProps, "value" | "onChangeValue">
 ) => {
   const field = useFieldContext<number>();
 

@@ -1,19 +1,21 @@
-import { HideNavigationBar } from '@/components/hide-navigation-bar';
-import { PressableArea } from '@/components/pressable-area';
-import { SummaryFace } from './components/summary-face';
-import { TimerFace } from './components/timer-face';
-import { playTone, playToneSequence } from '@/helpers/playback-service';
-import { TimerPhase } from '@/helpers/timer/strategy';
-import { deserializeTimerConfig } from '@/helpers/timer/utils/config-serializer';
-import type { TimerRouteParams } from '@/helpers/timer/utils/config-serializer';
-import { useGetCurrentTime } from '@/hooks/use-get-current-time';
-import { TimerStatus, useTimer } from '@/hooks/use-timer';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useMemo } from 'react';
-import { TimerMode } from '@/helpers/timer/factory';
-import { colors } from '@/helpers/colors';
-import type { ContextFormatType } from './types';
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useCallback, useEffect, useMemo } from "react";
+
+import { HideNavigationBar } from "@/components/hide-navigation-bar";
+import { PressableArea } from "@/components/pressable-area";
+import { colors } from "@/helpers/colors";
+import { playTone, playToneSequence } from "@/helpers/playback-service";
+import { TimerMode } from "@/helpers/timer/factory";
+import { TimerPhase } from "@/helpers/timer/strategy";
+import { deserializeTimerConfig } from "@/helpers/timer/utils/config-serializer";
+import type { TimerRouteParams } from "@/helpers/timer/utils/config-serializer";
+import { useGetCurrentTime } from "@/hooks/use-get-current-time";
+import { TimerStatus, useTimer } from "@/hooks/use-timer";
+
+import { SummaryFace } from "./components/summary-face";
+import { TimerFace } from "./components/timer-face";
+import type { ContextFormatType } from "./types";
 
 // oxlint-disable eslint/max-statements
 export const Timer = () => {
@@ -94,7 +96,7 @@ export const Timer = () => {
       case TimerMode.AMRAP: {
         return {
           color: colors.red,
-          value: checkpoints.at(-1)?.lap ? 'RND' : undefined,
+          value: checkpoints.at(-1)?.lap ? "RND" : undefined,
         };
       }
 

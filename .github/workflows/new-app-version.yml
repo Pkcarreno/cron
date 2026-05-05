@@ -5,7 +5,7 @@ on:
     inputs:
       release-type:
         type: choice
-        description: 'Release type (one of): patch, minor, major'
+        description: "Release type (one of): patch, minor, major"
         required: true
         default: patch
         options:

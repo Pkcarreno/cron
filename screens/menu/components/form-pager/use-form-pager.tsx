@@ -1,18 +1,20 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AndroidHaptics, ImpactFeedbackStyle } from "expo-haptics";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   PagerViewOnPageScrollEventData,
   PagerViewOnPageSelectedEvent,
-} from 'react-native-pager-view';
-import type PagerView from 'react-native-pager-view';
-import type { FormTabOption } from './types';
-import { useEvent, useSharedValue } from 'react-native-reanimated';
+} from "react-native-pager-view";
+import type PagerView from "react-native-pager-view";
+import { useEvent, useSharedValue } from "react-native-reanimated";
+
+import { triggerAndroidHaptic, triggerType } from "@/helpers/haptics";
+
 import type {
   DropdownMenuItemWithIndexOnActionType,
   PressableWithIndexOnActionType,
   ViewWithIndexOnLayoutType,
-} from './components/utils';
-import { triggerAndroidHaptic, triggerType } from '@/helpers/haptics';
-import { AndroidHaptics, ImpactFeedbackStyle } from 'expo-haptics';
+} from "./components/utils";
+import type { FormTabOption } from "./types";
 
 const usePagerState = <T extends string>(
   options: FormTabOption<T>[],
@@ -155,10 +157,10 @@ export const useFormPager = <T extends string>(
 
   const scrollHandler = useEvent(
     (event: PagerViewOnPageScrollEventData) => {
-      'worklet';
+      "worklet";
       scrollPosition.value = event.position + event.offset;
     },
-    ['onPageScroll']
+    ["onPageScroll"]
   );
 
   const handlePageSelected = useCallback(

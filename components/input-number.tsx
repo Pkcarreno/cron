@@ -1,21 +1,23 @@
-import type { PressableProps, PressableStateCallbackType } from 'react-native';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { Text } from './text';
-import { colors } from '@/helpers/colors';
-import { useCallback, useMemo, useState } from 'react';
-import Button from './button';
-import InputThumbwheel from './input-thumbwheel';
-import { z } from 'zod';
-import { useField, useForm } from '@tanstack/react-form';
-import type { TriggerRenderProp } from './sheet';
-import { Sheet, SheetContent, SheetTrigger } from './sheet';
+import { useField, useForm } from "@tanstack/react-form";
+import { useCallback, useMemo, useState } from "react";
+import type { PressableProps, PressableStateCallbackType } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+import { z } from "zod";
+
+import { colors } from "@/helpers/colors";
+
+import Button from "./button";
+import InputThumbwheel from "./input-thumbwheel";
+import type { TriggerRenderProp } from "./sheet";
+import { Sheet, SheetContent, SheetTrigger } from "./sheet";
+import { Text } from "./text";
 
 type onChangeValueType = (value: number) => void;
 
 export interface InputNumberProps {
   value: number;
   onChangeValue?: onChangeValueType;
-  editable?: PressableProps['disabled'];
+  editable?: PressableProps["disabled"];
   suffix?: string;
   valueSuffix?: string;
   min?: number;
@@ -28,7 +30,7 @@ export const InputNumber: React.FC<InputNumberProps> = ({
   suffix,
   ...props
 }) => {
-  const renderValue = useMemo(() => value.toString().padStart(2, '0'), [value]);
+  const renderValue = useMemo(() => value.toString().padStart(2, "0"), [value]);
 
   const pressableStyles = useCallback(
     ({ pressed }: PressableStateCallbackType) => [
@@ -73,50 +75,50 @@ export const InputNumber: React.FC<InputNumberProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   disabled: {
     opacity: 0.7,
   },
   pressable: {
-    alignItems: 'center',
+    alignItems: "center",
     aspectRatio: 1,
     backgroundColor: colors.neutral[800],
     borderColor: colors.neutral[600],
     borderRadius: 12,
     borderWidth: 1,
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   pressed: {
     backgroundColor: colors.neutral[600],
   },
   suffix: {
-    fontVariant: ['tabular-nums'],
+    fontVariant: ["tabular-nums"],
     minWidth: 16,
   },
   value: {
     fontSize: 180,
-    fontVariant: ['tabular-nums'],
+    fontVariant: ["tabular-nums"],
     includeFontPadding: false,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    width: '100%',
+    textAlign: "center",
+    textAlignVertical: "center",
+    width: "100%",
   },
   valueWrapper: {
     ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     padding: 8,
   },
 });
 
 type NumberPickerSheetBaseProps = Pick<
   InputNumberProps,
-  'value' | 'onChangeValue' | 'valueSuffix' | 'min' | 'max'
+  "value" | "onChangeValue" | "valueSuffix" | "min" | "max"
 >;
 
 export type NumberPickerSheetProps = NumberPickerSheetBaseProps &
@@ -164,7 +166,7 @@ export const NumberPickerSheet: React.FC<NumberPickerSheetProps> = ({
 const NumberPickerForm: React.FC<
   Pick<
     NumberPickerSheetProps,
-    'value' | 'onChangeValue' | 'valueSuffix' | 'min' | 'max'
+    "value" | "onChangeValue" | "valueSuffix" | "min" | "max"
   >
 > = ({ value, onChangeValue, valueSuffix, min = 0, max = 99 }) => {
   const form = useForm({
@@ -189,7 +191,7 @@ const NumberPickerForm: React.FC<
 
   const numberField = useField({
     form,
-    name: 'number',
+    name: "number",
   });
 
   const handleSubtractTen = useCallback(
@@ -296,22 +298,22 @@ const sheetFormStyles = StyleSheet.create({
   },
   footer: {},
   header: {
-    alignItems: 'baseline',
-    flexDirection: 'row',
+    alignItems: "baseline",
+    flexDirection: "row",
     gap: 8,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   inputWrapper: {},
   quickActionGroup: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   quickActionsRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 16,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   value: {
-    fontVariant: ['tabular-nums'],
+    fontVariant: ["tabular-nums"],
   },
 });

@@ -1,23 +1,25 @@
-/* oxlint-disable react-native/no-unused-styles */
-import { colors } from '@/helpers/colors';
+import { useCallback } from "react";
 import type {
   PressableProps,
   PressableStateCallbackType,
   ViewStyle,
-} from 'react-native';
-import { Pressable, StyleSheet } from 'react-native';
-import { Text } from './text';
-import { useCallback } from 'react';
+} from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 
-type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
-type ButtonSize = 'md' | 'sm' | 'icon';
+/* oxlint-disable react-native/no-unused-styles */
+import { colors } from "@/helpers/colors";
+
+import { Text } from "./text";
+
+type ButtonVariant = "primary" | "secondary" | "outline" | "ghost";
+type ButtonSize = "md" | "sm" | "icon";
 
 export interface IconProps {
   color: string;
   size: number;
 }
 
-interface BaseButtonProps extends Omit<PressableProps, 'title'> {
+interface BaseButtonProps extends Omit<PressableProps, "title"> {
   onPress?: () => void;
   disabled?: boolean;
   variant?: ButtonVariant;
@@ -36,8 +38,8 @@ const Button: React.FC<ButtonProps> = ({
   icon: Icon,
   onPress,
   disabled = false,
-  variant = 'primary',
-  size = 'md',
+  variant = "primary",
+  size = "md",
   style,
   ...rest
 }) => {
@@ -88,11 +90,11 @@ export default Button;
 
 const styles = StyleSheet.create({
   base: {
-    alignItems: 'center',
+    alignItems: "center",
     borderColor: colors.transparent,
     borderRadius: 8,
     borderWidth: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   disabled: {
     backgroundColor: colors.neutral[800],
@@ -109,7 +111,7 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.96 }],
   },
   text: {
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
 

@@ -1,21 +1,21 @@
-import { atomWithMMKV } from './storage';
+import { atomWithMMKV } from "./storage";
 
 export const isRawTimerEnabledAtom = atomWithMMKV<boolean>(
-  'settings.isRawTimerEnabled',
+  "settings.isRawTimerEnabled",
   false
 );
 
 export const hasHapticEnabledAtom = atomWithMMKV<boolean>(
-  'settings.hasHapticEnabled',
+  "settings.hasHapticEnabled",
   true
 );
 
 export const isSoundEnabledAtom = atomWithMMKV<boolean>(
-  'settings.isSoundEnabled',
+  "settings.isSoundEnabled",
   true
 );
 
 export const preparationTimeMsAtom = atomWithMMKV<number>(
-  'settings.preparationTimeMs',
+  "settings.preparationTimeMs",
   10_000
 );

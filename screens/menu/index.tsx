@@ -1,15 +1,17 @@
-import { StyleSheet, View } from 'react-native';
-import type { TimerMode } from '@/helpers/timer/factory';
-import { useCallback, useState } from 'react';
-import Button from '@/components/button';
-import { Text } from '@/components/text';
-import { Logo } from '@/components/logo';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { FormPager } from './components/form-pager';
-import { useTimerForms } from './hooks/use-timer-form';
-import { TIMER_MODES } from './schema';
-import { Link } from 'expo-router';
-import { SlidersIcon } from 'phosphor-react-native';
+import { Link } from "expo-router";
+import { SlidersIcon } from "phosphor-react-native";
+import { useCallback, useState } from "react";
+import { StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import Button from "@/components/button";
+import { Logo } from "@/components/logo";
+import { Text } from "@/components/text";
+import type { TimerMode } from "@/helpers/timer/factory";
+
+import { FormPager } from "./components/form-pager";
+import { useTimerForms } from "./hooks/use-timer-form";
+import { TIMER_MODES } from "./schema";
 
 export const Menu = () => {
   const [currentMode, setCurrentMode] = useState<TimerMode>(TIMER_MODES[0]);
@@ -59,7 +61,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     gap: 16,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   content: {
     flex: 1,
@@ -68,7 +70,7 @@ const styles = StyleSheet.create({
     paddingLeft: 28,
   },
   footer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
     paddingHorizontal: 20,
     paddingTop: 16,
@@ -77,9 +79,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
   },
 });

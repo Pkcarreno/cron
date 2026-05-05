@@ -1,6 +1,6 @@
-import type { TickEvent } from '@/helpers/timer/tick-engine';
-import type { TimerState, TimerStrategy } from '@/helpers/timer/strategy';
-import { TimerPhase } from '@/helpers/timer/strategy';
+import type { TimerState, TimerStrategy } from "@/helpers/timer/strategy";
+import { TimerPhase } from "@/helpers/timer/strategy";
+import type { TickEvent } from "@/helpers/timer/tick-engine";
 
 export class IntervalStrategy implements TimerStrategy {
   private cycleTimeMs: number;

@@ -1,34 +1,35 @@
-import { TimerMode } from '@/helpers/timer/factory';
+import { z } from "zod";
+
+import { TimerMode } from "@/helpers/timer/factory";
 import type {
   AmrapConfig,
   EmomConfig,
   ForTimeConfig,
   StopWatchConfig,
   IntervalConfig,
-} from '@/helpers/timer/factory';
-import { z } from 'zod';
+} from "@/helpers/timer/factory";
 
 export const emomSchema = z.object({
-  roundDurationMs: z.number().min(1, 'Round duration must be at least 1ms'),
-  totalRounds: z.number().min(1, 'Rounds must be at least 1'),
-}) satisfies z.ZodType<Omit<EmomConfig, 'preparationMs' | 'mode'>>;
+  roundDurationMs: z.number().min(1, "Round duration must be at least 1ms"),
+  totalRounds: z.number().min(1, "Rounds must be at least 1"),
+}) satisfies z.ZodType<Omit<EmomConfig, "preparationMs" | "mode">>;
 
 export const amrapSchema = z.object({
-  durationMs: z.number().min(1, 'Duration must be at least 1ms'),
-}) satisfies z.ZodType<Omit<AmrapConfig, 'preparationMs' | 'mode'>>;
+  durationMs: z.number().min(1, "Duration must be at least 1ms"),
+}) satisfies z.ZodType<Omit<AmrapConfig, "preparationMs" | "mode">>;
 
 export const intervalSchema = z.object({
-  restMs: z.number().min(1, 'Rest duration must be at least 1ms'),
-  totalRounds: z.number().min(1, 'Rounds must be at least 1'),
-  workMs: z.number().min(1, 'Work duration must be at least 1ms'),
-}) satisfies z.ZodType<Omit<IntervalConfig, 'preparationMs' | 'mode'>>;
+  restMs: z.number().min(1, "Rest duration must be at least 1ms"),
+  totalRounds: z.number().min(1, "Rounds must be at least 1"),
+  workMs: z.number().min(1, "Work duration must be at least 1ms"),
+}) satisfies z.ZodType<Omit<IntervalConfig, "preparationMs" | "mode">>;
 
 export const forTimeSchema = z.object({
-  timecapMs: z.number().min(1, 'Time cap must be at least 1ms'),
-}) satisfies z.ZodType<Omit<ForTimeConfig, 'preparationMs' | 'mode'>>;
+  timecapMs: z.number().min(1, "Time cap must be at least 1ms"),
+}) satisfies z.ZodType<Omit<ForTimeConfig, "preparationMs" | "mode">>;
 
 export const stopWatchSchema = z.object({}) satisfies z.ZodType<
-  Omit<StopWatchConfig, 'preparationMs' | 'mode'>
+  Omit<StopWatchConfig, "preparationMs" | "mode">
 >;
 
 export const emomDefaults: z.infer<typeof emomSchema> = {

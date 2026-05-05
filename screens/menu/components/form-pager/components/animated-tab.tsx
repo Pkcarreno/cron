@@ -1,13 +1,14 @@
-import type { SharedValue } from 'react-native-reanimated';
+import type { SharedValue } from "react-native-reanimated";
 import Animated, {
   Extrapolation,
   interpolate,
   useAnimatedStyle,
-} from 'react-native-reanimated';
+} from "react-native-reanimated";
+
 import {
   ICON_SPACE,
   sharedStyles,
-} from '@/screens/menu/components/form-pager/shared';
+} from "@/screens/menu/components/form-pager/shared";
 
 interface AnimatedTabWrapperProps extends React.PropsWithChildren {
   index: number;

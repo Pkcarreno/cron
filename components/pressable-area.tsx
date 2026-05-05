@@ -1,17 +1,18 @@
 import {
-  triggerAndroidHaptic,
-  triggerHaptic,
-  triggerType,
-} from '@/helpers/haptics';
-import {
   AndroidHaptics,
   ImpactFeedbackStyle,
   NotificationFeedbackType,
-} from 'expo-haptics';
-import React from 'react';
-import type { DimensionValue } from 'react-native';
-import { View, StyleSheet } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+} from "expo-haptics";
+import React from "react";
+import type { DimensionValue } from "react-native";
+import { View, StyleSheet } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+
+import {
+  triggerAndroidHaptic,
+  triggerHaptic,
+  triggerType,
+} from "@/helpers/haptics";
 
 const LONG_PRESS_DURATION = 600;
 

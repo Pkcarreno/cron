@@ -1,15 +1,16 @@
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { colors } from '@/helpers/colors';
-import { Link, useLocalSearchParams } from 'expo-router';
-import { TimerStatus, useTimer } from '@/hooks/use-timer';
-import type { TimerRouteParams } from '@/helpers/timer/utils/config-serializer';
-import { deserializeTimerConfig } from '@/helpers/timer/utils/config-serializer';
-import { useKeepAwake } from 'expo-keep-awake';
-import type { TimerPhase } from '@/helpers/timer/strategy';
-import { useState } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text } from '@/components/text';
-import Button from '@/components/button';
+import { useKeepAwake } from "expo-keep-awake";
+import { Link, useLocalSearchParams } from "expo-router";
+import { useState } from "react";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+import Button from "@/components/button";
+import { Text } from "@/components/text";
+import { colors } from "@/helpers/colors";
+import type { TimerPhase } from "@/helpers/timer/strategy";
+import type { TimerRouteParams } from "@/helpers/timer/utils/config-serializer";
+import { deserializeTimerConfig } from "@/helpers/timer/utils/config-serializer";
+import { TimerStatus, useTimer } from "@/hooks/use-timer";
 
 interface logType {
   time: string;
@@ -48,8 +49,8 @@ export const TimerInspect = () => {
     reset,
   } = useTimer(timerInput, {
     onBeep: (second: number) => addLog(`beep on ${second} left`),
-    onFinish: () => addLog('finish'),
-    onGo: () => addLog('Go'),
+    onFinish: () => addLog("finish"),
+    onGo: () => addLog("Go"),
     onPhaseChange: (newPhase: TimerPhase) =>
       addLog(`on phase change: ${newPhase}`),
     onRoundChange: (newRound: number) => addLog(`on round change: ${newRound}`),
@@ -221,14 +222,14 @@ const styles = StyleSheet.create({
   },
   header: {},
   row: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
 });
 
 const timerStyles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
+    flexDirection: "row",
   },
 });
 
@@ -237,7 +238,7 @@ const dataBoxStyles = StyleSheet.create({
     paddingVertical: 4,
   },
   dataElementWrapper: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   dataWrapper: {
@@ -251,7 +252,7 @@ const logStyles = StyleSheet.create({
     paddingVertical: 4,
   },
   logItemWrapper: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   logWrapper: {
