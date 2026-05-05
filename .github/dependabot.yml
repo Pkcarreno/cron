@@ -18,6 +18,7 @@ updates:
       - dependency-name: "@types/jest"
       - dependency-name: "jest-expo"
       - dependency-name: "jest"
+      - dependency-name: "typescript"
     groups:
       js-packages:
         patterns:
