@@ -63,4 +63,4 @@ Cron is a well-known time-based job scheduler in Unix systems, where the asteris
 
 ### is this app vibecoded?
 
-No. I had a clear vision for this app from the start. I use AI (like Gemini and Supermaven) strictly as an assistant for brainstorming and autocompletion, not to write the codebase for me.
+No. This app is built with deliberate architecture and strict engineering standards. AI agents operate under deterministic test-driven workflows, formal domain modeling, and continuous verification (see [`AGENTS.md`](AGENTS.md)), rather than unconstrained generative coding.
