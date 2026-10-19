@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "skills": {
+    "animate-expo": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/animate-expo/SKILL.md",
+      "computedHash": "5de09593d564091f9db60aabede7bed760251e118548272050a247c653c417d2"
+    },
+    "animation-vocabulary": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/animation-vocabulary/SKILL.md",
+      "computedHash": "0058036865ecbb864fd0c4132efcc62425355d6e99c7e6ef6a936742d62a5dea"
+    },
+    "apple-design": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/apple-design/SKILL.md",
+      "computedHash": "0190417d092a0df447b000154e39733ea6d97efad6d3bec8a6ce3845aeb88914"
+    },
+    "asd-ste100": {
+      "source": "woosal1337/blog",
+      "sourceType": "github",
+      "skillPath": "videos/ep01-the-cure-for-ai-slop/asd-ste100/SKILL.md",
+      "computedHash": "70d5843811fd4feda32610c18f10a5d5f90ba15cedb4854b21acd61ccfb1fee7"
+    },
+    "emil-design-eng": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/emil-design-eng/SKILL.md",
+      "computedHash": "51f2537e04d15911b41d78e2de24c36a0e26d41beae15e82a954fe5496a5eda9"
+    },
+    "expo-router": {
+      "source": "expo/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/expo/skills/expo-router/SKILL.md",
+      "computedHash": "512978d4ea35857932b79ee9b15a47d7ab78382dc1fcd275601b87e4c80c1e59"
+    },
+    "find-animation-opportunities": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/find-animation-opportunities/SKILL.md",
+      "computedHash": "465d087c41768e4f14ed640dd049036009f613feb55baaa5831b68b33178f9d2"
+    },
+    "improve-animations": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/improve-animations/SKILL.md",
+      "computedHash": "524ea241e41d58bbdd8e288700fe24f5725e2a2f3ae7186ad7cebf9055058356"
+    },
+    "jotai": {
+      "source": "jotaijs/jotai-skills",
+      "sourceType": "github",
+      "skillPath": "skills/jotai/SKILL.md",
+      "computedHash": "473e214576772e8f343f0b3d09546b3828604773b89bbd329c7fef3590f1cf52"
+    },
+    "react-native-best-practices": {
+      "source": "software-mansion-labs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-native-best-practices/SKILL.md",
+      "computedHash": "0bb7d3af521e5a3f75b54b8768db6bb24861c9062823585c1daa580e471d1a81"
+    },
+    "semantic-code-naming": {
+      "source": "pkcarreno/skills",
+      "sourceType": "github",
+      "skillPath": "skills/semantic-code-naming/SKILL.md",
+      "computedHash": "49148b0046b3178ab165658a7c6211e9c97a7bfd41889f1a813add85a0f8e73c"
+    },
+    "typescript-advanced-types": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/javascript-typescript/skills/typescript-advanced-types/SKILL.md",
+      "computedHash": "8cbf2bf600f392d7260e476e3202932a876e2281cda3b15a8b6a5a43f383252d"
+    },
+    "ultracite": {
+      "source": "haydenbleasel/ultracite",
+      "sourceType": "github",
+      "skillPath": "skills/ultracite/SKILL.md",
+      "computedHash": "786edd8e07ffab37d1d27c68a1a991b0fe4d0ba911fc97d4f93d232115f0485e"
+    },
+    "vercel-composition-patterns": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/composition-patterns/SKILL.md",
+      "computedHash": "f98931159fa9c7fed043bcd18a891a46dcf89ababa38df13a4c5b7b30dc0ce07"
+    },
+    "vercel-react-native-skills": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-native-skills/SKILL.md",
+      "computedHash": "2e9088a7333666d8c2833b8ff58bd51b955501c42b4c7244f72b4cbf22dafcc4"
+    }
+  }
+}
