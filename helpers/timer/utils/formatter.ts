@@ -63,7 +63,7 @@ export const formatDuration = (ms: number, showSign = false): string => {
   const totalSeconds = absMs / 1000;
 
   if (totalSeconds < 60) {
-    return `${sign}${Number.parseFloat(totalSeconds.toFixed(3))}s`;
+    return `${sign}${Number(totalSeconds.toFixed(3))}s`;
   }
 
   const totalMinutes = Math.floor(totalSeconds / 60);
