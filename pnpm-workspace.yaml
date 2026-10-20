@@ -1,3 +1,12 @@
 nodeLinker: hoisted
-onlyBuiltDependencies:
-  - lefthook
+allowBuilds:
+  lefthook: true
+  "@parcel/watcher": false
+  esbuild: false
+  unrs-resolver: false
+overrides:
+  react-dom: 19.3.0
+  noxcturnal: 0.1.5
+permissions:
+  ultracite:
+    skills: true

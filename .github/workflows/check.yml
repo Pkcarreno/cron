@@ -17,7 +17,7 @@ jobs:
 
       - uses: ./.github/actions/setup-node-pnpm-install
 
-      - uses: oxc-project/oxlint-action@latest
+      - run: pnpm lint
 
   typecheck:
     name: Typecheck
