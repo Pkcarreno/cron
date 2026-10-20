@@ -163,7 +163,6 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@react-native/jest-preset': 0.88.0
   react-dom: 19.3.0
   noxcturnal: 0.1.5
 
@@ -3618,6 +3617,7 @@ packages:
   git-raw-commits@5.0.1:
     resolution: {integrity: sha512-Y+csSm2GD/PCSh6Isd/WiMjNAydu0VBiG9J7EdQsNA5P9uXvLayqjmTsNlK5Gs9IhblFZqOU0yid5Il5JPoLiQ==}
     engines: {node: '>=18'}
+    deprecated: Deprecated and no longer maintained. Use @conventional-changelog/git-client instead.
     hasBin: true
 
   glob-parent@5.1.2:
@@ -3896,7 +3896,7 @@ packages:
     resolution: {integrity: sha512-arbPFju6v6Hi9GTfe06M1y4Ra+gttPahaORm9qQlwGm502KGt5cV/oEFheFLRyJu5hQzexPiuWz34/q7KMgjAg==}
     hasBin: true
     peerDependencies:
-      '@react-native/jest-preset': 0.88.0
+      '@react-native/jest-preset': ^0.88.0
       expo: '*'
       jest: ^29.0.0 || ^30.0.0
       react-native: '*'
