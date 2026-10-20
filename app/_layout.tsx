@@ -18,7 +18,7 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <GestureHandlerRootView>
+    <GestureHandlerRootView style={styles.container}>
       <BottomSheetModalProvider>
         <SafeAreaProvider>
           {/* oxlint-disable react/style-prop-object */}
@@ -46,6 +46,9 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   contentStyle: {
     backgroundColor: colors.black,
   },

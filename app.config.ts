@@ -346,7 +346,6 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
         ],
       },
     ],
-    "expo-router",
     "react-native-audio-api",
     "expo-image",
   ],
