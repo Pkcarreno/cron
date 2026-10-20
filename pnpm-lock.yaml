@@ -126,6 +126,9 @@ importers:
       '@types/react':
         specifier: ~19.2.14
         version: 19.2.14
+      '@types/react-test-renderer':
+        specifier: ^19.3.0
+        version: 19.3.0
       jest:
         specifier: ^29.7.0
         version: 29.7.0(@types/node@25.2.3)
@@ -2090,6 +2093,9 @@ packages:
 
   '@types/node@25.2.3':
     resolution: {integrity: sha512-m0jEgYlYz+mDJZ2+F4v8D1AyQb+QzsNqRuI7xg1VQX/KlKS0qT9r1Mo16yo5F/MtifXFgaofIFsdFMox2SxIbQ==}
+
+  '@types/react-test-renderer@19.3.0':
+    resolution: {integrity: sha512-TX4p2D4Z2oigM3SXU7+QyLSUnSR0vR1S1Pfxm/qFL9nHQ3jclgi6ioGoWQmlIr1DeKRVmPJrmNlhgM0JlWlLUg==}
 
   '@types/react@19.2.14':
     resolution: {integrity: sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w==}
@@ -7063,6 +7069,10 @@ snapshots:
   '@types/node@25.2.3':
     dependencies:
       undici-types: 7.16.0
+
+  '@types/react-test-renderer@19.3.0':
+    dependencies:
+      '@types/react': 19.2.14
 
   '@types/react@19.2.14':
     dependencies:
