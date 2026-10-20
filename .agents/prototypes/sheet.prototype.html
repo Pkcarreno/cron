@@ -1,0 +1,678 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sheet Modal State Machine Prototype</title>
+    <style>
+      :root {
+        --bg: var(--background, #0f1115);
+        --fg: var(--foreground, #f3f4f6);
+        --card-bg: var(--card, #181b21);
+        --border-color: var(--border, #2a2e37);
+        --accent: var(--accent, #3b82f6);
+        --accent-fg: var(--accent-foreground, #ffffff);
+        --danger: var(--destructive, #ef4444);
+        --success: var(--success, #10b981);
+        --warning: var(--warning, #f59e0b);
+        --muted-fg: var(--muted-foreground, #9ca3af);
+        --code-bg: var(--code-background, #1e222b);
+        --radius-sm: 6px;
+        --radius-md: 10px;
+        --radius-lg: 14px;
+        font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        color: var(--fg);
+        background: transparent;
+        padding: 16px;
+        line-height: 1.5;
+      }
+
+      .container {
+        max-width: 720px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+
+      .header {
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 12px;
+      }
+
+      .header h1 {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--fg);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .badge {
+        font-size: 0.72rem;
+        padding: 2px 8px;
+        border-radius: 9999px;
+        background: rgba(59, 130, 246, 0.2);
+        color: #60a5fa;
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+      }
+
+      .question {
+        font-size: 0.88rem;
+        color: var(--muted-fg);
+        margin-top: 6px;
+      }
+
+      /* Model switcher */
+      .model-switch {
+        display: flex;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 4px;
+        gap: 4px;
+      }
+
+      .model-btn {
+        flex: 1;
+        padding: 8px 12px;
+        border: none;
+        background: transparent;
+        color: var(--muted-fg);
+        font-size: 0.84rem;
+        font-weight: 600;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: all 0.15s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+
+      .model-btn.active {
+        background: var(--accent);
+        color: var(--accent-fg);
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+      }
+
+      .model-btn.active.buggy {
+        background: var(--danger);
+        color: #fff;
+        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+      }
+
+      /* State Dashboard */
+      .dashboard {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 16px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 12px;
+      }
+
+      .stat-card {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        padding: 10px;
+      }
+
+      .stat-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted-fg);
+        margin-bottom: 4px;
+      }
+
+      .stat-val {
+        font-size: 0.95rem;
+        font-weight: 700;
+        font-family: var(--font-mono, monospace);
+      }
+
+      .status-pill {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.78rem;
+      }
+
+      .status-pill.initial {
+        background: #374151;
+        color: #d1d5db;
+      }
+      .status-pill.animating {
+        background: #1e3a8a;
+        color: #93c5fd;
+      }
+      .status-pill.presented {
+        background: #064e3b;
+        color: #6ee7b7;
+      }
+      .status-pill.dismissing {
+        background: #7f1d1d;
+        color: #fca5a5;
+      }
+      .status-pill.closed {
+        background: #374151;
+        color: #9ca3af;
+      }
+
+      .toast-log {
+        grid-column: 1 / -1;
+        background: var(--code-bg);
+        border-radius: var(--radius-sm);
+        padding: 8px 12px;
+        font-size: 0.8rem;
+        font-family: var(--font-mono, monospace);
+        color: #e5e7eb;
+        border-left: 3px solid var(--accent);
+        min-height: 36px;
+        display: flex;
+        align-items: center;
+      }
+
+      /* Tabs & Guided walkthrough */
+      .section-title {
+        font-size: 0.92rem;
+        font-weight: 700;
+        color: var(--fg);
+        margin-bottom: 8px;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 6px;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 4px;
+      }
+
+      .tab-btn {
+        padding: 6px 12px;
+        font-size: 0.82rem;
+        border: none;
+        background: transparent;
+        color: var(--muted-fg);
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      .tab-btn.active {
+        color: var(--fg);
+        border-bottom-color: var(--accent);
+      }
+
+      .tab-content {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 14px;
+      }
+
+      .tab-desc {
+        font-size: 0.84rem;
+        color: var(--muted-fg);
+        margin-bottom: 12px;
+      }
+
+      .step-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .step-btn {
+        background: #262a33;
+        color: #f3f4f6;
+        border: 1px solid var(--border-color);
+        padding: 8px 14px;
+        border-radius: var(--radius-sm);
+        font-size: 0.82rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: background 0.15s;
+      }
+
+      .step-btn:hover:not(:disabled) {
+        background: #323744;
+        border-color: var(--accent);
+      }
+
+      .step-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      .step-btn.highlight {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+
+      /* Free play actions */
+      .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 8px;
+      }
+
+      .action-btn {
+        background: #1f232b;
+        border: 1px solid var(--border-color);
+        color: var(--fg);
+        padding: 10px;
+        border-radius: var(--radius-sm);
+        font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+        text-align: left;
+        transition:
+          background 0.15s,
+          border-color 0.15s;
+      }
+
+      .action-btn:hover {
+        background: #282d38;
+        border-color: #4b5563;
+      }
+
+      .action-btn span {
+        display: block;
+        font-size: 0.7rem;
+        color: var(--muted-fg);
+        margin-top: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>
+          Sheet Lifecycle Prototype <span class="badge">Throwaway Logic</span>
+        </h1>
+        <p class="question">
+          <strong>Design Question:</strong> How should
+          <code>Sheet</code> synchronize controlled <code>open</code> state with
+          <code>@gorhom/bottom-sheet</code>'s imperative lifecycle without
+          deadlocking in <code>DISMISSING</code>?
+        </p>
+      </div>
+
+      <!-- Model Switcher -->
+      <div class="model-switch">
+        <button
+          id="btn-model-buggy"
+          class="model-btn active buggy"
+          onclick="setModel('buggy')"
+        >
+          ⚠️ Buggy Model (Current Production)
+        </button>
+        <button
+          id="btn-model-fixed"
+          class="model-btn"
+          onclick="setModel('fixed')"
+        >
+          ✅ Fixed Model (Previous-Open Guard)
+        </button>
+      </div>
+
+      <!-- Dashboard -->
+      <div class="dashboard">
+        <div class="stat-card">
+          <div class="stat-label">React open Prop</div>
+          <div id="stat-react-open" class="stat-val" style="color: #9ca3af">
+            false
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Modal Status</div>
+          <div id="stat-modal-status" class="stat-val">
+            <span class="status-pill initial">INITIAL (0)</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Portal Rendered</div>
+          <div id="stat-portal" class="stat-val" style="color: #ef4444">
+            No (Blocked)
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Visual Sheet</div>
+          <div id="stat-sheet-visible" class="stat-val" style="color: #9ca3af">
+            Hidden
+          </div>
+        </div>
+        <div id="toast-log" class="toast-log">
+          Mounted with open=false. Ready to test.
+        </div>
+      </div>
+
+      <!-- Guided Walkthrough Tabs -->
+      <div>
+        <div class="section-title">Guided Walkthroughs</div>
+        <div class="tabs">
+          <button id="tab-btn-1" class="tab-btn active" onclick="switchTab(1)">
+            1. Repro Bug
+          </button>
+          <button id="tab-btn-2" class="tab-btn" onclick="switchTab(2)">
+            2. Verified Fix
+          </button>
+          <button id="tab-btn-3" class="tab-btn" onclick="switchTab(3)">
+            3. Rapid Toggle Test
+          </button>
+        </div>
+        <div class="tab-content" id="tab-content">
+          <!-- Content injected via JS -->
+        </div>
+      </div>
+
+      <!-- Free-play Buttons -->
+      <div>
+        <div class="section-title">Free-Play Actions</div>
+        <div class="actions-grid">
+          <button class="action-btn" onclick="actUserTapNumber()">
+            👆 Tap Number Trigger
+            <span>Calls handlePress() -> setOpen(true)</span>
+          </button>
+          <button class="action-btn" onclick="actUserDismiss()">
+            👇 Swipe Down / Backdrop
+            <span>Calls onDismiss() / onChange(-1)</span>
+          </button>
+          <button class="action-btn" onclick="actRemount(false)">
+            🔄 Remount (open=false)
+            <span>Simulate screen navigation</span>
+          </button>
+          <button class="action-btn" onclick="actRemount(true)">
+            🚀 Remount (open=true)
+            <span>Simulate initial open</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Pure logic module simulating @gorhom/bottom-sheet v5 & Sheet
+      const MODAL_STATUS = {
+        INITIAL: 0,
+        PRESENTED: 1,
+        CLOSED: 2,
+        MINIMIZING: 4,
+        ANIMATING: 5,
+        DISMISSING: 6,
+        DISMISSED: 7,
+      };
+
+      const MODAL_STATUS_NAMES = {
+        0: { name: "INITIAL (0)", class: "initial" },
+        1: { name: "PRESENTED (1)", class: "presented" },
+        2: { name: "CLOSED (2)", class: "closed" },
+        4: { name: "MINIMIZING (4)", class: "animating" },
+        5: { name: "ANIMATING (5)", class: "animating" },
+        6: { name: "DISMISSING (6)", class: "dismissing" },
+        7: { name: "DISMISSED (7)", class: "closed" },
+      };
+
+      // State
+      let currentModel = "buggy"; // 'buggy' | 'fixed'
+      let state = {
+        reactOpen: false,
+        modalStatus: MODAL_STATUS.INITIAL,
+        mountState: false, // BottomSheetModal internal mount state
+        portalRendered: false,
+        isFirstRender: true,
+        lastActionNote: "Initialized",
+      };
+
+      // Simulated @gorhom/bottom-sheet modal ref
+      const bottomSheetModal = {
+        present() {
+          if (state.mountState && state.portalRendered) {
+            state.modalStatus = MODAL_STATUS.ANIMATING;
+          }
+          state.mountState = true;
+          // Check handlePortalRender guard
+          if (state.modalStatus === MODAL_STATUS.DISMISSING) {
+            state.portalRendered = false;
+            state.lastActionNote =
+              "❌ present() rejected! handlePortalRender cancelled because status is DISMISSING (6).";
+          } else {
+            state.portalRendered = true;
+            state.modalStatus = MODAL_STATUS.PRESENTED;
+            state.lastActionNote =
+              "✅ present() succeeded. Modal transitioned to PRESENTED (1).";
+          }
+        },
+        dismiss() {
+          if (
+            [MODAL_STATUS.CLOSED, MODAL_STATUS.INITIAL].includes(
+              state.modalStatus
+            )
+          ) {
+            // In @gorhom/bottom-sheet v5:
+            // if not closed/minimized, it enters DISMISSING!
+            state.modalStatus = MODAL_STATUS.DISMISSING;
+            if (!state.mountState) {
+              // Unmounted sheet never finishes animation!
+              state.lastActionNote =
+                "⚠️ dismiss() called before mount! Locked in DISMISSING (6) with no closing animation.";
+              return;
+            }
+          }
+          state.modalStatus = MODAL_STATUS.CLOSED;
+          state.mountState = false;
+          state.portalRendered = false;
+          state.lastActionNote = "dismiss() executed. Modal closed.";
+        },
+      };
+
+      // Simulated Sheet synchronization effect
+      function runSheetEffect(nextOpen) {
+        const prevOpen = state.reactOpen;
+        state.reactOpen = nextOpen;
+
+        if (currentModel === "buggy") {
+          // Buggy implementation in components/sheet.tsx:
+          if (nextOpen) {
+            bottomSheetModal.present();
+          } else {
+            bottomSheetModal.dismiss();
+          }
+        } else {
+          // Fixed implementation:
+          if (state.isFirstRender) {
+            state.isFirstRender = false;
+            if (nextOpen) {
+              bottomSheetModal.present();
+            }
+            // Do NOT call dismiss() on initial mount when open=false!
+            return;
+          }
+
+          if (nextOpen && !prevOpen) {
+            bottomSheetModal.present();
+          } else if (!nextOpen && prevOpen) {
+            bottomSheetModal.dismiss();
+          }
+        }
+      }
+
+      // Actions
+      function setModel(model) {
+        currentModel = model;
+        document.getElementById("btn-model-buggy").className =
+          "model-btn" + (model === "buggy" ? " active buggy" : "");
+        document.getElementById("btn-model-fixed").className =
+          "model-btn" + (model === "fixed" ? " active" : "");
+        actRemount(false);
+      }
+
+      function actRemount(initialOpen) {
+        state.reactOpen = initialOpen;
+        state.modalStatus = MODAL_STATUS.INITIAL;
+        state.mountState = false;
+        state.portalRendered = false;
+        state.isFirstRender = true;
+        runSheetEffect(initialOpen);
+        render();
+      }
+
+      function actUserTapNumber() {
+        runSheetEffect(true);
+        render();
+      }
+
+      function actUserDismiss() {
+        runSheetEffect(false);
+        render();
+      }
+
+      // Render UI
+      function render() {
+        document.getElementById("stat-react-open").innerText = state.reactOpen
+          ? "true"
+          : "false";
+        document.getElementById("stat-react-open").style.color = state.reactOpen
+          ? "#10b981"
+          : "#9ca3af";
+
+        const statusMeta = MODAL_STATUS_NAMES[state.modalStatus] || {
+          name: "UNKNOWN",
+          class: "initial",
+        };
+        document.getElementById("stat-modal-status").innerHTML =
+          `<span class="status-pill ${statusMeta.class}">${statusMeta.name}</span>`;
+
+        const portalEl = document.getElementById("stat-portal");
+        if (state.portalRendered) {
+          portalEl.innerText = "Yes (Rendered)";
+          portalEl.style.color = "#10b981";
+        } else {
+          portalEl.innerText =
+            state.modalStatus === MODAL_STATUS.DISMISSING
+              ? "Blocked (Deadlock)"
+              : "No";
+          portalEl.style.color =
+            state.modalStatus === MODAL_STATUS.DISMISSING
+              ? "#ef4444"
+              : "#9ca3af";
+        }
+
+        const visualEl = document.getElementById("stat-sheet-visible");
+        if (
+          state.portalRendered &&
+          state.modalStatus === MODAL_STATUS.PRESENTED
+        ) {
+          visualEl.innerText = "Visible";
+          visualEl.style.color = "#10b981";
+        } else {
+          visualEl.innerText = "Hidden";
+          visualEl.style.color = "#9ca3af";
+        }
+
+        const toast = document.getElementById("toast-log");
+        toast.innerText = state.lastActionNote;
+        toast.style.borderLeftColor =
+          state.modalStatus === MODAL_STATUS.DISMISSING
+            ? "var(--danger)"
+            : state.portalRendered
+              ? "var(--success)"
+              : "var(--accent)";
+      }
+
+      // Walkthrough steps
+      let currentTab = 1;
+      const walkthroughs = {
+        1: {
+          desc: "Demonstrates why the modal refuses to open on current master when a number button is pressed.",
+          steps: [
+            {
+              text: "1. Mount Screen (open=false)",
+              fn: () => {
+                setModel("buggy");
+                actRemount(false);
+              },
+            },
+            {
+              text: "2. Tap Number Trigger (open=true)",
+              fn: () => actUserTapNumber(),
+            },
+          ],
+        },
+        2: {
+          desc: "Demonstrates the fix: ignoring initial false mount preserves INITIAL state, allowing present() to succeed.",
+          steps: [
+            {
+              text: "1. Mount Screen (open=false)",
+              fn: () => {
+                setModel("fixed");
+                actRemount(false);
+              },
+            },
+            { text: "2. Tap Number Trigger", fn: () => actUserTapNumber() },
+            { text: "3. Dismiss Sheet", fn: () => actUserDismiss() },
+            { text: "4. Re-tap Trigger", fn: () => actUserTapNumber() },
+          ],
+        },
+        3: {
+          desc: "Rapid toggle test: Verifies that rapid presses do not produce deadlocks.",
+          steps: [
+            {
+              text: "1. Reset (Fixed Model)",
+              fn: () => {
+                setModel("fixed");
+                actRemount(false);
+              },
+            },
+            {
+              text: "2. Open -> Close -> Open in sequence",
+              fn: () => {
+                actUserTapNumber();
+                actUserDismiss();
+                actUserTapNumber();
+              },
+            },
+          ],
+        },
+      };
+
+      function switchTab(tabId) {
+        currentTab = tabId;
+        [1, 2, 3].forEach((id) => {
+          document.getElementById(`tab-btn-${id}`).className =
+            "tab-btn" + (id === tabId ? " active" : "");
+        });
+        const wt = walkthroughs[tabId];
+        const html = `
+        <div class="tab-desc">${wt.desc}</div>
+        <div class="step-actions">
+          ${wt.steps.map((s, idx) => `<button class="step-btn highlight" onclick="walkthroughs[${tabId}].steps[${idx}].fn()">${s.text}</button>`).join("")}
+        </div>
+      `;
+        document.getElementById("tab-content").innerHTML = html;
+      }
+
+      // Init
+      actRemount(false);
+      switchTab(1);
+    </script>
+  </body>
+</html>

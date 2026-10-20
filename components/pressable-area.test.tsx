@@ -10,7 +10,11 @@ import type {
   LongPressGesture,
   TapGesture,
 } from "react-native-gesture-handler";
-import { GestureDetector, State } from "react-native-gesture-handler";
+import {
+  GestureDetector,
+  GestureHandlerRootView,
+  State,
+} from "react-native-gesture-handler";
 import { fireGestureHandler } from "react-native-gesture-handler/jest-utils";
 import renderer, { act } from "react-test-renderer";
 
@@ -39,14 +43,18 @@ interface RenderOptions {
   onPress?: () => void;
 }
 
+let activeTrees: renderer.ReactTestRenderer[] = [];
+
 const renderPressableArea = (options: RenderOptions = {}) => {
   let tree: renderer.ReactTestRenderer | undefined;
 
   act(() => {
     tree = renderer.create(
-      <PressableArea {...options}>
-        <Text>Test Child</Text>
-      </PressableArea>
+      <GestureHandlerRootView>
+        <PressableArea {...options}>
+          <Text>Test Child</Text>
+        </PressableArea>
+      </GestureHandlerRootView>
     );
   });
 
@@ -54,13 +62,14 @@ const renderPressableArea = (options: RenderOptions = {}) => {
     throw new Error("Failed to render PressableArea");
   }
 
+  activeTrees.push(tree);
+
   const detector = tree.root.findByType(GestureDetector);
-  const [doubleTap, longPress, singleTap] =
-    detector.props.gesture.toGestureArray() as [
-      TapGesture,
-      LongPressGesture,
-      TapGesture,
-    ];
+  const [doubleTap, longPress, singleTap] = (
+    "gestures" in detector.props.gesture
+      ? detector.props.gesture.gestures
+      : detector.props.gesture.toGestureArray()
+  ) as [TapGesture, LongPressGesture, TapGesture];
 
   return {
     detector,
@@ -74,6 +83,15 @@ const renderPressableArea = (options: RenderOptions = {}) => {
 describe("PressableArea", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    act(() => {
+      for (const tree of activeTrees) {
+        tree.unmount();
+      }
+      activeTrees = [];
+    });
   });
 
   it("renders children successfully", () => {
@@ -144,7 +162,12 @@ describe("PressableArea", () => {
       onPress,
     });
 
-    expect(longPress.config.minDurationMs).toBe(600);
+    const longPressConfig = longPress.config as typeof longPress.config & {
+      minDurationMs?: number;
+    };
+    expect(longPressConfig.minDurationMs ?? longPressConfig.minDuration).toBe(
+      600
+    );
     expect(longPress.config.runOnJS).toBe(true);
 
     act(() => {

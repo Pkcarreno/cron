@@ -156,7 +156,7 @@ export const NumberPickerSheet: React.FC<NumberPickerSheetProps> = ({
       ) : (
         <SheetTrigger asChild>{props.children}</SheetTrigger>
       )}
-      <SheetContent enableDynamicSizing={true} snapPoints={[]}>
+      <SheetContent enableDynamicSizing={true}>
         <NumberPickerForm onChangeValue={handleOnChange} {...props} />
       </SheetContent>
     </Sheet>

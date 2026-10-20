@@ -19,8 +19,8 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={styles.container}>
-      <BottomSheetModalProvider>
-        <SafeAreaProvider>
+      <SafeAreaProvider>
+        <BottomSheetModalProvider>
           {/* oxlint-disable react/style-prop-object */}
           <StatusBar style="light" />
           <Stack
@@ -39,8 +39,8 @@ export default function RootLayout() {
           />
 
           <PortalHost />
-        </SafeAreaProvider>
-      </BottomSheetModalProvider>
+        </BottomSheetModalProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

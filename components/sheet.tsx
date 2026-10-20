@@ -31,9 +31,10 @@ import { colors } from "@/helpers/colors";
 import { Text } from "./text";
 
 interface SheetContextType {
-  sheetRef: React.RefObject<BottomSheetModal | null>;
+  handleDismissed: () => void;
   open: boolean;
   setOpen: (open: boolean) => void;
+  sheetRef: React.RefObject<BottomSheetModal | null>;
 }
 
 const SheetContext = createContext<SheetContextType | null>(null);
@@ -66,6 +67,8 @@ export const Sheet: React.FC<SheetProps> = ({
 
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : uncontrolledOpen;
+  const prevOpenRef = useRef<boolean>(defaultOpen);
+  const isInternalDismissRef = useRef<boolean>(false);
 
   useImperativeHandle(ref, () => sheetRef.current as BottomSheetModal, []);
 
@@ -75,33 +78,61 @@ export const Sheet: React.FC<SheetProps> = ({
         setUncontrolledOpen(newOpen);
       }
       onOpenChange?.(newOpen);
-
-      if (newOpen) {
-        sheetRef.current?.present();
-      } else {
-        sheetRef.current?.dismiss();
-      }
     },
     [isControlled, onOpenChange]
   );
 
-  useEffect(() => {
-    if (isControlled) {
-      if (controlledOpen) {
-        sheetRef.current?.present();
-      } else {
-        sheetRef.current?.dismiss();
-      }
+  const handleDismissed = useCallback(() => {
+    isInternalDismissRef.current = true;
+    if (!isControlled) {
+      setUncontrolledOpen(false);
     }
-  }, [controlledOpen, isControlled]);
+    onOpenChange?.(false);
+  }, [isControlled, onOpenChange]);
+
+  useEffect(() => {
+    const wasOpen = prevOpenRef.current;
+    prevOpenRef.current = open;
+
+    if (!wasOpen && open) {
+      isInternalDismissRef.current = false;
+      const currentStatus = (
+        sheetRef.current as unknown as { status?: { current: number } }
+      )?.status?.current;
+      // Do not present if already presented (1) or animating (5)
+      if (currentStatus !== 1 && currentStatus !== 5) {
+        sheetRef.current?.present();
+      }
+    } else if (wasOpen && !open) {
+      if (isInternalDismissRef.current) {
+        isInternalDismissRef.current = false;
+        return;
+      }
+      const currentStatus = (
+        sheetRef.current as unknown as { status?: { current: number } }
+      )?.status?.current;
+      // Do not dismiss if already INITIAL (0), CLOSED (2), DISMISSING (6), or DISMISSED (7)
+      if (
+        currentStatus !== undefined &&
+        (currentStatus === 0 ||
+          currentStatus === 2 ||
+          currentStatus === 6 ||
+          currentStatus === 7)
+      ) {
+        return;
+      }
+      sheetRef.current?.dismiss();
+    }
+  }, [open]);
 
   const value = useMemo(
     () => ({
+      handleDismissed,
       open,
       setOpen: handleSetOpen,
       sheetRef,
     }),
-    [open, handleSetOpen, sheetRef]
+    [handleDismissed, open, handleSetOpen, sheetRef]
   );
 
   return (
@@ -171,13 +202,25 @@ export interface SheetContentProps extends Omit<BottomSheetModalProps, "ref"> {
 export const SheetContent: React.FC<SheetContentProps> = ({
   children,
   onChange,
-  snapPoints = ["50%", "90%"],
+  onDismiss,
+  snapPoints,
+  enableDynamicSizing,
   backdropComponent = SheetBackdrop,
   ref,
   ...props
 }) => {
-  const { sheetRef, setOpen } = useSheetContext();
+  const { sheetRef, handleDismissed } = useSheetContext();
   const { bottom } = useSafeAreaInsets();
+
+  const resolvedSnapPoints = useMemo(() => {
+    if (snapPoints !== undefined) {
+      return snapPoints;
+    }
+    if (enableDynamicSizing) {
+      return;
+    }
+    return ["50%", "90%"];
+  }, [snapPoints, enableDynamicSizing]);
 
   useEffect(() => {
     if (!ref) {
@@ -195,14 +238,21 @@ export const SheetContent: React.FC<SheetContentProps> = ({
     (...args: Parameters<NonNullable<BottomSheetModalProps["onChange"]>>) => {
       const [index] = args;
       if (index === -1) {
-        setOpen(false);
+        handleDismissed();
       }
       if (onChange) {
         onChange(...args);
       }
     },
-    [onChange, setOpen]
+    [onChange, handleDismissed]
   );
+
+  const handleDismiss = useCallback(() => {
+    handleDismissed();
+    if (onDismiss) {
+      onDismiss();
+    }
+  }, [handleDismissed, onDismiss]);
 
   const bottomSheetViewStyles = useMemo(
     () => ({
@@ -214,10 +264,12 @@ export const SheetContent: React.FC<SheetContentProps> = ({
   return (
     <BottomSheetModal
       {...props}
+      enableDynamicSizing={enableDynamicSizing}
       ref={sheetRef}
-      snapPoints={snapPoints}
+      snapPoints={resolvedSnapPoints}
       backdropComponent={backdropComponent}
       onChange={handleChange}
+      onDismiss={handleDismiss}
       backgroundStyle={styles.background}
       handleIndicatorStyle={styles.indicator}
     >
@@ -256,22 +308,22 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   contentContainer: {
-    flex: 1,
     gap: 16,
     paddingHorizontal: 20,
   },
   description: {},
   footer: {
     flexDirection: "row",
+    gap: 12,
     justifyContent: "flex-end",
   },
   header: {
-    paddingBottom: 8,
+    gap: 8,
   },
   indicator: {
-    backgroundColor: colors.neutral[600],
-    height: 5,
-    width: 40,
+    backgroundColor: colors.neutral[400],
   },
-  title: {},
+  title: {
+    fontFamily: "Geist",
+  },
 });
