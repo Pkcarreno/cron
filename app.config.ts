@@ -348,14 +348,17 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
     ],
     "react-native-audio-api",
     "expo-image",
+    [
+      "expo-splash-screen",
+      {
+        backgroundColor: "#000000",
+        image: "./assets/splash-icon.png",
+        resizeMode: "contain",
+      },
+    ],
   ],
   scheme: Env.EXPO_PUBLIC_SCHEME,
   slug: "cron",
-  splash: {
-    backgroundColor: "#000000",
-    image: "./assets/splash-icon.png",
-    resizeMode: "contain",
-  },
   userInterfaceStyle: "dark",
   version: Env.EXPO_PUBLIC_VERSION.toString(),
 });

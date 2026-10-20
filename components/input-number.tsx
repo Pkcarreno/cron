@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   valueWrapper: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
     padding: 8,
