@@ -49,3 +49,6 @@ yarn-error.*
 # output
 *.apk
 *.aab
+
+# pnpm skills symlinks
+.agents/skills/pnpm-*

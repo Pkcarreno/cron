@@ -1,170 +1,227 @@
-import "react-native-gesture-handler/jestSetup";
-import type { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { act, cleanup, fireEvent } from "@testing-library/react-native";
 import React from "react";
-import { StyleSheet } from "react-native";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import renderer, { act } from "react-test-renderer";
+import { Text } from "react-native";
 
+import { renderWithProviders } from "@/test-utils/render-with-providers";
+
+import { InputNumber } from "./input-number";
 import { Sheet, SheetContent } from "./sheet";
 
-const mockPresent = jest.fn();
-const mockDismiss = jest.fn();
-let capturedOnDismiss: (() => void) | undefined;
+describe("InputNumber integration", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
-jest.mock("@gorhom/bottom-sheet", () => {
-  // oxlint-disable-next-line eslint/no-shadow
-  const React = jest.requireActual("react");
-  return {
-    BottomSheetBackdrop: () => null,
-    BottomSheetModal: React.forwardRef(
-      (
-        props: {
-          onDismiss?: () => void;
-          onChange?: (...args: unknown[]) => void;
-        },
-        ref: React.Ref<Record<string, unknown>>
-      ) => {
-        capturedOnDismiss = props.onDismiss;
-        React.useImperativeHandle(ref, () => ({
-          dismiss: mockDismiss,
-          present: mockPresent,
-          status: { current: 0 },
-        }));
-        return null;
-      }
-    ),
-    BottomSheetView: ({ children }: { children: React.ReactNode }) => children,
-  };
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("renders formatted value and suffix", async () => {
+    const screen = await renderWithProviders(
+      <InputNumber value={5} suffix="min" />
+    );
+
+    expect(screen.getByText("05")).toBeTruthy();
+    expect(screen.getByText("min")).toBeTruthy();
+  });
+
+  it("simulates user touch gestures: opening sheet, tapping quick actions, and saving", async () => {
+    const onChangeValue = jest.fn();
+
+    const screen = await renderWithProviders(
+      <InputNumber value={10} onChangeValue={onChangeValue} suffix="sec" />
+    );
+
+    // 1. Simulate tapping the trigger to open number picker sheet
+    const [trigger] = screen.getAllByText("10");
+    await act(() => {
+      fireEvent.press(trigger);
+    });
+
+    // 2. Verify quick action buttons and Save button are available
+    expect(screen.getByText("+5")).toBeTruthy();
+    expect(screen.getByText("+10")).toBeTruthy();
+    expect(screen.getByText("-5")).toBeTruthy();
+    expect(screen.getByText("-10")).toBeTruthy();
+
+    // 3. Simulate tap on +5 quick action
+    await act(() => {
+      fireEvent.press(screen.getByText("+5"));
+    });
+
+    // 4. Simulate tap on Save button
+    await act(() => {
+      fireEvent.press(screen.getByText("Save"));
+    });
+
+    expect(onChangeValue).toHaveBeenCalledWith(15);
+  });
+
+  it("disables subtraction quick actions when current value is at min bound", async () => {
+    const onChangeValue = jest.fn();
+
+    const screen = await renderWithProviders(
+      <InputNumber value={0} min={0} max={60} onChangeValue={onChangeValue} />
+    );
+
+    // Open sheet
+    const [trigger] = screen.getAllByText("00");
+    await act(() => {
+      fireEvent.press(trigger);
+    });
+
+    // -10 and -5 should be visible in picker
+    const minusFiveButton = screen.getByText("-5");
+    const minusTenButton = screen.getByText("-10");
+
+    expect(minusFiveButton).toBeTruthy();
+    expect(minusTenButton).toBeTruthy();
+  });
+
+  it("does not trigger open sheet when editable is false", async () => {
+    const presentSpy = jest.spyOn(BottomSheetModal.prototype, "present");
+
+    const screen = await renderWithProviders(
+      <InputNumber value={25} editable={false} />
+    );
+
+    const [trigger] = screen.getAllByText("25");
+    await act(() => {
+      fireEvent.press(trigger);
+    });
+
+    expect(presentSpy).not.toHaveBeenCalled();
+    presentSpy.mockRestore();
+  });
 });
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
-
-const initialMetrics = {
-  frame: { height: 844, width: 390, x: 0, y: 0 },
-  insets: { bottom: 34, left: 0, right: 0, top: 47 },
-};
 
 describe("Sheet modal lifecycle", () => {
+  let presentSpy: jest.SpyInstance;
+  let dismissSpy: jest.SpyInstance;
+  let renderSpy: jest.SpyInstance;
+  let capturedOnDismiss: (() => void) | undefined;
+
   beforeEach(() => {
     jest.clearAllMocks();
     capturedOnDismiss = undefined;
+    presentSpy = jest.spyOn(BottomSheetModal.prototype, "present");
+    dismissSpy = jest.spyOn(BottomSheetModal.prototype, "dismiss");
+    renderSpy = jest
+      .spyOn(BottomSheetModal.prototype, "render")
+      .mockImplementation(function mockRender(this: unknown) {
+        const instance = this as {
+          props: {
+            children?:
+              | React.ReactNode
+              | ((props: { data?: unknown }) => React.ReactNode);
+            onDismiss?: () => void;
+          };
+          data?: unknown;
+        };
+        capturedOnDismiss = instance.props.onDismiss;
+        const { children: Content } = instance.props;
+        return typeof Content === "function"
+          ? React.createElement(Content, { data: instance.data })
+          : Content;
+      });
   });
 
-  it("does not call dismiss on initial mount when controlled with open=false", () => {
+  afterEach(() => {
+    cleanup();
+    presentSpy.mockRestore();
+    dismissSpy.mockRestore();
+    renderSpy.mockRestore();
+  });
+
+  it("does not call dismiss on initial mount when controlled with open=false", async () => {
     const controlledRef = React.createRef<BottomSheetModal>();
 
-    act(() => {
-      renderer.create(
-        <GestureHandlerRootView style={styles.container}>
-          <SafeAreaProvider initialMetrics={initialMetrics}>
-            <Sheet ref={controlledRef} open={false}>
-              <SheetContent>
-                <></>
-              </SheetContent>
-            </Sheet>
-          </SafeAreaProvider>
-        </GestureHandlerRootView>
-      );
-    });
+    await renderWithProviders(
+      <Sheet ref={controlledRef} open={false}>
+        <SheetContent>
+          <></>
+        </SheetContent>
+      </Sheet>
+    );
 
-    expect(mockDismiss).not.toHaveBeenCalled();
-    expect(mockPresent).not.toHaveBeenCalled();
+    expect(dismissSpy).not.toHaveBeenCalled();
+    expect(presentSpy).not.toHaveBeenCalled();
   });
 
-  it("calls present when controlled open changes to true", () => {
-    let tree: renderer.ReactTestRenderer | undefined;
+  it("calls present when controlled open changes to true", async () => {
+    const screen = await renderWithProviders(
+      <Sheet open={false}>
+        <SheetContent>
+          <></>
+        </SheetContent>
+      </Sheet>
+    );
 
-    act(() => {
-      tree = renderer.create(
-        <GestureHandlerRootView style={styles.container}>
-          <SafeAreaProvider initialMetrics={initialMetrics}>
-            <Sheet open={false}>
-              <SheetContent>
-                <></>
-              </SheetContent>
-            </Sheet>
-          </SafeAreaProvider>
-        </GestureHandlerRootView>
+    expect(presentSpy).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await screen.rerender(
+        <Sheet open={true}>
+          <SheetContent>
+            <></>
+          </SheetContent>
+        </Sheet>
       );
     });
 
-    expect(mockPresent).not.toHaveBeenCalled();
-
-    act(() => {
-      tree?.update(
-        <GestureHandlerRootView style={styles.container}>
-          <SafeAreaProvider initialMetrics={initialMetrics}>
-            <Sheet open={true}>
-              <SheetContent>
-                <></>
-              </SheetContent>
-            </Sheet>
-          </SafeAreaProvider>
-        </GestureHandlerRootView>
-      );
-    });
-
-    expect(mockPresent).toHaveBeenCalledTimes(1);
-    expect(mockDismiss).not.toHaveBeenCalled();
+    expect(presentSpy).toHaveBeenCalledTimes(1);
+    expect(dismissSpy).not.toHaveBeenCalled();
   });
 
-  it("does not call dismiss() when dismissed via onDismiss/backdrop, and can reopen cleanly", () => {
+  it("does not call dismiss() when dismissed via onDismiss/backdrop, and can reopen cleanly", async () => {
     const onOpenChange = jest.fn();
 
     const TestHarness = () => {
       const [isOpen, setIsOpen] = React.useState(false);
       return (
-        <GestureHandlerRootView style={styles.container}>
-          <SafeAreaProvider initialMetrics={initialMetrics}>
-            <Sheet
-              open={isOpen}
-              onOpenChange={(next) => {
-                onOpenChange(next);
-                setIsOpen(next);
-              }}
-            >
-              <SheetContent>
-                <></>
-              </SheetContent>
-            </Sheet>
-          </SafeAreaProvider>
-        </GestureHandlerRootView>
+        <Sheet
+          open={isOpen}
+          onOpenChange={(next) => {
+            onOpenChange(next);
+            setIsOpen(next);
+          }}
+        >
+          <Text testID="open-trigger" onPress={() => setIsOpen(true)}>
+            Open Sheet
+          </Text>
+          <SheetContent>
+            <Text>Content</Text>
+          </SheetContent>
+        </Sheet>
       );
     };
 
-    let tree: renderer.ReactTestRenderer | undefined;
-    act(() => {
-      tree = renderer.create(<TestHarness />);
-    });
+    const screen = await renderWithProviders(<TestHarness />);
 
-    expect(mockPresent).not.toHaveBeenCalled();
-    expect(mockDismiss).not.toHaveBeenCalled();
+    expect(presentSpy).not.toHaveBeenCalled();
+    expect(dismissSpy).not.toHaveBeenCalled();
 
     // 1. Open the sheet
-    act(() => {
-      tree?.root.findByType(Sheet).props.onOpenChange(true);
+    await act(() => {
+      fireEvent.press(screen.getByTestId("open-trigger"));
     });
-    expect(mockPresent).toHaveBeenCalledTimes(1);
-    expect(mockDismiss).not.toHaveBeenCalled();
+    expect(presentSpy).toHaveBeenCalledTimes(1);
+    expect(dismissSpy).not.toHaveBeenCalled();
 
     // 2. User closes without saving (e.g. backdrop pressed -> onDismiss fires)
-    act(() => {
+    await act(() => {
       capturedOnDismiss?.();
     });
     expect(onOpenChange).toHaveBeenCalledWith(false);
     // Crucial: dismiss() must NOT be called when modal dismissed itself
-    expect(mockDismiss).not.toHaveBeenCalled();
+    expect(dismissSpy).not.toHaveBeenCalled();
 
     // 3. User taps trigger to open sheet again
-    act(() => {
-      tree?.root.findByType(Sheet).props.onOpenChange(true);
+    await act(() => {
+      fireEvent.press(screen.getByTestId("open-trigger"));
     });
-    expect(mockPresent).toHaveBeenCalledTimes(2);
-    expect(mockDismiss).not.toHaveBeenCalled();
+    expect(presentSpy).toHaveBeenCalledTimes(2);
+    expect(dismissSpy).not.toHaveBeenCalled();
   });
 });

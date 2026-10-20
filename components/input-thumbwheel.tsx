@@ -158,13 +158,17 @@ const useThumbwheelLogic = (
       scrollState.current.isProgrammatic = true;
       lastReportedIndex.current = index;
 
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         flatListRef.current?.scrollToOffset({
           animated: !scrollState.current.isInitialMount,
           offset: index * TICK_WIDTH,
         });
         scrollState.current.isInitialMount = false;
       }, 50);
+
+      return () => {
+        clearTimeout(timeoutId);
+      };
     }
   }, [value, min, max, step]);
 
