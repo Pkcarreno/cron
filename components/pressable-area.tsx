@@ -5,8 +5,13 @@ import {
 } from "expo-haptics";
 import React from "react";
 import type { DimensionValue } from "react-native";
-import { View, StyleSheet } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { StyleSheet, View } from "react-native";
+import {
+  GestureDetector,
+  useExclusiveGestures,
+  useLongPressGesture,
+  useTapGesture,
+} from "react-native-gesture-handler";
 
 import {
   triggerAndroidHaptic,
@@ -31,43 +36,46 @@ export const PressableArea = ({
   onLongPress,
   deadZone = 0,
 }: PressableAreaProps) => {
-  const doubleTap = Gesture.Tap()
-    .numberOfTaps(2)
-    .enabled(!!onDoublePress)
-    .runOnJS(true)
-    .onStart(() => {
+  const doubleTap = useTapGesture({
+    enabled: Boolean(onDoublePress),
+    numberOfTaps: 2,
+    onActivate: () => {
       triggerHaptic({
         mode: NotificationFeedbackType.Success,
         type: triggerType.Notification,
       });
       onDoublePress?.();
-    });
+    },
+    runOnJS: true,
+  });
 
-  const longPress = Gesture.LongPress()
-    .minDuration(LONG_PRESS_DURATION)
-    .enabled(!!onLongPress)
-    .runOnJS(true)
-    .onStart(() => {
+  const longPress = useLongPressGesture({
+    enabled: Boolean(onLongPress),
+    minDuration: LONG_PRESS_DURATION,
+    onActivate: () => {
       triggerAndroidHaptic(AndroidHaptics.Long_Press, {
         mode: ImpactFeedbackStyle.Heavy,
         type: triggerType.Impact,
       });
       onLongPress?.();
-    });
+    },
+    runOnJS: true,
+  });
 
-  const singleTap = Gesture.Tap()
-    .requireExternalGestureToFail(doubleTap, longPress)
-    .enabled(!!onPress)
-    .runOnJS(true)
-    .onStart(() => {
+  const singleTap = useTapGesture({
+    enabled: Boolean(onPress),
+    onActivate: () => {
       triggerHaptic({
         mode: ImpactFeedbackStyle.Medium,
         type: triggerType.Impact,
       });
       onPress?.();
-    });
+    },
+    requireToFail: [doubleTap, longPress],
+    runOnJS: true,
+  });
 
-  const composed = Gesture.Exclusive(doubleTap, longPress, singleTap);
+  const composed = useExclusiveGestures(doubleTap, longPress, singleTap);
 
   return (
     <View style={styles.container}>
