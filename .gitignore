@@ -36,6 +36,9 @@ yarn-error.*
 # local secrets
 .secrets
 
+# local tooling cache
+.atl/
+
 # typescript
 *.tsbuildinfo
 

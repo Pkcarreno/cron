@@ -4,7 +4,7 @@ import react from "ultracite/oxlint/react";
 
 export default defineConfig({
   extends: [core, react],
-  ignorePatterns: [".agents/**", ".atl/**"],
+  ignorePatterns: [".agents/**"],
   jsPlugins: [
     { name: "react-native", specifier: "oxlint-plugin-react-native" },
   ],
