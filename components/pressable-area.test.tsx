@@ -23,6 +23,7 @@ import {
   triggerHaptic,
   triggerType,
 } from "@/helpers/haptics";
+import { renderWithProviders } from "@/test-utils/render-with-providers";
 
 import { PressableArea } from "./pressable-area";
 
@@ -249,5 +250,17 @@ describe("PressableArea", () => {
     expect(overlayView?.props.style).toEqual(
       expect.arrayContaining([{ padding: "14%" }])
     );
+  });
+
+  it("renders correctly within the renderWithProviders test harness", async () => {
+    const onPress = jest.fn();
+    const screen = await renderWithProviders(
+      <PressableArea onPress={onPress}>
+        <Text testID="harness-target">Harness Target</Text>
+      </PressableArea>
+    );
+
+    expect(screen.getByTestId("harness-target")).toBeTruthy();
+    expect(screen.getByText("Harness Target")).toBeTruthy();
   });
 });
