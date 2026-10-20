@@ -23,8 +23,8 @@ export const InputTime: React.FC<InputTimeProps> = ({
     const segregatedTimeInString = formatTimeForDisplay(value);
 
     return {
-      minutes: Number.parseInt(segregatedTimeInString.minutes, 10),
-      seconds: Number.parseInt(segregatedTimeInString.seconds, 10),
+      minutes: Math.trunc(Number(segregatedTimeInString.minutes)),
+      seconds: Math.trunc(Number(segregatedTimeInString.seconds)),
     };
   }, [value]);
 

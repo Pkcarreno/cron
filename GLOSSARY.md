@@ -1,7 +1,6 @@
 # Domain Glossary: cron
 
-Canonical vocabulary for the `cron` high-intensity interval training (HIIT) timer application.
-When naming concepts in code, tests, issues, PRs, or architecture documents, use these terms verbatim.
+Canonical vocabulary for the `cron` high-intensity interval training (HIIT) timer application. When naming concepts in code, tests, issues, PRs, or architecture documents, use these terms verbatim.
 
 ---
 

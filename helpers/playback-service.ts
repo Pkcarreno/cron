@@ -115,6 +115,7 @@ export const playToneSequence = async (steps: ToneSequenceStep[]) => {
       break;
     }
 
+    // oxlint-disable-next-line eslint/no-await-in-loop
     await executeTone(step.frequencyHz, step.durationMs, token);
 
     if (token !== playbackToken) {
@@ -122,6 +123,7 @@ export const playToneSequence = async (steps: ToneSequenceStep[]) => {
     }
 
     if (step.silenceAfterMs > 0) {
+      // oxlint-disable-next-line eslint/no-await-in-loop
       await delay(step.silenceAfterMs);
     }
   }

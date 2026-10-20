@@ -16,5 +16,5 @@ export interface TimerState {
 }
 
 export interface TimerStrategy {
-  calculateState(event: TickEvent): TimerState;
+  calculateState: (event: TickEvent) => TimerState;
 }

@@ -111,9 +111,7 @@ const getUpdatedValue = (
   const isFastScroll = Math.abs(closestIndex - lastIndex) > 1;
 
   if (isNearCenter || isFastScroll) {
-    return Number.parseFloat(
-      (params.min + closestIndex * params.step).toFixed(2)
-    );
+    return Number((params.min + closestIndex * params.step).toFixed(2));
   }
   return null;
 };
@@ -168,7 +166,7 @@ const useThumbwheelLogic = (
         scrollState.current.isInitialMount = false;
       }, 50);
     }
-  }, [value, min, max, step, dynamicPadding]);
+  }, [value, min, max, step]);
 
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
