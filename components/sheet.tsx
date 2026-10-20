@@ -66,6 +66,7 @@ export const Sheet: React.FC<SheetProps> = ({
 
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : uncontrolledOpen;
+  const prevOpenRef = useRef<boolean>(defaultOpen);
 
   useImperativeHandle(ref, () => sheetRef.current as BottomSheetModal, []);
 
@@ -86,12 +87,17 @@ export const Sheet: React.FC<SheetProps> = ({
   );
 
   useEffect(() => {
-    if (isControlled) {
-      if (controlledOpen) {
-        sheetRef.current?.present();
-      } else {
-        sheetRef.current?.dismiss();
-      }
+    if (!isControlled) {
+      return;
+    }
+
+    const wasOpen = prevOpenRef.current;
+    prevOpenRef.current = controlledOpen;
+
+    if (!wasOpen && controlledOpen) {
+      sheetRef.current?.present();
+    } else if (wasOpen && !controlledOpen) {
+      sheetRef.current?.dismiss();
     }
   }, [controlledOpen, isControlled]);
 
@@ -171,13 +177,24 @@ export interface SheetContentProps extends Omit<BottomSheetModalProps, "ref"> {
 export const SheetContent: React.FC<SheetContentProps> = ({
   children,
   onChange,
-  snapPoints = ["50%", "90%"],
+  snapPoints,
+  enableDynamicSizing,
   backdropComponent = SheetBackdrop,
   ref,
   ...props
 }) => {
   const { sheetRef, setOpen } = useSheetContext();
   const { bottom } = useSafeAreaInsets();
+
+  const resolvedSnapPoints = useMemo(() => {
+    if (snapPoints !== undefined) {
+      return snapPoints;
+    }
+    if (enableDynamicSizing) {
+      return;
+    }
+    return ["50%", "90%"];
+  }, [snapPoints, enableDynamicSizing]);
 
   useEffect(() => {
     if (!ref) {
@@ -214,8 +231,9 @@ export const SheetContent: React.FC<SheetContentProps> = ({
   return (
     <BottomSheetModal
       {...props}
+      enableDynamicSizing={enableDynamicSizing}
       ref={sheetRef}
-      snapPoints={snapPoints}
+      snapPoints={resolvedSnapPoints}
       backdropComponent={backdropComponent}
       onChange={handleChange}
       backgroundStyle={styles.background}
@@ -256,22 +274,22 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   contentContainer: {
-    flex: 1,
     gap: 16,
     paddingHorizontal: 20,
   },
   description: {},
   footer: {
     flexDirection: "row",
+    gap: 12,
     justifyContent: "flex-end",
   },
   header: {
-    paddingBottom: 8,
+    gap: 8,
   },
   indicator: {
-    backgroundColor: colors.neutral[600],
-    height: 5,
-    width: 40,
+    backgroundColor: colors.neutral[400],
   },
-  title: {},
+  title: {
+    fontFamily: "Geist",
+  },
 });
