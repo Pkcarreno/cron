@@ -1,9 +1,8 @@
 import { StyleSheet, TextInput } from "react-native";
-import type { TextInputProps } from "react-native";
 
 import { colors } from "@/helpers/colors";
 
-export type InputProps = TextInputProps & React.RefAttributes<TextInput>;
+export type InputProps = React.ComponentProps<typeof TextInput>;
 
 export const Input = ({ style, ...props }: InputProps) => (
   <TextInput
