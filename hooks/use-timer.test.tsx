@@ -1,7 +1,10 @@
 import { act, cleanup } from "@testing-library/react-native";
 import { createStore } from "jotai";
 
-import type { SessionSummary } from "@/helpers/timer/controller";
+import type {
+  SessionSummary,
+  TimerController,
+} from "@/helpers/timer/controller";
 import type { TimerConfig } from "@/helpers/timer/factory";
 import { TimerMode } from "@/helpers/timer/factory";
 import { TimerPhase } from "@/helpers/timer/strategy";
@@ -9,7 +12,7 @@ import { preparationTimeMsAtom } from "@/stores/settings";
 import { renderHookWithProviders } from "@/test-utils/render-with-providers";
 
 import type { UICheckpoint } from "./use-timer";
-import { TimerStatus, useTimer } from "./use-timer";
+import { TimerStatus, useTimer, useTimerInstance } from "./use-timer";
 
 describe("useTimer integration", () => {
   beforeEach(() => {
@@ -106,6 +109,46 @@ describe("useTimer integration", () => {
         result.current.reset();
       });
       expect(result.current.status).toBe(TimerStatus.READY);
+    });
+
+    it("quantizes React render updates strictly to visible second boundaries (1 Hz)", async () => {
+      const store = createStore();
+      store.set(preparationTimeMsAtom, 0);
+
+      const config: TimerConfig = {
+        durationMs: 5000,
+        mode: TimerMode.AMRAP,
+      };
+
+      let renderCount = 0;
+      const { result } = await renderHookWithProviders(
+        () => {
+          renderCount += 1;
+          return useTimer(config);
+        },
+        { store }
+      );
+
+      await act(() => {
+        result.current.start();
+      });
+
+      const rendersAfterStart = renderCount;
+
+      // Advance 1 second at a time
+      await act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+      await act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+      await act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+
+      const elapsedRenders = renderCount - rendersAfterStart;
+      // Reconciles strictly at visible second boundaries: exactly 3 renders for 3 elapsed seconds
+      expect(elapsedRenders).toBe(3);
     });
   });
 
@@ -298,6 +341,116 @@ describe("useTimer integration", () => {
       });
 
       expect(result.current.status).toBe(TimerStatus.FINISHED);
+    });
+  });
+
+  describe("controller hook lifecycle & dynamic configuration", () => {
+    it("dynamically updates controller instance when configuration changes", async () => {
+      const store = createStore();
+      store.set(preparationTimeMsAtom, 0);
+
+      const initialConfig: TimerConfig = {
+        durationMs: 30_000,
+        mode: TimerMode.AMRAP,
+      };
+
+      const instancesSeen: (object | null)[] = [];
+
+      const { result, rerender } = await renderHookWithProviders<
+        ReturnType<typeof useTimer>,
+        { currentConfig: TimerConfig }
+      >(
+        ({ currentConfig }) => {
+          const controllerRef = useTimerInstance(currentConfig);
+          instancesSeen.push(controllerRef.current);
+          return useTimer(currentConfig);
+        },
+        {
+          initialProps: { currentConfig: initialConfig },
+          store,
+        }
+      );
+
+      const firstController = instancesSeen.at(-1);
+      expect(firstController).toBeDefined();
+
+      // Change config to FOR_TIME
+      const nextConfig: TimerConfig = {
+        mode: TimerMode.FOR_TIME,
+        timecapMs: 60_000,
+      };
+
+      await act(() => {
+        rerender({ currentConfig: nextConfig });
+      });
+
+      const secondController = instancesSeen.at(-1);
+      expect(secondController).toBeDefined();
+      expect(secondController).not.toBe(firstController);
+      expect(result.current.modeAbbr).toBe("FOR");
+    });
+
+    it("dynamically updates controller instance when preparation duration changes in store", async () => {
+      const store = createStore();
+      store.set(preparationTimeMsAtom, 3000);
+
+      const config: TimerConfig = {
+        durationMs: 30_000,
+        mode: TimerMode.AMRAP,
+      };
+
+      let currentControllerInstance: object | null = null;
+
+      const { rerender } = await renderHookWithProviders(
+        () => {
+          const controllerRef = useTimerInstance(config);
+          currentControllerInstance = controllerRef.current;
+          return useTimer(config);
+        },
+        { store }
+      );
+
+      const initialInstance = currentControllerInstance;
+
+      // Update preparationTimeMs in store
+      await act(() => {
+        store.set(preparationTimeMsAtom, 10_000);
+        rerender({});
+      });
+
+      expect(currentControllerInstance).not.toBe(initialInstance);
+    });
+
+    it("disposes controller cleanly upon unmount without leaving orphaned listeners", async () => {
+      const store = createStore();
+      store.set(preparationTimeMsAtom, 0);
+
+      const config: TimerConfig = {
+        durationMs: 30_000,
+        mode: TimerMode.AMRAP,
+      };
+
+      let capturedController: TimerController | null = null;
+
+      const { unmount } = await renderHookWithProviders(
+        () => {
+          const controllerRef = useTimerInstance(config);
+          capturedController = controllerRef.current;
+          return controllerRef;
+        },
+        { store }
+      );
+
+      expect(capturedController).not.toBeNull();
+      if (capturedController) {
+        const disposeSpy = jest.spyOn(capturedController, "dispose");
+
+        await act(() => {
+          unmount();
+        });
+
+        expect(disposeSpy).toHaveBeenCalled();
+      }
     });
   });
 });

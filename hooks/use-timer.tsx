@@ -54,29 +54,60 @@ const getTimerFlags = (config: TimerConfig, phase: TimerPhase): TimerFlags => {
   };
 };
 
-const useTimerInstance = (
+export const useTimerInstance = (
   config: TimerConfig
 ): React.RefObject<TimerController | null> => {
-  const controllerRef = useRef<TimerController | null>(null);
   const [preparationTimeMs] = useAtom(preparationTimeMsAtom);
+  const controllerRef = useRef<TimerController | null>(null);
+  const prevConfigKeyRef = useRef<string>("");
+  const prevPrepTimeRef = useRef<number>(preparationTimeMs);
 
-  if (!controllerRef.current) {
+  const configKey = JSON.stringify(config);
+
+  if (
+    !controllerRef.current ||
+    prevConfigKeyRef.current !== configKey ||
+    prevPrepTimeRef.current !== preparationTimeMs
+  ) {
+    if (controllerRef.current) {
+      controllerRef.current.dispose();
+    }
+
+    const options =
+      config.mode === TimerMode.STOP_WATCH && "uiTickResolutionMs" in config
+        ? { uiTickResolutionMs: config.uiTickResolutionMs }
+        : undefined;
+
     controllerRef.current = new TimerController(
       createTimerStrategy(config),
-      preparationTimeMs
+      preparationTimeMs,
+      options
     );
+    prevConfigKeyRef.current = configKey;
+    prevPrepTimeRef.current = preparationTimeMs;
   }
+
+  useEffect(
+    () => () => {
+      if (controllerRef.current) {
+        controllerRef.current.dispose();
+        controllerRef.current = null;
+      }
+    },
+    []
+  );
 
   return controllerRef;
 };
 
-const useTimerController = (
+export const useTimerController = (
   config: TimerConfig,
   setTimerState: React.Dispatch<React.SetStateAction<TimerState>>,
   setStatus: React.Dispatch<React.SetStateAction<TimerStatus>>,
   handlers?: TimerEventHandlers
 ) => {
   const controllerRef = useTimerInstance(config);
+  const controller = controllerRef.current;
 
   const startedAtRef = useRef<Date | null>(null);
   const endedAtRef = useRef<Date | null>(null);
@@ -91,12 +122,11 @@ const useTimerController = (
 
   // oxlint-disable eslint/max-statements
   useEffect(() => {
-    const controller = controllerRef.current;
     if (!controller) {
       return;
     }
 
-    controller.on(TimerEventType.TICK, setTimerState);
+    controller.on(TimerEventType.UI_TICK, setTimerState);
     controller.on(TimerEventType.BEEP, (second: number) => {
       handlersRef.current?.onBeep?.(second);
     });
@@ -133,14 +163,7 @@ const useTimerController = (
       startedAtRef.current = null;
       endedAtRef.current = null;
     };
-  }, [
-    setTimerState,
-    setStatus,
-    checkpointsRef,
-    controllerRef,
-    startedAtRef,
-    endedAtRef,
-  ]);
+  }, [controller, setTimerState, setStatus]);
 
   return { checkpointsRef, controllerRef, endedAtRef, startedAtRef };
 };
@@ -167,6 +190,9 @@ export const useTimer = (
   const { controllerRef, startedAtRef, endedAtRef, checkpointsRef } =
     useTimerController(config, setTimerState, setStatus, handlers);
 
+  const totalRounds =
+    "totalRounds" in config ? config.totalRounds : timerState.totalRounds;
+
   const formattedTime = formatTimeForDisplay(
     timerState.displayTimeMs,
     config.mode === TimerMode.STOP_WATCH
@@ -186,7 +212,7 @@ export const useTimer = (
     setStatus(TimerStatus.FINISHED);
     controllerRef.current?.finishTimer();
     // oxlint-disable eslint/exhaustive-deps
-  }, []);
+  }, [controllerRef]);
 
   const getSummary = useCallback((): UISessionSummary | undefined => {
     const coreSummary = controllerRef.current?.getSummary();
@@ -203,7 +229,7 @@ export const useTimer = (
       startedAt: startedAtRef.current || currentDate,
     };
     // oxlint-disable eslint/exhaustive-deps
-  }, []);
+  }, [checkpointsRef, controllerRef, endedAtRef, startedAtRef]);
 
   return {
     ...timerState,
@@ -227,6 +253,7 @@ export const useTimer = (
       controllerRef.current?.start();
     }, [controllerRef]),
     status,
+    totalRounds,
   };
 };
 
