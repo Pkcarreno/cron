@@ -1,5 +1,4 @@
 nodeLinker: hoisted
-minimumReleaseAge: 0
 allowBuilds:
   lefthook: true
   "@parcel/watcher": false
@@ -8,6 +7,7 @@ allowBuilds:
 overrides:
   "@react-native/jest-preset": 0.88.0
   react-dom: 19.3.0
+  noxcturnal: 0.1.5
 permissions:
   ultracite:
     skills: true
