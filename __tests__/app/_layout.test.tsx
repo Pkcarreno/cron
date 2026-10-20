@@ -3,7 +3,7 @@ import React from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import renderer, { act } from "react-test-renderer";
 
-import RootLayout from "./_layout";
+import RootLayout from "@/app/_layout";
 
 jest.mock("expo-splash-screen", () => ({
   hideAsync: jest.fn(),
