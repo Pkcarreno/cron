@@ -53,13 +53,14 @@ const DropdownMenuContent = ({
       <DropdownMenuPrimitive.Overlay
         style={
           overlayStyle
-            ? StyleSheet.flatten([StyleSheet.absoluteFill, overlayStyle])
+            ? (StyleSheet.flatten([StyleSheet.absoluteFill, overlayStyle]) ??
+              undefined)
             : StyleSheet.absoluteFill
         }
       >
         <NativeOnlyAnimatedView entering={FadeIn.duration(150)}>
           <DropdownMenuPrimitive.Content
-            style={StyleSheet.flatten([styles.content, style])}
+            style={StyleSheet.flatten([styles.content, style]) ?? undefined}
             {...props}
           />
         </NativeOnlyAnimatedView>
@@ -76,11 +77,11 @@ const DropdownMenuItem = ({
   React.RefAttributes<DropdownMenuPrimitive.ItemRef>) => (
   <DropdownMenuPrimitive.Item
     disabled={disabled}
-    style={StyleSheet.flatten([
+    style={(state) => [
       styles.item,
       disabled && styles.disabled,
-      style,
-    ])}
+      typeof style === "function" ? style(state) : style,
+    ]}
     {...props}
   />
 );
