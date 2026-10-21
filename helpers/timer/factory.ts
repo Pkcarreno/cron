@@ -70,6 +70,7 @@ export interface IntervalConfig {
 
 export interface StopWatchConfig {
   mode: TimerMode.STOP_WATCH;
+  uiTickResolutionMs?: number;
 }
 
 export type TimerConfig =

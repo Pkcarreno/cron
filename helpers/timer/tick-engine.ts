@@ -3,6 +3,16 @@ export interface TickEvent {
   totalElapsedMs: number;
 }
 
+const getMonotonicTimestamp = (): number => {
+  if (
+    typeof performance !== "undefined" &&
+    typeof performance.now === "function"
+  ) {
+    return performance.now();
+  }
+  return Date.now();
+};
+
 export class TickEngine {
   private isRunning = false;
   private startTime = 0;
@@ -19,7 +29,7 @@ export class TickEngine {
     }
     this.isRunning = true;
 
-    const now = Date.now();
+    const now = getMonotonicTimestamp();
     this.startTime = now - this.totalElapsedMs;
     this.lastTickTime = now;
 
@@ -40,6 +50,13 @@ export class TickEngine {
     this.totalElapsedMs = 0;
   }
 
+  public getElapsedMs(): number {
+    if (this.isRunning) {
+      return getMonotonicTimestamp() - this.startTime;
+    }
+    return this.totalElapsedMs;
+  }
+
   private loop() {
     if (!this.isRunning) {
       return;
@@ -47,7 +64,7 @@ export class TickEngine {
 
     this.animationFrameId = requestAnimationFrame(() => this.loop());
 
-    const now = Date.now();
+    const now = getMonotonicTimestamp();
     const deltaMs = now - this.lastTickTime;
     this.totalElapsedMs = now - this.startTime;
     this.lastTickTime = now;

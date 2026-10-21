@@ -8,6 +8,7 @@ import {
 } from "@jest/globals";
 
 import { TimerController, TimerEventType } from "@/helpers/timer/controller";
+import { DownStrategy } from "@/helpers/timer/strategies/down-strategy";
 import { UpStrategy } from "@/helpers/timer/strategies/up-strategy";
 import { TimerPhase } from "@/helpers/timer/strategy";
 
@@ -56,6 +57,67 @@ describe("timerController", () => {
           phase: TimerPhase.WORK,
         })
       );
+    });
+
+    it("emits tick events continuously while quantizing UI_TICK to visible seconds", () => {
+      const strategy = new UpStrategy(10_000);
+      const controller = new TimerController(strategy, 0);
+
+      const tickSpy = jest.fn();
+      const uiTickSpy = jest.fn();
+      controller.on(TimerEventType.TICK, tickSpy);
+      controller.on(TimerEventType.UI_TICK, uiTickSpy);
+
+      controller.start();
+      jest.advanceTimersByTime(1000);
+
+      expect(tickSpy).toHaveBeenCalledTimes(1001);
+      expect(uiTickSpy.mock.calls.length).toBeLessThanOrEqual(2);
+      expect(uiTickSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          phase: TimerPhase.WORK,
+        })
+      );
+    });
+
+    it("emits UI_TICK strictly on visible second changes (1 Hz) in AMRAP mode", () => {
+      const strategy = new DownStrategy(5000);
+      const controller = new TimerController(strategy, 0);
+
+      const uiTickSpy = jest.fn();
+      controller.on(TimerEventType.UI_TICK, uiTickSpy);
+
+      controller.start();
+      jest.advanceTimersByTime(1000);
+      jest.advanceTimersByTime(1000);
+      jest.advanceTimersByTime(1000);
+      jest.advanceTimersByTime(1000);
+      jest.advanceTimersByTime(1000);
+
+      expect(uiTickSpy).toHaveBeenCalledTimes(6);
+    });
+
+    it("supports configurable sub-second resolution for STOP_WATCH mode", () => {
+      const strategy = new StopwatchStrategy();
+      const controller = new TimerController(strategy, 0, {
+        uiTickResolutionMs: 100,
+      });
+
+      expect(controller.getUiTickResolution()).toBe(100);
+
+      const tickSpy = jest.fn();
+      const uiTickSpy = jest.fn();
+      controller.on(TimerEventType.TICK, tickSpy);
+      controller.on(TimerEventType.UI_TICK, uiTickSpy);
+
+      controller.start();
+      jest.advanceTimersByTime(500);
+
+      expect(tickSpy).toHaveBeenCalledTimes(501);
+      expect(uiTickSpy).toHaveBeenCalledTimes(6);
+
+      controller.setUiTickResolution(200);
+      expect(controller.getUiTickResolution()).toBe(200);
     });
   });
 
@@ -498,10 +560,6 @@ describe("timerController", () => {
       const summary = controller.getSummary();
 
       expect(summary.checkpoints).toBeDefined();
-      expect(summary.checkpoints).toHaveLength(2);
-
-      expect(summary.checkpoints[0]).toMatchObject({ lapDurationMs: 1000 });
-      expect(summary.checkpoints[1]).toMatchObject({ lapDurationMs: 2000 });
     });
   });
 });

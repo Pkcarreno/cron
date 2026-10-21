@@ -13,6 +13,7 @@ export enum TimerEventType {
   ROUND_CHANGE = "ROUND_CHANGE",
   BEEP = "BEEP",
   TICK = "TICK",
+  UI_TICK = "UI_TICK",
   CHECKPOINT = "CHECKPOINT",
 }
 
@@ -41,6 +42,7 @@ export interface TimerEventMap {
   [TimerEventType.ROUND_CHANGE]: [newRound: number];
   [TimerEventType.BEEP]: [secondRemaining: number];
   [TimerEventType.TICK]: [state: TimerState];
+  [TimerEventType.UI_TICK]: [state: TimerState];
   [TimerEventType.CHECKPOINT]: [lastCheckpoint: CheckpointData];
 }
 
@@ -52,11 +54,19 @@ export type TimerEventHandlerMap = {
   [K in keyof TimerEventMap]?: TimerEventCallback<K>;
 };
 
+export interface TimerControllerOptions {
+  uiTickResolutionMs?: number;
+}
+
 export class TimerController {
   private engine: TickEngine;
   private strategy: TimerStrategy;
   private preparationTimeMs: number;
+  private uiTickResolutionMs: number | null = null;
   private previousState: TimerState | null = null;
+  private lastUiTickState: TimerState | null = null;
+  private lastEmittedUiSecond: number | null = null;
+  private lastEmittedQuantizedStep: number | null = null;
   private checkpoints: CheckpointData[] = [];
   private lastKnownElapsedMs = 0;
 
@@ -72,15 +82,33 @@ export class TimerController {
     [TimerEventType.ROUND_CHANGE]: [],
     [TimerEventType.BEEP]: [],
     [TimerEventType.TICK]: [],
+    [TimerEventType.UI_TICK]: [],
     [TimerEventType.CHECKPOINT]: [],
   };
 
-  constructor(strategy: TimerStrategy, preparationTimeMs: number) {
+  constructor(
+    strategy: TimerStrategy,
+    preparationTimeMs: number,
+    options?: TimerControllerOptions | number
+  ) {
     this.strategy = strategy;
     this.preparationTimeMs = preparationTimeMs;
+    if (typeof options === "number") {
+      this.uiTickResolutionMs = options;
+    } else if (options?.uiTickResolutionMs !== undefined) {
+      this.uiTickResolutionMs = options.uiTickResolutionMs;
+    }
     this.engine = new TickEngine();
 
     this.engine.onTickCallbacks.push((tickEvent) => this.handleTick(tickEvent));
+  }
+
+  public setUiTickResolution(resolutionMs: number | null) {
+    this.uiTickResolutionMs = resolutionMs;
+  }
+
+  public getUiTickResolution(): number | null {
+    return this.uiTickResolutionMs;
   }
 
   // oxlint-disable eslint/max-statements
@@ -110,9 +138,48 @@ export class TimerController {
     this.previousState = newState;
     this.emit(TimerEventType.TICK, newState);
 
+    if (this.shouldEmitUiTick(newState)) {
+      this.lastUiTickState = newState;
+      this.lastEmittedUiSecond = Math.ceil(newState.displayTimeMs / 1000);
+      if (this.uiTickResolutionMs !== null && this.uiTickResolutionMs > 0) {
+        this.lastEmittedQuantizedStep = Math.floor(
+          newState.displayTimeMs / this.uiTickResolutionMs
+        );
+      }
+      this.emit(TimerEventType.UI_TICK, newState);
+    }
+
     if (newState.isFinished) {
       this.engine.pause();
     }
+  }
+
+  private shouldEmitUiTick(newState: TimerState): boolean {
+    if (!this.lastUiTickState) {
+      return true;
+    }
+
+    if (
+      newState.isFinished !== this.lastUiTickState.isFinished ||
+      newState.phase !== this.lastUiTickState.phase ||
+      newState.currentRound !== this.lastUiTickState.currentRound
+    ) {
+      return true;
+    }
+
+    if (
+      this.uiTickResolutionMs !== null &&
+      this.uiTickResolutionMs > 0 &&
+      newState.phase === TimerPhase.WORK
+    ) {
+      const currentStep = Math.floor(
+        newState.displayTimeMs / this.uiTickResolutionMs
+      );
+      return currentStep !== this.lastEmittedQuantizedStep;
+    }
+
+    const currentVisibleSecond = Math.ceil(newState.displayTimeMs / 1000);
+    return currentVisibleSecond !== this.lastEmittedUiSecond;
   }
 
   private generateSummary(fullyCompleted: boolean): SessionSummary {
@@ -121,7 +188,8 @@ export class TimerController {
       displayTimeMs: 0,
     };
 
-    const totalSessionMs = this.lastKnownElapsedMs;
+    const currentElapsedMs = this.engine.getElapsedMs();
+    const totalSessionMs = Math.max(this.lastKnownElapsedMs, currentElapsedMs);
 
     const activeSessionMs = Math.max(
       0,
@@ -139,6 +207,12 @@ export class TimerController {
 
   public recordCheckpoint() {
     const lap = this.checkpoints.length + 1;
+
+    const currentElapsedMs = this.engine.getElapsedMs();
+    this.lastKnownElapsedMs = Math.max(
+      this.lastKnownElapsedMs,
+      currentElapsedMs
+    );
 
     const elapsedTimeMs = Math.max(
       0,
@@ -237,6 +311,7 @@ export class TimerController {
       [TimerEventType.ROUND_CHANGE]: [],
       [TimerEventType.BEEP]: [],
       [TimerEventType.TICK]: [],
+      [TimerEventType.UI_TICK]: [],
       [TimerEventType.CHECKPOINT]: [],
     };
   }
@@ -244,6 +319,10 @@ export class TimerController {
   public dispose() {
     this.engine.pause();
     this.checkpoints = [];
+    this.previousState = null;
+    this.lastUiTickState = null;
+    this.lastEmittedUiSecond = null;
+    this.lastEmittedQuantizedStep = null;
     this.removeAllListeners();
   }
 
@@ -285,10 +364,14 @@ export class TimerController {
     this.emit(TimerEventType.PAUSE);
     this.engine.pause();
   }
+
   public reset() {
     this.emit(TimerEventType.RESET);
     this.checkpoints = [];
     this.previousState = null;
+    this.lastUiTickState = null;
+    this.lastEmittedUiSecond = null;
+    this.lastEmittedQuantizedStep = null;
     this.lastKnownElapsedMs = 0;
     this.engine.reset();
   }
