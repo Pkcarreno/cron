@@ -2,7 +2,7 @@ import { AndroidHaptics, ImpactFeedbackStyle } from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useMemo } from "react";
 import type { LayoutChangeEvent } from "react-native";
-import { View, StyleSheet } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   useAnimatedStyle,
@@ -24,11 +24,11 @@ import { Text } from "./text";
 export const TICK_WIDTH = 20;
 
 export interface InputThumbwheelProps {
-  value: number;
-  min?: number;
   max?: number;
-  step?: number;
+  min?: number;
   onChangeValue?: (value: number) => void;
+  step?: number;
+  value: number;
 }
 
 interface TickProps {
@@ -91,10 +91,10 @@ const Tick = React.memo(({ index, min, step }: TickProps) => {
       />
       {isMajor ? (
         <Text
-          weight="500"
           colorSubtone="800"
           size={10}
           style={tickStyles.label}
+          weight="500"
         >
           {currentValue}
         </Text>
@@ -155,10 +155,12 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
       buildPanGesture()
         .activeOffsetX([-4, 4])
         .onBegin(() => {
+          "worklet";
           isDragging.value = true;
           startX.value = translateX.value;
         })
         .onUpdate((event) => {
+          "worklet";
           const width = containerWidth.value > 0 ? containerWidth.value : 300;
           const minTranslate =
             width / 2 - ((totalTicks - 1) * TICK_WIDTH + TICK_WIDTH / 2);
@@ -184,6 +186,7 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
           }
         })
         .onEnd((event) => {
+          "worklet";
           const width = containerWidth.value > 0 ? containerWidth.value : 300;
           const minTranslate =
             width / 2 - ((totalTicks - 1) * TICK_WIDTH + TICK_WIDTH / 2);
@@ -194,6 +197,7 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
               maxTranslate,
               SPRING_CONFIG,
               (finished) => {
+                "worklet";
                 if (finished) {
                   isDragging.value = false;
                 }
@@ -204,6 +208,7 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
               minTranslate,
               SPRING_CONFIG,
               (finished) => {
+                "worklet";
                 if (finished) {
                   isDragging.value = false;
                 }
@@ -216,6 +221,7 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
                 velocity: event.velocityX,
               },
               (finished) => {
+                "worklet";
                 if (finished) {
                   const targetIndex = getIndexForOffset(
                     translateX.value,
@@ -227,6 +233,7 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
                     targetOffset,
                     SPRING_CONFIG,
                     (springDone) => {
+                      "worklet";
                       if (springDone) {
                         isDragging.value = false;
                         if (targetIndex !== lastHapticIndex.value) {
@@ -243,6 +250,7 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
           }
         })
         .onFinalize(() => {
+          "worklet";
           isDragging.value = false;
         }),
     [
@@ -312,13 +320,19 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
     [value, min, max, step, notifyChange]
   );
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-  }));
+  const animatedStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      transform: [{ translateX: translateX.value }],
+    };
+  });
 
-  const needleAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scaleY: isDragging.value ? 1.15 : 1 }],
-  }));
+  const needleAnimatedStyle = useAnimatedStyle(() => {
+    "worklet";
+    return {
+      transform: [{ scaleY: isDragging.value ? 1.15 : 1 }],
+    };
+  });
 
   const ticks = useMemo(
     () => Array.from({ length: totalTicks }, (_, i) => i),
@@ -328,40 +342,40 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
   return (
     <GestureDetector gesture={panGesture}>
       <View
-        accessible={true}
-        accessibilityRole="adjustable"
-        accessibilityValue={{ max, min, now: value }}
         accessibilityActions={[
           { label: "Increment", name: "increment" },
           { label: "Decrement", name: "decrement" },
         ]}
+        accessibilityRole="adjustable"
+        accessibilityValue={{ max, min, now: value }}
+        accessible={true}
         onAccessibilityAction={handleAccessibilityAction}
-        style={styles.container}
         onLayout={handleLayout}
+        style={styles.container}
       >
         <LinearGradient
           colors={[colors.neutral[400], "transparent"]}
-          start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={styles.fadeLeft}
           pointerEvents="none"
+          start={{ x: 0, y: 0 }}
+          style={styles.fadeLeft}
         />
         <LinearGradient
           colors={["transparent", colors.neutral[400]]}
-          start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={styles.fadeRight}
           pointerEvents="none"
+          start={{ x: 0, y: 0 }}
+          style={styles.fadeRight}
         />
 
         <Animated.View
-          style={[styles.centerIndicator, needleAnimatedStyle]}
           pointerEvents="none"
+          style={[styles.centerIndicator, needleAnimatedStyle]}
         />
 
         <Animated.View style={[styles.stripContainer, animatedStyle]}>
           {ticks.map((index) => (
-            <Tick key={index} index={index} min={min} step={step} />
+            <Tick index={index} key={index} min={min} step={step} />
           ))}
         </Animated.View>
       </View>
@@ -373,22 +387,18 @@ export default InputThumbwheel;
 
 const styles = StyleSheet.create({
   centerIndicator: {
+    alignSelf: "center",
     backgroundColor: colors.red,
-    borderRadius: 8,
+    borderRadius: 2,
     height: 38,
-    left: "50%",
-    marginLeft: -1.5,
     position: "absolute",
     top: 7,
-    width: 3,
+    width: 2,
     zIndex: 10,
   },
   container: {
-    alignItems: "center",
-    backgroundColor: colors.neutral[950],
-    borderColor: colors.neutral[800],
+    backgroundColor: colors.neutral[400],
     borderRadius: 16,
-    borderWidth: 1,
     height: 80,
     justifyContent: "center",
     overflow: "hidden",
@@ -413,8 +423,11 @@ const styles = StyleSheet.create({
   },
   stripContainer: {
     alignItems: "center",
+    bottom: 0,
     flexDirection: "row",
-    height: "100%",
+    left: 0,
+    position: "absolute",
+    top: 0,
   },
 });
 
@@ -431,13 +444,12 @@ const tickStyles = StyleSheet.create({
     width: 60,
   },
   line: {
-    backgroundColor: colors.neutral[600],
+    backgroundColor: colors.neutral[800],
     borderRadius: 1,
-    width: 1.5,
+    width: 2,
   },
   major: {
     height: 28,
-    width: 2,
   },
   minor: {
     height: 16,
