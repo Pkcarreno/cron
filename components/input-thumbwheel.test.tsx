@@ -1,4 +1,3 @@
-import type { GestureResponderEvent } from "react-native";
 import { act } from "react-test-renderer";
 
 import { renderWithProviders } from "@/test-utils/render-with-providers";
@@ -14,14 +13,17 @@ describe("InputThumbwheel", () => {
     const containerWidth = 320;
     const centerIndex = 5;
 
-    // The offset computed for this index
+    // The scroll offset computed for this index
     const offset = getOffsetForIndex(centerIndex, containerWidth);
 
-    // In the container coordinate space, the center needle is at containerWidth / 2.
-    // The tick center in strip coordinates is: centerIndex * TICK_WIDTH + TICK_WIDTH / 2.
-    // When strip is transformed by offset, its position in container space is:
-    const tickCenterInContainer =
-      offset + (centerIndex * TICK_WIDTH + TICK_WIDTH / 2);
+    // In ScrollView, content is horizontally padded by leadTrailPad:
+    const leadTrailPad = (containerWidth - TICK_WIDTH) / 2;
+    // In content coordinates, the center of tick centerIndex is:
+    const tickCenterInContent =
+      leadTrailPad + centerIndex * TICK_WIDTH + TICK_WIDTH / 2;
+
+    // When scrolled to offset, its position in viewport/container space is:
+    const tickCenterInContainer = tickCenterInContent - offset;
 
     expect(tickCenterInContainer).toBe(containerWidth / 2);
   });
@@ -43,7 +45,7 @@ describe("InputThumbwheel", () => {
 
   it("renders with accessibilityRole adjustable and accessibilityValue", async () => {
     const screen = await renderWithProviders(
-      <InputThumbwheel value={10} min={0} max={20} step={1} />
+      <InputThumbwheel max={20} min={0} step={1} value={10} />
     );
 
     const wheel = screen.getByRole("adjustable");
@@ -59,18 +61,20 @@ describe("InputThumbwheel", () => {
     const onChangeValue = jest.fn();
     const screen = await renderWithProviders(
       <InputThumbwheel
-        value={15}
-        min={0}
         max={30}
-        step={1}
+        min={0}
         onChangeValue={onChangeValue}
+        step={1}
+        value={15}
       />
     );
 
     const wheel = screen.getByRole("adjustable");
 
-    wheel.props.onLayout({
-      nativeEvent: { layout: { height: 64, width: 300, x: 0, y: 0 } },
+    act(() => {
+      wheel.props.onLayout({
+        nativeEvent: { layout: { height: 64, width: 300, x: 0, y: 0 } },
+      });
     });
 
     expect(onChangeValue).not.toHaveBeenCalled();
@@ -81,23 +85,27 @@ describe("InputThumbwheel", () => {
     const onChangeValue = jest.fn();
     const screen = await renderWithProviders(
       <InputThumbwheel
-        value={10}
-        min={0}
         max={20}
-        step={1}
+        min={0}
         onChangeValue={onChangeValue}
+        step={1}
+        value={10}
       />
     );
 
     const wheel = screen.getByRole("adjustable");
 
-    wheel.props.onAccessibilityAction({
-      nativeEvent: { actionName: "increment" },
+    act(() => {
+      wheel.props.onAccessibilityAction({
+        nativeEvent: { actionName: "increment" },
+      });
     });
     expect(onChangeValue).toHaveBeenCalledWith(11);
 
-    wheel.props.onAccessibilityAction({
-      nativeEvent: { actionName: "decrement" },
+    act(() => {
+      wheel.props.onAccessibilityAction({
+        nativeEvent: { actionName: "decrement" },
+      });
     });
     expect(onChangeValue).toHaveBeenCalledWith(9);
   });
@@ -106,41 +114,45 @@ describe("InputThumbwheel", () => {
     const onChangeValue = jest.fn();
     const screen = await renderWithProviders(
       <InputThumbwheel
-        value={20}
-        min={0}
         max={20}
-        step={1}
+        min={0}
         onChangeValue={onChangeValue}
+        step={1}
+        value={20}
       />
     );
 
     const wheel = screen.getByRole("adjustable");
 
-    wheel.props.onAccessibilityAction({
-      nativeEvent: { actionName: "increment" },
+    act(() => {
+      wheel.props.onAccessibilityAction({
+        nativeEvent: { actionName: "increment" },
+      });
     });
     expect(onChangeValue).toHaveBeenCalledWith(20);
 
     const screenMin = await renderWithProviders(
       <InputThumbwheel
-        value={0}
-        min={0}
         max={20}
-        step={1}
+        min={0}
         onChangeValue={onChangeValue}
+        step={1}
+        value={0}
       />
     );
 
     const wheelMin = screenMin.getByRole("adjustable");
-    wheelMin.props.onAccessibilityAction({
-      nativeEvent: { actionName: "decrement" },
+    act(() => {
+      wheelMin.props.onAccessibilityAction({
+        nativeEvent: { actionName: "decrement" },
+      });
     });
     expect(onChangeValue).toHaveBeenCalledWith(0);
   });
 
   it("renders major tick labels correctly with absolute positioning to prevent flex width inflation", async () => {
     const screen = await renderWithProviders(
-      <InputThumbwheel value={10} min={0} max={20} step={1} />
+      <InputThumbwheel max={20} min={0} step={1} value={10} />
     );
 
     const label0 = screen.getByText("0");
@@ -163,114 +175,57 @@ describe("InputThumbwheel", () => {
     );
   });
 
-  it("configures PanResponder to handle drag gestures and snap smoothly on release", async () => {
+  it("configures ScrollView to handle horizontal gestures and snaps cleanly to ticks", async () => {
     jest.useFakeTimers();
     const onChangeValue = jest.fn();
     const screen = await renderWithProviders(
       <InputThumbwheel
-        value={10}
-        min={0}
         max={20}
-        step={1}
+        min={0}
         onChangeValue={onChangeValue}
+        step={1}
+        value={10}
       />
     );
 
     const wheel = screen.getByRole("adjustable");
 
-    // Static touch does not claim responder (prevents jitter and accidental taps)
-    expect(wheel.props.onStartShouldSetResponder()).toBe(false);
-
-    // Prevents sheet from terminating pan once granted
-    expect(wheel.props.onResponderTerminationRequest()).toBe(false);
-
-    // Layout setup
-    wheel.props.onLayout({
-      nativeEvent: { layout: { height: 64, width: 300, x: 0, y: 0 } },
+    act(() => {
+      wheel.props.onLayout({
+        nativeEvent: { layout: { height: 64, width: 300, x: 0, y: 0 } },
+      });
     });
 
-    // Touch down event
-    const grantEvent = {
-      nativeEvent: { touches: [{ pageX: 150, pageY: 30 }] },
-      touchHistory: {
-        indexOfSingleActiveTouch: 0,
-        mostRecentTimeStamp: 1,
-        numberActiveTouches: 1,
-        touchBank: [
-          {
-            currentPageX: 150,
-            currentPageY: 30,
-            currentTimeStamp: 1,
-            previousPageX: 150,
-            previousPageY: 30,
-            previousTimeStamp: 1,
-            touchActive: true,
-          },
-        ],
-      },
-    } as unknown as GestureResponderEvent;
+    const [scrollView] = wheel.props.children;
+    expect(scrollView.props.horizontal).toBe(true);
+    expect(scrollView.props.snapToInterval).toBe(TICK_WIDTH);
+    expect(scrollView.props.decelerationRate).toBe("fast");
+    expect(scrollView.props.bounces).toBe(true);
+    expect(scrollView.props.overScrollMode).toBe("never");
+    expect(scrollView.props.contentOffset).toEqual({ x: 200, y: 0 });
 
-    // Move left by 20px (from 150 to 130) -> advances by +1 tick (from 10 to 11)
-    const moveEvent = {
-      nativeEvent: { touches: [{ pageX: 130, pageY: 30 }] },
-      touchHistory: {
-        indexOfSingleActiveTouch: 0,
-        mostRecentTimeStamp: 2,
-        numberActiveTouches: 1,
-        touchBank: [
-          {
-            currentPageX: 130,
-            currentPageY: 30,
-            currentTimeStamp: 2,
-            previousPageX: 150,
-            previousPageY: 30,
-            previousTimeStamp: 1,
-            touchActive: true,
-          },
-        ],
-      },
-    } as unknown as GestureResponderEvent;
-
-    // Subsequent move event after responder grant
-    const moveEvent2 = {
-      nativeEvent: { touches: [{ pageX: 130, pageY: 30 }] },
-      touchHistory: {
-        indexOfSingleActiveTouch: 0,
-        mostRecentTimeStamp: 3,
-        numberActiveTouches: 1,
-        touchBank: [
-          {
-            currentPageX: 130,
-            currentPageY: 30,
-            currentTimeStamp: 3,
-            previousPageX: 150,
-            previousPageY: 30,
-            previousTimeStamp: 1,
-            touchActive: true,
-          },
-        ],
-      },
-    } as unknown as GestureResponderEvent;
-
-    // Simulate touch move cycle in Responder system: Capture updates geometry, then bubble checks
-    wheel.props.onMoveShouldSetResponderCapture(moveEvent);
-    expect(wheel.props.onMoveShouldSetResponder(moveEvent)).toBe(true);
-
-    wheel.props.onResponderGrant(grantEvent);
-    wheel.props.onResponderMove(moveEvent2);
-
+    // Scrolling to offset 220 (tick index 11) dispatches onChangeValue(11)
     act(() => {
+      scrollView.props.onScroll({
+        nativeEvent: {
+          contentOffset: { x: 220, y: 0 },
+        },
+      });
       jest.runAllTimers();
     });
 
     expect(onChangeValue).toHaveBeenCalledWith(11);
 
-    // Release with velocity snaps without throwing or crashing
-    expect(() => {
-      wheel.props.onResponderRelease(moveEvent2);
-    }).not.toThrow();
+    // Momentum end confirms final value
+    act(() => {
+      scrollView.props.onMomentumScrollEnd({
+        nativeEvent: {
+          contentOffset: { x: 220, y: 0 },
+        },
+      });
+    });
 
-    expect(onChangeValue).toHaveBeenCalled();
+    expect(onChangeValue).toHaveBeenCalledWith(11);
     jest.useRealTimers();
   });
 });

@@ -1,10 +1,19 @@
 import { AndroidHaptics, ImpactFeedbackStyle } from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import type { LayoutChangeEvent } from "react-native";
-import { PanResponder, Platform, StyleSheet, View } from "react-native";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type {
+  LayoutChangeEvent,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+} from "react-native";
+import { Platform, StyleSheet, useWindowDimensions, View } from "react-native";
 import Animated, {
-  cancelAnimation,
   ReduceMotion,
   useAnimatedStyle,
   useSharedValue,
@@ -36,55 +45,34 @@ interface TickProps {
   step: number;
 }
 
-// Apple-calibrated spring parameters as recommended in animate-expo
-const SNAP_SPRING_CONFIG = {
+const NEEDLE_SPRING_CONFIG = {
   dampingRatio: 0.8,
-  duration: 350,
+  duration: 250,
   reduceMotion: ReduceMotion.System,
-};
-
-const applyRubberBand = (
-  offset: number,
-  minTranslate: number,
-  maxTranslate: number
-) => {
-  "worklet";
-  if (!Number.isFinite(offset)) {
-    return 0;
-  }
-  if (offset > maxTranslate) {
-    const overdrag = offset - maxTranslate;
-    return maxTranslate + 35 * Math.log10(1 + overdrag / 35);
-  }
-  if (offset < minTranslate) {
-    const overdrag = minTranslate - offset;
-    return minTranslate - 35 * Math.log10(1 + overdrag / 35);
-  }
-  return offset;
 };
 
 export const getIndexForOffset = (
   offset: number,
-  width: number,
-  totalTicks: number
+  _width?: number,
+  totalTicks?: number
 ) => {
   "worklet";
   if (!Number.isFinite(offset)) {
     return 0;
   }
-  const rawIndex = (width / 2 - TICK_WIDTH / 2 - offset) / TICK_WIDTH;
-  if (!Number.isFinite(rawIndex)) {
-    return 0;
+  const rawIndex = Math.round(offset / TICK_WIDTH);
+  if (totalTicks !== undefined && Number.isFinite(totalTicks)) {
+    return Math.max(0, Math.min(rawIndex, totalTicks - 1));
   }
-  return Math.max(0, Math.min(Math.round(rawIndex), totalTicks - 1));
+  return Math.max(0, rawIndex);
 };
 
-export const getOffsetForIndex = (index: number, width: number) => {
+export const getOffsetForIndex = (index: number, _width?: number) => {
   "worklet";
   if (!Number.isFinite(index)) {
     return 0;
   }
-  return width / 2 - (index * TICK_WIDTH + TICK_WIDTH / 2);
+  return index * TICK_WIDTH;
 };
 
 const tickStyles = StyleSheet.create({
@@ -156,11 +144,11 @@ const TickStrip = React.memo<TickStripProps>(
     );
 
     return (
-      <>
+      <View style={styles.strip}>
         {ticks.map((index) => (
           <Tick index={index} key={index} min={min} step={step} />
         ))}
-      </>
+      </View>
     );
   },
   (prev, next) =>
@@ -178,6 +166,12 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
   step = 1,
   onChangeValue,
 }) => {
+  const { width: windowWidth } = useWindowDimensions();
+  // Assume default sheet horizontal padding of 40 (20 on each side)
+  const [containerWidth, setContainerWidth] = useState(() =>
+    Math.max(100, windowWidth - 40)
+  );
+
   const totalTicks = useMemo(
     () => Math.floor((max - min) / step) + 1,
     [max, min, step]
@@ -188,21 +182,19 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
     return Math.round((clamped - min) / step);
   }, [value, min, max, step]);
 
-  // Keep JS-only values in React refs to eliminate cross-thread Reanimated syncs per frame
-  const containerWidthRef = useRef(0);
-  const startXRef = useRef(0);
-  const lastHapticIndexRef = useRef(initialIndex);
+  const scrollViewRef = useRef<Animated.ScrollView>(null);
+  const isMountedRef = useRef(false);
+
+  // Track scroll position and index in refs to avoid redundant re-renders
+  const lastOffsetRef = useRef(initialIndex * TICK_WIDTH);
+  const lastReportedIndexRef = useRef(initialIndex);
+  const lastNotifiedValueRef = useRef(value);
   const lastHapticTimeRef = useRef(0);
 
-  // Shared values that drive GPU animations on the UI thread
-  const translateX = useSharedValue(0);
-  const isDragging = useSharedValue(false);
-  const isMounted = useSharedValue(false);
+  // Needle tactile spring scale
+  const needleScale = useSharedValue(1);
 
-  // Track the last value notified by thumbwheel gestures to avoid feedback loop
-  const lastNotifiedValueRef = useRef<number>(value);
-
-  // Batch React state updates with requestAnimationFrame during rapid drag
+  // Batch React state updates with requestAnimationFrame during rapid scroll
   const pendingValueRef = useRef<number | null>(null);
   const rafIdRef = useRef<number | null>(null);
 
@@ -258,147 +250,52 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
     }
   }, []);
 
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (_, gestureState) => {
-          const dx = Math.abs(gestureState.dx || 0);
-          const dy = Math.abs(gestureState.dy || 0);
-          return dx > 4 && dx > dy;
-        },
-        onPanResponderGrant: () => {
-          cancelAnimation(translateX);
-          isDragging.value = true;
-          startXRef.current = translateX.value;
-        },
-        onPanResponderMove: (_, gestureState) => {
-          const width =
-            containerWidthRef.current > 0 ? containerWidthRef.current : 300;
-          const minTranslate =
-            width / 2 - ((totalTicks - 1) * TICK_WIDTH + TICK_WIDTH / 2);
-          const maxTranslate = width / 2 - TICK_WIDTH / 2;
-
-          const dx = Number.isFinite(gestureState?.dx) ? gestureState.dx : 0;
-          const nextOffset = startXRef.current + dx;
-          const offset = applyRubberBand(
-            nextOffset,
-            minTranslate,
-            maxTranslate
-          );
-          translateX.value = offset;
-
-          const currentIndex = getIndexForOffset(offset, width, totalTicks);
-
-          if (currentIndex !== lastHapticIndexRef.current) {
-            lastHapticIndexRef.current = currentIndex;
-            playHaptic(currentIndex);
-            scheduleNotify(min + currentIndex * step);
-          }
-        },
-        onPanResponderRelease: (_, gestureState) => {
-          if (rafIdRef.current !== null) {
-            cancelAnimationFrame(rafIdRef.current);
-            rafIdRef.current = null;
-          }
-
-          const width =
-            containerWidthRef.current > 0 ? containerWidthRef.current : 300;
-          const minTranslate =
-            width / 2 - ((totalTicks - 1) * TICK_WIDTH + TICK_WIDTH / 2);
-          const maxTranslate = width / 2 - TICK_WIDTH / 2;
-
-          let targetIndex: number;
-          if (translateX.value > maxTranslate) {
-            targetIndex = 0;
-          } else if (translateX.value < minTranslate) {
-            targetIndex = totalTicks - 1;
-          } else {
-            const vx = Number.isFinite(gestureState?.vx) ? gestureState.vx : 0;
-            const isFlick = Math.abs(vx) >= 0.2;
-            if (isFlick) {
-              const velocity = vx * 1000;
-              const maxFling = 5 * TICK_WIDTH;
-              const flingDistance = Math.max(
-                -maxFling,
-                Math.min(maxFling, velocity * 0.12)
-              );
-              const projectedOffset = translateX.value + flingDistance;
-              targetIndex = getIndexForOffset(
-                projectedOffset,
-                width,
-                totalTicks
-              );
-            } else {
-              targetIndex = getIndexForOffset(
-                translateX.value,
-                width,
-                totalTicks
-              );
-            }
-          }
-
-          const targetOffset = getOffsetForIndex(targetIndex, width);
-          isDragging.value = false;
-          cancelAnimation(translateX);
-          translateX.value = withSpring(targetOffset, SNAP_SPRING_CONFIG);
-
-          if (targetIndex !== lastHapticIndexRef.current) {
-            lastHapticIndexRef.current = targetIndex;
-            playHaptic(targetIndex);
-          }
-          notifyChange(min + targetIndex * step);
-        },
-        onPanResponderTerminate: () => {
-          if (rafIdRef.current !== null) {
-            cancelAnimationFrame(rafIdRef.current);
-            rafIdRef.current = null;
-          }
-
-          isDragging.value = false;
-          const width =
-            containerWidthRef.current > 0 ? containerWidthRef.current : 300;
-          const targetIndex = getIndexForOffset(
-            translateX.value,
-            width,
-            totalTicks
-          );
-          const targetOffset = getOffsetForIndex(targetIndex, width);
-          cancelAnimation(translateX);
-          translateX.value = withSpring(targetOffset, SNAP_SPRING_CONFIG);
-          notifyChange(min + targetIndex * step);
-        },
-        onPanResponderTerminationRequest: () => false,
-        onStartShouldSetPanResponder: () => false,
-        onStartShouldSetPanResponderCapture: () => false,
-      }),
-    [
-      totalTicks,
-      translateX,
-      isDragging,
-      notifyChange,
-      scheduleNotify,
-      min,
-      step,
-      playHaptic,
-    ]
-  );
-
   const handleLayout = useCallback(
     (e: LayoutChangeEvent) => {
       const { width } = e.nativeEvent.layout;
-      containerWidthRef.current = width;
-
-      if (!isMounted.value) {
-        isMounted.value = true;
-        const initialOffset = getOffsetForIndex(initialIndex, width);
-        cancelAnimation(translateX);
-        translateX.value = initialOffset;
-        startXRef.current = initialOffset;
-        lastNotifiedValueRef.current = value;
+      if (width > 0 && Math.abs(width - containerWidth) > 0.5) {
+        setContainerWidth(width);
       }
     },
-    [initialIndex, isMounted, translateX, value]
+    [containerWidth]
   );
+
+  // Trale lead/trail padding: exactly centers index 0 at offset 0 and final index at max offset
+  const leadTrailPad = Math.max(0, (containerWidth - TICK_WIDTH) / 2);
+
+  const initialContentOffset = useMemo(
+    () => ({ x: initialIndex * TICK_WIDTH, y: 0 }),
+    [initialIndex]
+  );
+
+  // Synchronize when value changes externally (e.g. steppers, direct typing)
+  useEffect(() => {
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      return;
+    }
+    // Prevent feedback loop when value change was emitted by thumbwheel scroll
+    if (value === lastNotifiedValueRef.current) {
+      return;
+    }
+    lastNotifiedValueRef.current = value;
+
+    const targetIndex = Math.max(
+      0,
+      Math.min(Math.round((value - min) / step), totalTicks - 1)
+    );
+    lastReportedIndexRef.current = targetIndex;
+    const targetOffset = targetIndex * TICK_WIDTH;
+
+    const currentOffset = lastOffsetRef.current;
+    const distanceInTicks = Math.abs(targetOffset - currentOffset) / TICK_WIDTH;
+    const shouldAnimate = distanceInTicks <= 40;
+
+    scrollViewRef.current?.scrollTo({
+      animated: shouldAnimate,
+      x: targetOffset,
+    });
+  }, [value, min, step, totalTicks]);
 
   useEffect(
     () => () => {
@@ -409,63 +306,102 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
     []
   );
 
-  useEffect(() => {
-    if (!isMounted.value || containerWidthRef.current <= 0) {
-      return;
-    }
-    // Prevent feedback loop when value change originated from thumbwheel drag
-    if (value === lastNotifiedValueRef.current) {
-      return;
-    }
-    lastNotifiedValueRef.current = value;
+  const handleScrollBeginDrag = useCallback(() => {
+    needleScale.value = withSpring(1.15, NEEDLE_SPRING_CONFIG);
+  }, [needleScale]);
 
-    const targetIndex = Math.max(
-      0,
-      Math.min(Math.round((value - min) / step), totalTicks - 1)
-    );
-    const targetOffset = getOffsetForIndex(
-      targetIndex,
-      containerWidthRef.current
-    );
-    cancelAnimation(translateX);
-    translateX.value = withSpring(targetOffset, SNAP_SPRING_CONFIG);
-    lastHapticIndexRef.current = targetIndex;
-  }, [
-    value,
-    min,
-    step,
-    totalTicks,
-    isMounted,
-    translateX,
-    containerWidthRef,
-    lastHapticIndexRef,
-  ]);
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const offsetX = event.nativeEvent.contentOffset.x;
+      lastOffsetRef.current = offsetX;
+      const rawIndex = Math.round(offsetX / TICK_WIDTH);
+      const currentIndex = Math.max(0, Math.min(totalTicks - 1, rawIndex));
+
+      if (currentIndex !== lastReportedIndexRef.current) {
+        lastReportedIndexRef.current = currentIndex;
+        playHaptic(currentIndex);
+        scheduleNotify(min + currentIndex * step);
+      }
+    },
+    [min, playHaptic, scheduleNotify, step, totalTicks]
+  );
+
+  const handleScrollEndDrag = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const velocityX = Math.abs(event.nativeEvent.velocity?.x ?? 0);
+      // If velocity is negligible, momentum scroll will not fire, so settle immediately
+      if (velocityX < 0.05) {
+        needleScale.value = withSpring(1, NEEDLE_SPRING_CONFIG);
+        if (rafIdRef.current !== null) {
+          cancelAnimationFrame(rafIdRef.current);
+          rafIdRef.current = null;
+        }
+        const offsetX = event.nativeEvent.contentOffset.x;
+        lastOffsetRef.current = offsetX;
+        const rawIndex = Math.round(offsetX / TICK_WIDTH);
+        const finalIndex = Math.max(0, Math.min(totalTicks - 1, rawIndex));
+        if (finalIndex !== lastReportedIndexRef.current) {
+          lastReportedIndexRef.current = finalIndex;
+          playHaptic(finalIndex);
+        }
+        const finalValue = min + finalIndex * step;
+        notifyChange(finalValue);
+      }
+    },
+    [min, needleScale, notifyChange, playHaptic, step, totalTicks]
+  );
+
+  const handleMomentumScrollEnd = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      needleScale.value = withSpring(1, NEEDLE_SPRING_CONFIG);
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+      const offsetX = event.nativeEvent.contentOffset.x;
+      lastOffsetRef.current = offsetX;
+      const rawIndex = Math.round(offsetX / TICK_WIDTH);
+      const finalIndex = Math.max(0, Math.min(totalTicks - 1, rawIndex));
+      if (finalIndex !== lastReportedIndexRef.current) {
+        lastReportedIndexRef.current = finalIndex;
+        playHaptic(finalIndex);
+      }
+      const finalValue = min + finalIndex * step;
+      notifyChange(finalValue);
+    },
+    [min, needleScale, notifyChange, playHaptic, step, totalTicks]
+  );
 
   const handleAccessibilityAction = useCallback(
     (event: { nativeEvent: { actionName: string } }) => {
       const currentVal = value;
+      let nextVal = currentVal;
       if (event.nativeEvent.actionName === "increment") {
-        const nextVal = Math.min(max, currentVal + step);
-        notifyChange(nextVal);
+        nextVal = Math.min(max, currentVal + step);
       } else if (event.nativeEvent.actionName === "decrement") {
-        const nextVal = Math.max(min, currentVal - step);
+        nextVal = Math.max(min, currentVal - step);
+      }
+      if (nextVal === currentVal) {
         notifyChange(nextVal);
+      } else {
+        lastNotifiedValueRef.current = nextVal;
+        const targetIndex = Math.round((nextVal - min) / step);
+        lastReportedIndexRef.current = targetIndex;
+        playHaptic(targetIndex);
+        notifyChange(nextVal);
+        scrollViewRef.current?.scrollTo({
+          animated: true,
+          x: targetIndex * TICK_WIDTH,
+        });
       }
     },
-    [value, min, max, step, notifyChange]
+    [value, min, max, step, notifyChange, playHaptic]
   );
-
-  const animatedStyle = useAnimatedStyle(() => {
-    "worklet";
-    return {
-      transform: [{ translateX: translateX.value }],
-    };
-  });
 
   const needleAnimatedStyle = useAnimatedStyle(() => {
     "worklet";
     return {
-      transform: [{ scaleY: isDragging.value ? 1.15 : 1 }],
+      transform: [{ scaleY: needleScale.value }],
     };
   });
 
@@ -481,8 +417,32 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
       onAccessibilityAction={handleAccessibilityAction}
       onLayout={handleLayout}
       style={styles.container}
-      {...panResponder.panHandlers}
     >
+      <Animated.ScrollView
+        bounces={true}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingHorizontal: leadTrailPad },
+        ]}
+        contentOffset={initialContentOffset}
+        decelerationRate="fast"
+        disableIntervalMomentum={false}
+        horizontal={true}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        onScroll={handleScroll}
+        onScrollBeginDrag={handleScrollBeginDrag}
+        onScrollEndDrag={handleScrollEndDrag}
+        overScrollMode="never"
+        ref={scrollViewRef}
+        scrollEventThrottle={16}
+        showsHorizontalScrollIndicator={false}
+        snapToAlignment="start"
+        snapToInterval={TICK_WIDTH}
+        style={styles.scrollView}
+      >
+        <TickStrip max={max} min={min} step={step} totalTicks={totalTicks} />
+      </Animated.ScrollView>
+
       <LinearGradient
         colors={[colors.neutral[400], "transparent"]}
         end={{ x: 1, y: 0 }}
@@ -502,10 +462,6 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
         pointerEvents="none"
         style={[styles.centerIndicator, needleAnimatedStyle]}
       />
-
-      <Animated.View style={[styles.stripContainer, animatedStyle]}>
-        <TickStrip max={max} min={min} step={step} totalTicks={totalTicks} />
-      </Animated.View>
     </View>
   );
 };
@@ -548,12 +504,17 @@ const styles = StyleSheet.create({
     width: 48,
     zIndex: 5,
   },
-  stripContainer: {
+  scrollContent: {
     alignItems: "center",
-    bottom: 0,
+    height: "100%",
+  },
+  scrollView: {
+    height: "100%",
+    width: "100%",
+  },
+  strip: {
+    alignItems: "center",
     flexDirection: "row",
-    left: 0,
-    position: "absolute",
-    top: 0,
+    height: "100%",
   },
 });
