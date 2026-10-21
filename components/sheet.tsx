@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
     gap: 16,
     paddingBottom: 24,
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 24,
   },
   description: {},
   footer: {
