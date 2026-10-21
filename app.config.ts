@@ -120,6 +120,9 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
     buildNumber: Env.EXPO_PUBLIC_BUILD_NUMBER.toString(),
     bundleIdentifier: Env.EXPO_PUBLIC_BUNDLE_ID,
     icon: appIconsData.ios.icon,
+    infoPlist: {
+      CADisableMinimumFrameDurationOnPhone: true,
+    },
     supportsTablet: true,
   },
   name: Env.EXPO_PUBLIC_NAME,

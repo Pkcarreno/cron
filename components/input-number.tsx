@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import type { PressableProps, PressableStateCallbackType } from "react-native";
 import { Pressable, StyleSheet, View } from "react-native";
 
@@ -190,6 +190,75 @@ export interface NumberPickerFormProps {
   max?: number;
 }
 
+interface QuickActionsRowProps {
+  disabledMinus10: boolean;
+  disabledMinus5: boolean;
+  disabledPlus10: boolean;
+  disabledPlus5: boolean;
+  onAddFive: () => void;
+  onAddTen: () => void;
+  onSubtractFive: () => void;
+  onSubtractTen: () => void;
+}
+
+const QuickActionsRow = React.memo<QuickActionsRowProps>(
+  ({
+    disabledMinus10,
+    disabledMinus5,
+    disabledPlus5,
+    disabledPlus10,
+    onSubtractTen,
+    onSubtractFive,
+    onAddFive,
+    onAddTen,
+  }) => (
+    <View style={sheetFormStyles.quickActionsRow}>
+      <View style={sheetFormStyles.quickActionGroup}>
+        <Button
+          title="-10"
+          variant="secondary"
+          size="sm"
+          disabled={disabledMinus10}
+          onPress={onSubtractTen}
+        />
+        <Button
+          title="-5"
+          variant="secondary"
+          size="sm"
+          disabled={disabledMinus5}
+          onPress={onSubtractFive}
+        />
+      </View>
+      <View style={sheetFormStyles.quickActionGroup}>
+        <Button
+          title="+5"
+          variant="secondary"
+          size="sm"
+          disabled={disabledPlus5}
+          onPress={onAddFive}
+        />
+        <Button
+          title="+10"
+          variant="secondary"
+          size="sm"
+          disabled={disabledPlus10}
+          onPress={onAddTen}
+        />
+      </View>
+    </View>
+  )
+);
+
+QuickActionsRow.displayName = "QuickActionsRow";
+
+const SaveFooter = React.memo<{ onSave?: () => void }>(({ onSave }) => (
+  <View style={sheetFormStyles.footer}>
+    <Button title="Save" onPress={onSave} />
+  </View>
+));
+
+SaveFooter.displayName = "SaveFooter";
+
 export const NumberPickerForm: React.FC<NumberPickerFormProps> = ({
   value,
   onChange,
@@ -240,44 +309,18 @@ export const NumberPickerForm: React.FC<NumberPickerFormProps> = ({
             max={max}
           />
         </View>
-        <View style={sheetFormStyles.quickActionsRow}>
-          <View style={sheetFormStyles.quickActionGroup}>
-            <Button
-              title="-10"
-              variant="secondary"
-              size="sm"
-              disabled={value - 10 < min}
-              onPress={handleSubtractTen}
-            />
-            <Button
-              title="-5"
-              variant="secondary"
-              size="sm"
-              disabled={value - 5 < min}
-              onPress={handleSubtractFive}
-            />
-          </View>
-          <View style={sheetFormStyles.quickActionGroup}>
-            <Button
-              title="+5"
-              variant="secondary"
-              size="sm"
-              disabled={value + 5 > max}
-              onPress={handleAddFive}
-            />
-            <Button
-              title="+10"
-              variant="secondary"
-              size="sm"
-              disabled={value + 10 > max}
-              onPress={handleAddTen}
-            />
-          </View>
-        </View>
+        <QuickActionsRow
+          disabledMinus10={value - 10 < min}
+          disabledMinus5={value - 5 < min}
+          disabledPlus5={value + 5 > max}
+          disabledPlus10={value + 10 > max}
+          onSubtractTen={handleSubtractTen}
+          onSubtractFive={handleSubtractFive}
+          onAddFive={handleAddFive}
+          onAddTen={handleAddTen}
+        />
       </View>
-      <View style={sheetFormStyles.footer}>
-        <Button title="Save" onPress={onSave} />
-      </View>
+      <SaveFooter onSave={onSave} />
     </>
   );
 };

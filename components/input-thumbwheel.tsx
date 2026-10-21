@@ -5,6 +5,7 @@ import type { LayoutChangeEvent } from "react-native";
 import { PanResponder, Platform, StyleSheet, View } from "react-native";
 import Animated, {
   cancelAnimation,
+  ReduceMotion,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -35,13 +36,11 @@ interface TickProps {
   step: number;
 }
 
-const SPRING_CONFIG = {
-  damping: 30,
-  mass: 1,
-  overshootClamping: false,
-  restDisplacementThreshold: 0.01,
-  restSpeedThreshold: 0.01,
-  stiffness: 280,
+// Apple-calibrated spring parameters as recommended in animate-expo
+const SNAP_SPRING_CONFIG = {
+  dampingRatio: 0.8,
+  duration: 350,
+  reduceMotion: ReduceMotion.System,
 };
 
 const applyRubberBand = (
@@ -88,15 +87,44 @@ export const getOffsetForIndex = (index: number, width: number) => {
   return width / 2 - (index * TICK_WIDTH + TICK_WIDTH / 2);
 };
 
+const tickStyles = StyleSheet.create({
+  container: {
+    alignItems: "center",
+    height: "100%",
+    paddingTop: 12,
+    position: "relative",
+    width: TICK_WIDTH,
+  },
+  label: {
+    bottom: 8,
+    left: (TICK_WIDTH - 60) / 2,
+    position: "absolute",
+    textAlign: "center",
+    width: 60,
+  },
+  line: {
+    backgroundColor: colors.neutral[800],
+    borderRadius: 1,
+    width: 2,
+  },
+  major: {
+    height: 28,
+  },
+  minor: {
+    height: 16,
+  },
+});
+
+const majorLineStyle = StyleSheet.flatten([tickStyles.line, tickStyles.major]);
+const minorLineStyle = StyleSheet.flatten([tickStyles.line, tickStyles.minor]);
+
 const Tick = React.memo(({ index, min, step }: TickProps) => {
   const isMajor = index % 5 === 0;
   const currentValue = min + index * step;
 
   return (
     <View style={tickStyles.container}>
-      <View
-        style={[tickStyles.line, isMajor ? tickStyles.major : tickStyles.minor]}
-      />
+      <View style={isMajor ? majorLineStyle : minorLineStyle} />
       {isMajor ? (
         <Text
           colorSubtone="800"
@@ -112,6 +140,36 @@ const Tick = React.memo(({ index, min, step }: TickProps) => {
 });
 
 Tick.displayName = "Tick";
+
+interface TickStripProps {
+  max: number;
+  min: number;
+  step: number;
+  totalTicks: number;
+}
+
+const TickStrip = React.memo<TickStripProps>(
+  ({ totalTicks, min, step }) => {
+    const ticks = useMemo(
+      () => Array.from({ length: totalTicks }, (_, i) => i),
+      [totalTicks]
+    );
+
+    return (
+      <>
+        {ticks.map((index) => (
+          <Tick index={index} key={index} min={min} step={step} />
+        ))}
+      </>
+    );
+  },
+  (prev, next) =>
+    prev.totalTicks === next.totalTicks &&
+    prev.min === next.min &&
+    prev.step === next.step
+);
+
+TickStrip.displayName = "TickStrip";
 
 const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
   value,
@@ -130,15 +188,23 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
     return Math.round((clamped - min) / step);
   }, [value, min, max, step]);
 
-  const containerWidth = useSharedValue(0);
+  // Keep JS-only values in React refs to eliminate cross-thread Reanimated syncs per frame
+  const containerWidthRef = useRef(0);
+  const startXRef = useRef(0);
+  const lastHapticIndexRef = useRef(initialIndex);
+  const lastHapticTimeRef = useRef(0);
+
+  // Shared values that drive GPU animations on the UI thread
   const translateX = useSharedValue(0);
-  const startX = useSharedValue(0);
   const isDragging = useSharedValue(false);
-  const lastHapticIndex = useSharedValue(initialIndex);
   const isMounted = useSharedValue(false);
 
   // Track the last value notified by thumbwheel gestures to avoid feedback loop
   const lastNotifiedValueRef = useRef<number>(value);
+
+  // Batch React state updates with requestAnimationFrame during rapid drag
+  const pendingValueRef = useRef<number | null>(null);
+  const rafIdRef = useRef<number | null>(null);
 
   const notifyChange = useCallback(
     (nextVal: number) => {
@@ -150,7 +216,30 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
     [onChangeValue]
   );
 
+  const scheduleNotify = useCallback(
+    (nextVal: number) => {
+      pendingValueRef.current = nextVal;
+      if (rafIdRef.current === null) {
+        rafIdRef.current = requestAnimationFrame(() => {
+          rafIdRef.current = null;
+          if (pendingValueRef.current !== null) {
+            notifyChange(pendingValueRef.current);
+            pendingValueRef.current = null;
+          }
+        });
+      }
+    },
+    [notifyChange]
+  );
+
+  // Throttle haptics to the physical hardware rate (min 25ms between triggers)
   const playHaptic = useCallback((index: number) => {
+    const now = Date.now();
+    if (now - lastHapticTimeRef.current < 25) {
+      return;
+    }
+    lastHapticTimeRef.current = now;
+
     if (Platform.OS === "android") {
       triggerAndroidHaptic(
         index % 5 === 0 ? AndroidHaptics.Confirm : AndroidHaptics.Clock_Tick
@@ -180,36 +269,40 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
         onPanResponderGrant: () => {
           cancelAnimation(translateX);
           isDragging.value = true;
-          startX.value = translateX.value;
+          startXRef.current = translateX.value;
         },
         onPanResponderMove: (_, gestureState) => {
-          const width = containerWidth.value > 0 ? containerWidth.value : 300;
+          const width =
+            containerWidthRef.current > 0 ? containerWidthRef.current : 300;
           const minTranslate =
             width / 2 - ((totalTicks - 1) * TICK_WIDTH + TICK_WIDTH / 2);
           const maxTranslate = width / 2 - TICK_WIDTH / 2;
 
           const dx = Number.isFinite(gestureState?.dx) ? gestureState.dx : 0;
-          const nextOffset = startX.value + dx;
-          translateX.value = applyRubberBand(
+          const nextOffset = startXRef.current + dx;
+          const offset = applyRubberBand(
             nextOffset,
             minTranslate,
             maxTranslate
           );
+          translateX.value = offset;
 
-          const currentIndex = getIndexForOffset(
-            translateX.value,
-            width,
-            totalTicks
-          );
+          const currentIndex = getIndexForOffset(offset, width, totalTicks);
 
-          if (currentIndex !== lastHapticIndex.value) {
-            lastHapticIndex.value = currentIndex;
+          if (currentIndex !== lastHapticIndexRef.current) {
+            lastHapticIndexRef.current = currentIndex;
             playHaptic(currentIndex);
-            notifyChange(min + currentIndex * step);
+            scheduleNotify(min + currentIndex * step);
           }
         },
         onPanResponderRelease: (_, gestureState) => {
-          const width = containerWidth.value > 0 ? containerWidth.value : 300;
+          if (rafIdRef.current !== null) {
+            cancelAnimationFrame(rafIdRef.current);
+            rafIdRef.current = null;
+          }
+
+          const width =
+            containerWidthRef.current > 0 ? containerWidthRef.current : 300;
           const minTranslate =
             width / 2 - ((totalTicks - 1) * TICK_WIDTH + TICK_WIDTH / 2);
           const maxTranslate = width / 2 - TICK_WIDTH / 2;
@@ -247,17 +340,23 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
           const targetOffset = getOffsetForIndex(targetIndex, width);
           isDragging.value = false;
           cancelAnimation(translateX);
-          translateX.value = withSpring(targetOffset, SPRING_CONFIG);
+          translateX.value = withSpring(targetOffset, SNAP_SPRING_CONFIG);
 
-          if (targetIndex !== lastHapticIndex.value) {
-            lastHapticIndex.value = targetIndex;
+          if (targetIndex !== lastHapticIndexRef.current) {
+            lastHapticIndexRef.current = targetIndex;
             playHaptic(targetIndex);
           }
           notifyChange(min + targetIndex * step);
         },
         onPanResponderTerminate: () => {
+          if (rafIdRef.current !== null) {
+            cancelAnimationFrame(rafIdRef.current);
+            rafIdRef.current = null;
+          }
+
           isDragging.value = false;
-          const width = containerWidth.value > 0 ? containerWidth.value : 300;
+          const width =
+            containerWidthRef.current > 0 ? containerWidthRef.current : 300;
           const targetIndex = getIndexForOffset(
             translateX.value,
             width,
@@ -265,7 +364,7 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
           );
           const targetOffset = getOffsetForIndex(targetIndex, width);
           cancelAnimation(translateX);
-          translateX.value = withSpring(targetOffset, SPRING_CONFIG);
+          translateX.value = withSpring(targetOffset, SNAP_SPRING_CONFIG);
           notifyChange(min + targetIndex * step);
         },
         onPanResponderTerminationRequest: () => false,
@@ -274,12 +373,10 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
       }),
     [
       totalTicks,
-      containerWidth,
-      startX,
       translateX,
-      lastHapticIndex,
       isDragging,
       notifyChange,
+      scheduleNotify,
       min,
       step,
       playHaptic,
@@ -289,22 +386,31 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
   const handleLayout = useCallback(
     (e: LayoutChangeEvent) => {
       const { width } = e.nativeEvent.layout;
-      containerWidth.value = width;
+      containerWidthRef.current = width;
 
       if (!isMounted.value) {
         isMounted.value = true;
         const initialOffset = getOffsetForIndex(initialIndex, width);
         cancelAnimation(translateX);
         translateX.value = initialOffset;
-        startX.value = initialOffset;
+        startXRef.current = initialOffset;
         lastNotifiedValueRef.current = value;
       }
     },
-    [containerWidth, isMounted, initialIndex, translateX, startX, value]
+    [initialIndex, isMounted, translateX, value]
+  );
+
+  useEffect(
+    () => () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+    },
+    []
   );
 
   useEffect(() => {
-    if (!isMounted.value || containerWidth.value <= 0) {
+    if (!isMounted.value || containerWidthRef.current <= 0) {
       return;
     }
     // Prevent feedback loop when value change originated from thumbwheel drag
@@ -317,19 +423,22 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
       0,
       Math.min(Math.round((value - min) / step), totalTicks - 1)
     );
-    const targetOffset = getOffsetForIndex(targetIndex, containerWidth.value);
+    const targetOffset = getOffsetForIndex(
+      targetIndex,
+      containerWidthRef.current
+    );
     cancelAnimation(translateX);
-    translateX.value = withSpring(targetOffset, SPRING_CONFIG);
-    lastHapticIndex.value = targetIndex;
+    translateX.value = withSpring(targetOffset, SNAP_SPRING_CONFIG);
+    lastHapticIndexRef.current = targetIndex;
   }, [
     value,
     min,
     step,
     totalTicks,
-    containerWidth,
     isMounted,
     translateX,
-    lastHapticIndex,
+    containerWidthRef,
+    lastHapticIndexRef,
   ]);
 
   const handleAccessibilityAction = useCallback(
@@ -359,11 +468,6 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
       transform: [{ scaleY: isDragging.value ? 1.15 : 1 }],
     };
   });
-
-  const ticks = useMemo(
-    () => Array.from({ length: totalTicks }, (_, i) => i),
-    [totalTicks]
-  );
 
   return (
     <View
@@ -400,15 +504,13 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
       />
 
       <Animated.View style={[styles.stripContainer, animatedStyle]}>
-        {ticks.map((index) => (
-          <Tick index={index} key={index} min={min} step={step} />
-        ))}
+        <TickStrip max={max} min={min} step={step} totalTicks={totalTicks} />
       </Animated.View>
     </View>
   );
 };
 
-export default InputThumbwheel;
+export default React.memo(InputThumbwheel);
 
 const styles = StyleSheet.create({
   centerIndicator: {
@@ -453,33 +555,5 @@ const styles = StyleSheet.create({
     left: 0,
     position: "absolute",
     top: 0,
-  },
-});
-
-const tickStyles = StyleSheet.create({
-  container: {
-    alignItems: "center",
-    height: "100%",
-    paddingTop: 12,
-    position: "relative",
-    width: TICK_WIDTH,
-  },
-  label: {
-    bottom: 8,
-    left: (TICK_WIDTH - 60) / 2,
-    position: "absolute",
-    textAlign: "center",
-    width: 60,
-  },
-  line: {
-    backgroundColor: colors.neutral[800],
-    borderRadius: 1,
-    width: 2,
-  },
-  major: {
-    height: 28,
-  },
-  minor: {
-    height: 16,
   },
 });

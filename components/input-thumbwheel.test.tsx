@@ -1,4 +1,5 @@
 import type { GestureResponderEvent } from "react-native";
+import { act } from "react-test-renderer";
 
 import { renderWithProviders } from "@/test-utils/render-with-providers";
 
@@ -163,6 +164,7 @@ describe("InputThumbwheel", () => {
   });
 
   it("configures PanResponder to handle drag gestures and snap smoothly on release", async () => {
+    jest.useFakeTimers();
     const onChangeValue = jest.fn();
     const screen = await renderWithProviders(
       <InputThumbwheel
@@ -256,6 +258,11 @@ describe("InputThumbwheel", () => {
 
     wheel.props.onResponderGrant(grantEvent);
     wheel.props.onResponderMove(moveEvent2);
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
     expect(onChangeValue).toHaveBeenCalledWith(11);
 
     // Release with velocity snaps without throwing or crashing
@@ -264,5 +271,6 @@ describe("InputThumbwheel", () => {
     }).not.toThrow();
 
     expect(onChangeValue).toHaveBeenCalled();
+    jest.useRealTimers();
   });
 });
