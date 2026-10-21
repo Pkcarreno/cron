@@ -3,11 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useMemo } from "react";
 import type { LayoutChangeEvent } from "react-native";
 import { View, StyleSheet } from "react-native";
-import {
-  Gesture,
-  GestureDetector,
-  GestureHandlerRootView,
-} from "react-native-gesture-handler";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -29,10 +25,10 @@ export const TICK_WIDTH = 20;
 
 export interface InputThumbwheelProps {
   value: number;
-  onChangeValue?: (value: number) => void;
   min?: number;
   max?: number;
   step?: number;
+  onChangeValue?: (value: number) => void;
 }
 
 interface TickProps {
@@ -43,59 +39,28 @@ interface TickProps {
 
 const buildPanGesture = () => Gesture.Pan();
 
-const fireHaptic = (
-  newValue: number,
-  min: number,
-  max: number,
-  velocity = 0
-) => {
-  const isLimit = newValue === min || newValue === max;
-  const isMajor = Math.abs(newValue % 5) < 0.001;
-
-  if (isLimit) {
-    triggerHaptic({
-      mode: ImpactFeedbackStyle.Rigid,
-      type: triggerType.Impact,
-    });
-    return;
-  }
-
-  // Fast flick filter: only trigger on major ticks when velocity is high to prevent actuator saturation
-  if (Math.abs(velocity) > 1200) {
-    if (isMajor) {
-      triggerAndroidHaptic(AndroidHaptics.Segment_Tick, {
-        mode: ImpactFeedbackStyle.Light,
-        type: triggerType.Impact,
-      });
-    }
-    return;
-  }
-
-  if (isMajor) {
-    triggerAndroidHaptic(AndroidHaptics.Segment_Tick, {
-      mode: ImpactFeedbackStyle.Light,
-      type: triggerType.Impact,
-    });
-  } else {
-    triggerAndroidHaptic(AndroidHaptics.Segment_Frequent_Tick, {
-      type: triggerType.Selection,
-    });
-  }
+const SPRING_CONFIG = {
+  damping: 30,
+  mass: 1,
+  overshootClamping: false,
+  restDisplacementThreshold: 0.01,
+  restSpeedThreshold: 0.01,
+  stiffness: 280,
 };
 
 const applyRubberBand = (
   offset: number,
-  minBound: number,
-  maxBound: number
+  minTranslate: number,
+  maxTranslate: number
 ) => {
   "worklet";
-  if (offset > maxBound) {
-    const over = offset - maxBound;
-    return maxBound + over * 0.35;
+  if (offset > maxTranslate) {
+    const overdrag = offset - maxTranslate;
+    return maxTranslate + 35 * Math.log10(1 + overdrag / 35);
   }
-  if (offset < minBound) {
-    const over = minBound - offset;
-    return minBound - over * 0.35;
+  if (offset < minTranslate) {
+    const overdrag = minTranslate - offset;
+    return minTranslate - 35 * Math.log10(1 + overdrag / 35);
   }
   return offset;
 };
@@ -116,8 +81,8 @@ export const getOffsetForIndex = (index: number, width: number) => {
 };
 
 const Tick = React.memo(({ index, min, step }: TickProps) => {
+  const isMajor = index % 5 === 0;
   const currentValue = min + index * step;
-  const isMajor = Math.abs(currentValue % 5) < 0.001;
 
   return (
     <View style={tickStyles.container}>
@@ -142,60 +107,48 @@ Tick.displayName = "Tick";
 
 const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
   value,
-  onChangeValue,
   min = 0,
-  max = 200,
+  max = 100,
   step = 1,
+  onChangeValue,
 }) => {
-  const totalTicks = Math.round((max - min) / step) + 1;
-  const safeInitialValue = Math.min(Math.max(value, min), max);
-  const initialIndex = Math.round((safeInitialValue - min) / step);
+  const totalTicks = useMemo(
+    () => Math.floor((max - min) / step) + 1,
+    [max, min, step]
+  );
+
+  const initialIndex = useMemo(() => {
+    const clamped = Math.max(min, Math.min(max, value));
+    return Math.round((clamped - min) / step);
+  }, [value, min, max, step]);
 
   const containerWidth = useSharedValue(0);
   const translateX = useSharedValue(0);
   const startX = useSharedValue(0);
   const isDragging = useSharedValue(false);
   const lastHapticIndex = useSharedValue(initialIndex);
-  const needleScaleY = useSharedValue(1);
+  const isMounted = useSharedValue(false);
 
-  const handleIndexChanged = useCallback(
-    (index: number, velocity = 0) => {
-      const newValue = Number((min + index * step).toFixed(2));
-      fireHaptic(newValue, min, max, velocity);
-      onChangeValue?.(newValue);
+  const notifyChange = useCallback(
+    (nextVal: number) => {
+      onChangeValue?.(nextVal);
     },
-    [min, step, max, onChangeValue]
+    [onChangeValue]
   );
 
-  // Synchronize when external value prop changes (e.g. +5, -10 buttons)
-  useEffect(() => {
-    if (!isDragging.get()) {
-      const width = containerWidth.get() > 0 ? containerWidth.get() : 300;
-      const targetIndex = Math.round(
-        (Math.max(min, Math.min(value, max)) - min) / step
-      );
-      const targetOffset = getOffsetForIndex(targetIndex, width);
-
-      translateX.set(
-        containerWidth.get() > 0
-          ? withSpring(targetOffset, {
-              dampingRatio: 0.8,
-              duration: 300,
-            })
-          : targetOffset
-      );
-      lastHapticIndex.set(targetIndex);
+  const playHaptic = useCallback((index: number) => {
+    if (index % 5 === 0) {
+      triggerHaptic({
+        mode: ImpactFeedbackStyle.Medium,
+        type: triggerType.Impact,
+      });
+      triggerAndroidHaptic(AndroidHaptics.Confirm);
+    } else {
+      triggerHaptic({
+        type: triggerType.Selection,
+      });
     }
-  }, [
-    value,
-    min,
-    max,
-    step,
-    isDragging,
-    containerWidth,
-    translateX,
-    lastHapticIndex,
-  ]);
+  }, []);
 
   const panGesture = useMemo(
     () =>
@@ -223,14 +176,11 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
             width,
             totalTicks
           );
+
           if (currentIndex !== lastHapticIndex.value) {
             lastHapticIndex.value = currentIndex;
-            needleScaleY.value = 0.92;
-            needleScaleY.value = withSpring(1, {
-              dampingRatio: 0.8,
-              duration: 120,
-            });
-            scheduleOnRN(handleIndexChanged, currentIndex, event.velocityX);
+            scheduleOnRN(playHaptic, currentIndex);
+            scheduleOnRN(notifyChange, min + currentIndex * step);
           }
         })
         .onEnd((event) => {
@@ -242,47 +192,48 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
           if (translateX.value > maxTranslate) {
             translateX.value = withSpring(
               maxTranslate,
-              { dampingRatio: 0.8, duration: 250 },
+              SPRING_CONFIG,
               (finished) => {
                 if (finished) {
                   isDragging.value = false;
-                  scheduleOnRN(handleIndexChanged, 0, 0);
                 }
               }
             );
           } else if (translateX.value < minTranslate) {
             translateX.value = withSpring(
               minTranslate,
-              { dampingRatio: 0.8, duration: 250 },
+              SPRING_CONFIG,
               (finished) => {
                 if (finished) {
                   isDragging.value = false;
-                  scheduleOnRN(handleIndexChanged, totalTicks - 1, 0);
                 }
               }
             );
           } else {
             translateX.value = withDecay(
               {
-                clamp: [minTranslate, maxTranslate],
-                deceleration: 0.994,
+                deceleration: 0.993,
                 velocity: event.velocityX,
               },
               (finished) => {
                 if (finished) {
-                  isDragging.value = false;
-                  const finalIndex = getIndexForOffset(
+                  const targetIndex = getIndexForOffset(
                     translateX.value,
                     width,
                     totalTicks
                   );
-                  const targetOffset = getOffsetForIndex(finalIndex, width);
+                  const targetOffset = getOffsetForIndex(targetIndex, width);
                   translateX.value = withSpring(
                     targetOffset,
-                    { dampingRatio: 1, duration: 150 },
-                    (snapFinished) => {
-                      if (snapFinished) {
-                        scheduleOnRN(handleIndexChanged, finalIndex, 0);
+                    SPRING_CONFIG,
+                    (springDone) => {
+                      if (springDone) {
+                        isDragging.value = false;
+                        if (targetIndex !== lastHapticIndex.value) {
+                          lastHapticIndex.value = targetIndex;
+                          scheduleOnRN(playHaptic, targetIndex);
+                          scheduleOnRN(notifyChange, min + targetIndex * step);
+                        }
                       }
                     }
                   );
@@ -296,39 +247,69 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
         }),
     [
       totalTicks,
-      handleIndexChanged,
-      isDragging,
+      containerWidth,
       startX,
       translateX,
-      containerWidth,
       lastHapticIndex,
-      needleScaleY,
+      isDragging,
+      notifyChange,
+      min,
+      step,
+      playHaptic,
     ]
   );
 
   const handleLayout = useCallback(
     (e: LayoutChangeEvent) => {
       const { width } = e.nativeEvent.layout;
-      containerWidth.set(width);
-      const targetIndex = Math.round(
-        (Math.max(min, Math.min(value, max)) - min) / step
-      );
-      translateX.set(getOffsetForIndex(targetIndex, width));
+      containerWidth.value = width;
+
+      if (!isMounted.value) {
+        isMounted.value = true;
+        const initialOffset = getOffsetForIndex(initialIndex, width);
+        translateX.value = initialOffset;
+        startX.value = initialOffset;
+      }
     },
-    [min, max, step, value, containerWidth, translateX]
+    [containerWidth, isMounted, initialIndex, translateX, startX]
   );
+
+  useEffect(() => {
+    if (isMounted.value && !isDragging.value && containerWidth.value > 0) {
+      const targetIndex = Math.max(
+        0,
+        Math.min(Math.round((value - min) / step), totalTicks - 1)
+      );
+      const targetOffset = getOffsetForIndex(targetIndex, containerWidth.value);
+      if (Math.abs(translateX.value - targetOffset) > 1) {
+        translateX.value = withSpring(targetOffset, SPRING_CONFIG);
+        lastHapticIndex.value = targetIndex;
+      }
+    }
+  }, [
+    value,
+    min,
+    step,
+    totalTicks,
+    containerWidth,
+    isMounted,
+    isDragging,
+    translateX,
+    lastHapticIndex,
+  ]);
 
   const handleAccessibilityAction = useCallback(
     (event: { nativeEvent: { actionName: string } }) => {
+      const currentVal = value;
       if (event.nativeEvent.actionName === "increment") {
-        const nextValue = Math.min(max, value + step);
-        onChangeValue?.(nextValue);
+        const nextVal = Math.min(max, currentVal + step);
+        notifyChange(nextVal);
       } else if (event.nativeEvent.actionName === "decrement") {
-        const nextValue = Math.max(min, value - step);
-        onChangeValue?.(nextValue);
+        const nextVal = Math.max(min, currentVal - step);
+        notifyChange(nextVal);
       }
     },
-    [max, min, onChangeValue, step, value]
+    [value, min, max, step, notifyChange]
   );
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -336,7 +317,7 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
   }));
 
   const needleAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scaleY: needleScaleY.value }],
+    transform: [{ scaleY: isDragging.value ? 1.15 : 1 }],
   }));
 
   const ticks = useMemo(
@@ -345,48 +326,46 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
   );
 
   return (
-    <GestureHandlerRootView>
-      <GestureDetector gesture={panGesture}>
-        <View
-          accessible={true}
-          accessibilityRole="adjustable"
-          accessibilityValue={{ max, min, now: value }}
-          accessibilityActions={[
-            { label: "Increment", name: "increment" },
-            { label: "Decrement", name: "decrement" },
-          ]}
-          onAccessibilityAction={handleAccessibilityAction}
-          style={styles.container}
-          onLayout={handleLayout}
-        >
-          <LinearGradient
-            colors={[colors.neutral[400], "transparent"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.fadeLeft}
-            pointerEvents="none"
-          />
-          <LinearGradient
-            colors={["transparent", colors.neutral[400]]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.fadeRight}
-            pointerEvents="none"
-          />
+    <GestureDetector gesture={panGesture}>
+      <View
+        accessible={true}
+        accessibilityRole="adjustable"
+        accessibilityValue={{ max, min, now: value }}
+        accessibilityActions={[
+          { label: "Increment", name: "increment" },
+          { label: "Decrement", name: "decrement" },
+        ]}
+        onAccessibilityAction={handleAccessibilityAction}
+        style={styles.container}
+        onLayout={handleLayout}
+      >
+        <LinearGradient
+          colors={[colors.neutral[400], "transparent"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.fadeLeft}
+          pointerEvents="none"
+        />
+        <LinearGradient
+          colors={["transparent", colors.neutral[400]]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.fadeRight}
+          pointerEvents="none"
+        />
 
-          <Animated.View
-            style={[styles.centerIndicator, needleAnimatedStyle]}
-            pointerEvents="none"
-          />
+        <Animated.View
+          style={[styles.centerIndicator, needleAnimatedStyle]}
+          pointerEvents="none"
+        />
 
-          <Animated.View style={[styles.stripContainer, animatedStyle]}>
-            {ticks.map((index) => (
-              <Tick key={index} index={index} min={min} step={step} />
-            ))}
-          </Animated.View>
-        </View>
-      </GestureDetector>
-    </GestureHandlerRootView>
+        <Animated.View style={[styles.stripContainer, animatedStyle]}>
+          {ticks.map((index) => (
+            <Tick key={index} index={index} min={min} step={step} />
+          ))}
+        </Animated.View>
+      </View>
+    </GestureDetector>
   );
 };
 
@@ -405,19 +384,23 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   container: {
-    backgroundColor: colors.neutral[400],
+    alignItems: "center",
+    backgroundColor: colors.neutral[950],
+    borderColor: colors.neutral[800],
     borderRadius: 16,
+    borderWidth: 1,
     height: 80,
     justifyContent: "center",
     overflow: "hidden",
     position: "relative",
+    width: "100%",
   },
   fadeLeft: {
     bottom: 0,
     left: 0,
     position: "absolute",
     top: 0,
-    width: 24,
+    width: 48,
     zIndex: 5,
   },
   fadeRight: {
@@ -425,7 +408,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 0,
     top: 0,
-    width: 24,
+    width: 48,
     zIndex: 5,
   },
   stripContainer: {
@@ -448,8 +431,8 @@ const tickStyles = StyleSheet.create({
     width: 60,
   },
   line: {
-    backgroundColor: colors.neutral[800],
-    borderRadius: 8,
+    backgroundColor: colors.neutral[600],
+    borderRadius: 1,
     width: 1.5,
   },
   major: {

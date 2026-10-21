@@ -2,22 +2,21 @@ import type { SheetDetent } from "@lodev09/react-native-true-sheet";
 import { TrueSheet } from "@lodev09/react-native-true-sheet";
 import React, {
   createContext,
-  useContext,
-  useRef,
   useCallback,
+  useContext,
   useEffect,
-  useState,
   useImperativeHandle,
   useMemo,
+  useRef,
+  useState,
 } from "react";
 import type {
-  PressableProps,
-  ViewProps,
-  TextProps,
   GestureResponderEvent,
+  PressableProps,
+  TextProps,
+  ViewProps,
 } from "react-native";
-import { Pressable, View, StyleSheet } from "react-native";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import { colors } from "@/helpers/colors";
 
@@ -32,7 +31,7 @@ interface SheetContextType {
 
 const SheetContext = createContext<SheetContextType | null>(null);
 
-const useSheetContext = () => {
+export const useSheetContext = (): SheetContextType => {
   const context = useContext(SheetContext);
   if (!context) {
     throw new Error("Sheet components must be used within a <Sheet>");
@@ -42,9 +41,9 @@ const useSheetContext = () => {
 
 export interface SheetProps {
   children: React.ReactNode;
-  open?: boolean;
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+  open?: boolean;
   ref?: React.Ref<TrueSheet>;
 }
 
@@ -55,8 +54,8 @@ export const Sheet: React.FC<SheetProps> = ({
   onOpenChange,
   ref,
 }) => {
-  const sheetRef = useRef<TrueSheet>(null);
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
+  const sheetRef = useRef<TrueSheet>(null);
 
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : uncontrolledOpen;
@@ -159,6 +158,47 @@ export const SheetTrigger: React.FC<SheetTriggerProps> = ({
   );
 };
 
+export type SheetCloseProps = Omit<PressableProps, "children"> &
+  (
+    | {
+        asChild?: false | undefined;
+        children: React.ReactNode;
+      }
+    | {
+        asChild: true;
+        children: TriggerRenderProp;
+      }
+  );
+
+export const SheetClose: React.FC<SheetCloseProps> = ({
+  children,
+  asChild,
+  onPress,
+  ...props
+}) => {
+  const { setOpen } = useSheetContext();
+
+  const handlePress = useCallback(
+    (e: GestureResponderEvent) => {
+      setOpen(false);
+      if (onPress) {
+        onPress(e);
+      }
+    },
+    [setOpen, onPress]
+  );
+
+  if (asChild && typeof children === "function") {
+    return children({ ...props, onPress: handlePress });
+  }
+
+  return (
+    <Pressable onPress={handlePress} {...props}>
+      {children as React.ReactNode}
+    </Pressable>
+  );
+};
+
 export interface SheetContentProps extends Omit<ViewProps, "ref"> {
   children: React.ReactNode;
   detents?: SheetDetent[];
@@ -219,9 +259,7 @@ export const SheetContent: React.FC<SheetContentProps> = ({
       onDidDismiss={handleDidDismiss}
       {...props}
     >
-      <GestureHandlerRootView>
-        <View style={[styles.contentContainer, style]}>{children}</View>
-      </GestureHandlerRootView>
+      <View style={[styles.contentContainer, style]}>{children}</View>
     </TrueSheet>
   );
 };
