@@ -17,7 +17,7 @@ describe("InputThumbwheel", () => {
     const offset = getOffsetForIndex(centerIndex, containerWidth);
 
     // In ScrollView, content is horizontally padded by leadTrailPad:
-    const leadTrailPad = (containerWidth - TICK_WIDTH) / 2;
+    const leadTrailPad = Math.round((containerWidth - TICK_WIDTH) / 2);
     // In content coordinates, the center of tick centerIndex is:
     const tickCenterInContent =
       leadTrailPad + centerIndex * TICK_WIDTH + TICK_WIDTH / 2;
@@ -175,7 +175,7 @@ describe("InputThumbwheel", () => {
     );
   });
 
-  it("configures ScrollView to handle horizontal gestures and snaps cleanly to ticks", async () => {
+  it("configures ScrollView for fluid continuous dragging and snaps cleanly to ticks", async () => {
     jest.useFakeTimers();
     const onChangeValue = jest.fn();
     const screen = await renderWithProviders(
@@ -198,7 +198,8 @@ describe("InputThumbwheel", () => {
 
     const [scrollView] = wheel.props.children;
     expect(scrollView.props.horizontal).toBe(true);
-    expect(scrollView.props.snapToInterval).toBe(TICK_WIDTH);
+    // snapToInterval is omitted so the finger has completely free continuous 1:1 motion
+    expect(scrollView.props.snapToInterval).toBeUndefined();
     expect(scrollView.props.decelerationRate).toBe("fast");
     expect(scrollView.props.bounces).toBe(true);
     expect(scrollView.props.overScrollMode).toBe("never");
@@ -216,16 +217,28 @@ describe("InputThumbwheel", () => {
 
     expect(onChangeValue).toHaveBeenCalledWith(11);
 
-    // Momentum end confirms final value
+    // Momentum end at non-integer offset (e.g. 210, between 200 and 220) rounds and settles to 11
     act(() => {
       scrollView.props.onMomentumScrollEnd({
         nativeEvent: {
-          contentOffset: { x: 220, y: 0 },
+          contentOffset: { x: 210, y: 0 },
         },
       });
     });
 
     expect(onChangeValue).toHaveBeenCalledWith(11);
+
+    // Slow release (onScrollEndDrag with velocity = 0) at non-integer offset 190 rounds to index 10 (value 10)
+    act(() => {
+      scrollView.props.onScrollEndDrag({
+        nativeEvent: {
+          contentOffset: { x: 190, y: 0 },
+          velocity: { x: 0, y: 0 },
+        },
+      });
+    });
+
+    expect(onChangeValue).toHaveBeenCalledWith(10);
     jest.useRealTimers();
   });
 });

@@ -169,7 +169,7 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
   const { width: windowWidth } = useWindowDimensions();
   // Assume default sheet horizontal padding of 40 (20 on each side)
   const [containerWidth, setContainerWidth] = useState(() =>
-    Math.max(100, windowWidth - 40)
+    Math.round(Math.max(100, windowWidth - 40))
   );
 
   const totalTicks = useMemo(
@@ -224,21 +224,23 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
     [notifyChange]
   );
 
-  // Throttle haptics to the physical hardware rate (min 25ms between triggers)
+  // Throttle haptics so fast dragging doesn't feel like continuous motor vibration
   const playHaptic = useCallback((index: number) => {
+    const isMajor = index % 5 === 0;
     const now = Date.now();
-    if (now - lastHapticTimeRef.current < 25) {
+    const minInterval = isMajor ? 20 : 45;
+    if (now - lastHapticTimeRef.current < minInterval) {
       return;
     }
     lastHapticTimeRef.current = now;
 
     if (Platform.OS === "android") {
       triggerAndroidHaptic(
-        index % 5 === 0 ? AndroidHaptics.Confirm : AndroidHaptics.Clock_Tick
+        isMajor ? AndroidHaptics.Confirm : AndroidHaptics.Clock_Tick
       );
     } else {
       triggerHaptic(
-        index % 5 === 0
+        isMajor
           ? {
               mode: ImpactFeedbackStyle.Medium,
               type: triggerType.Impact,
@@ -252,8 +254,8 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
 
   const handleLayout = useCallback(
     (e: LayoutChangeEvent) => {
-      const { width } = e.nativeEvent.layout;
-      if (width > 0 && Math.abs(width - containerWidth) > 0.5) {
+      const width = Math.round(e.nativeEvent.layout.width);
+      if (width > 0 && Math.abs(width - containerWidth) >= 1) {
         setContainerWidth(width);
       }
     },
@@ -261,7 +263,10 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
   );
 
   // Trale lead/trail padding: exactly centers index 0 at offset 0 and final index at max offset
-  const leadTrailPad = Math.max(0, (containerWidth - TICK_WIDTH) / 2);
+  const leadTrailPad = Math.max(
+    0,
+    Math.round((containerWidth - TICK_WIDTH) / 2)
+  );
 
   const initialContentOffset = useMemo(
     () => ({ x: initialIndex * TICK_WIDTH, y: 0 }),
@@ -329,23 +334,28 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
   const handleScrollEndDrag = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const velocityX = Math.abs(event.nativeEvent.velocity?.x ?? 0);
-      // If velocity is negligible, momentum scroll will not fire, so settle immediately
-      if (velocityX < 0.05) {
+      // If velocity is low, momentum scroll will not fire, so snap cleanly now:
+      if (velocityX < 0.1) {
         needleScale.value = withSpring(1, NEEDLE_SPRING_CONFIG);
         if (rafIdRef.current !== null) {
           cancelAnimationFrame(rafIdRef.current);
           rafIdRef.current = null;
         }
         const offsetX = event.nativeEvent.contentOffset.x;
-        lastOffsetRef.current = offsetX;
         const rawIndex = Math.round(offsetX / TICK_WIDTH);
-        const finalIndex = Math.max(0, Math.min(totalTicks - 1, rawIndex));
-        if (finalIndex !== lastReportedIndexRef.current) {
-          lastReportedIndexRef.current = finalIndex;
-          playHaptic(finalIndex);
+        const targetIndex = Math.max(0, Math.min(totalTicks - 1, rawIndex));
+        const targetOffset = targetIndex * TICK_WIDTH;
+        lastOffsetRef.current = targetOffset;
+        if (targetIndex !== lastReportedIndexRef.current) {
+          lastReportedIndexRef.current = targetIndex;
+          playHaptic(targetIndex);
         }
-        const finalValue = min + finalIndex * step;
+        const finalValue = min + targetIndex * step;
         notifyChange(finalValue);
+        scrollViewRef.current?.scrollTo({
+          animated: true,
+          x: targetOffset,
+        });
       }
     },
     [min, needleScale, notifyChange, playHaptic, step, totalTicks]
@@ -359,15 +369,23 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
         rafIdRef.current = null;
       }
       const offsetX = event.nativeEvent.contentOffset.x;
-      lastOffsetRef.current = offsetX;
       const rawIndex = Math.round(offsetX / TICK_WIDTH);
-      const finalIndex = Math.max(0, Math.min(totalTicks - 1, rawIndex));
-      if (finalIndex !== lastReportedIndexRef.current) {
-        lastReportedIndexRef.current = finalIndex;
-        playHaptic(finalIndex);
+      const targetIndex = Math.max(0, Math.min(totalTicks - 1, rawIndex));
+      const targetOffset = targetIndex * TICK_WIDTH;
+      lastOffsetRef.current = targetOffset;
+      if (targetIndex !== lastReportedIndexRef.current) {
+        lastReportedIndexRef.current = targetIndex;
+        playHaptic(targetIndex);
       }
-      const finalValue = min + finalIndex * step;
+      const finalValue = min + targetIndex * step;
       notifyChange(finalValue);
+      // Ensure magnetic snap to exact targetOffset if not already dead-on:
+      if (Math.abs(offsetX - targetOffset) > 0.5) {
+        scrollViewRef.current?.scrollTo({
+          animated: true,
+          x: targetOffset,
+        });
+      }
     },
     [min, needleScale, notifyChange, playHaptic, step, totalTicks]
   );
@@ -436,8 +454,6 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
         ref={scrollViewRef}
         scrollEventThrottle={16}
         showsHorizontalScrollIndicator={false}
-        snapToAlignment="start"
-        snapToInterval={TICK_WIDTH}
         style={styles.scrollView}
       >
         <TickStrip max={max} min={min} step={step} totalTicks={totalTicks} />
@@ -470,10 +486,11 @@ export default React.memo(InputThumbwheel);
 
 const styles = StyleSheet.create({
   centerIndicator: {
-    alignSelf: "center",
     backgroundColor: colors.red,
     borderRadius: 2,
     height: 38,
+    left: "50%",
+    marginLeft: -1,
     position: "absolute",
     top: 7,
     width: 2,
