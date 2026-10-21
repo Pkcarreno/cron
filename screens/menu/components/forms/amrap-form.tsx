@@ -1,6 +1,6 @@
 import { formOptions } from "@tanstack/form-core";
-import { useImperativeHandle } from "react";
-import type { Ref } from "react";
+import { useAtom } from "jotai/react";
+import { useEffect } from "react";
 import { ScrollView } from "react-native";
 
 import {
@@ -11,43 +11,53 @@ import {
   FieldLabel,
   FieldSet,
 } from "@/components/field";
-import { TimerMode } from "@/helpers/timer/factory";
-import type { TimerConfig } from "@/helpers/timer/factory";
 import { amrapDefaults, amrapSchema } from "@/screens/menu/schema";
-import type { FormHandle } from "@/screens/menu/schema";
+import { amrapWorkoutAtom } from "@/stores/workout";
 
 import { useAppForm } from "./form-utils";
 
 const amrapFormOpts = formOptions({
   defaultValues: amrapDefaults,
   validators: {
-    onSubmit: amrapSchema,
+    onChange: amrapSchema,
   },
 });
 
-interface AmrapFormProps {
-  ref?: Ref<FormHandle>;
+export interface AmrapFormProps {
   paddingBottom: number;
-  onSubmit: (config: TimerConfig) => void;
 }
 
-export const AmrapForm = ({ onSubmit, paddingBottom, ref }: AmrapFormProps) => {
+export const AmrapForm = ({ paddingBottom }: AmrapFormProps) => {
+  const [amrap, setAmrap] = useAtom(amrapWorkoutAtom);
+
   const form = useAppForm({
     ...amrapFormOpts,
-    onSubmit: ({ value }) => {
-      const config: TimerConfig = {
-        durationMs: value.durationMs,
-        mode: TimerMode.AMRAP,
-      };
-      onSubmit(config);
-    },
+    defaultValues: amrap,
   });
 
-  useImperativeHandle(ref, () => ({
-    submit: () => {
-      form.handleSubmit();
-    },
-  }));
+  useEffect(() => {
+    form.validateSync("change");
+    const subscription = form.store.subscribe(() => {
+      setAmrap((prev) => {
+        const next = form.state.values;
+        if (prev.durationMs === next.durationMs) {
+          return prev;
+        }
+        return next;
+      });
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [form, setAmrap]);
+
+  useEffect(() => {
+    if (form.state.values.durationMs !== amrap.durationMs) {
+      form.reset(amrap);
+      form.validateSync("change");
+    }
+  }, [amrap, form]);
 
   return (
     <ScrollView

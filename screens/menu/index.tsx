@@ -15,7 +15,7 @@ import { TIMER_MODES } from "./schema";
 
 export const Menu = () => {
   const [currentMode, setCurrentMode] = useState<TimerMode>(TIMER_MODES[0]);
-  const { pages, startTimer } = useTimerForms();
+  const { isValid, pages, startTimer } = useTimerForms(currentMode);
   const inset = useSafeAreaInsets();
 
   const handleStart = useCallback(
@@ -46,6 +46,7 @@ export const Menu = () => {
             </Link>
 
             <Button
+              disabled={!isValid}
               style={styles.fullSpace}
               title="Start"
               onPress={handleStart}

@@ -46,10 +46,6 @@ export type IntervalFormValues = z.infer<typeof intervalSchema>;
 export type ForTimeFormValues = z.infer<typeof forTimeSchema>;
 export type StopWatchFormValues = z.infer<typeof stopWatchSchema>;
 
-export interface FormHandle {
-  submit: () => void;
-}
-
 export const TIMER_MODES = [
   TimerMode.FOR_TIME,
   TimerMode.AMRAP,
@@ -57,3 +53,11 @@ export const TIMER_MODES = [
   TimerMode.EMOM,
   TimerMode.STOP_WATCH,
 ];
+
+export const schemasByMode = {
+  [TimerMode.FOR_TIME]: forTimeSchema,
+  [TimerMode.AMRAP]: amrapSchema,
+  [TimerMode.INTERVAL]: intervalSchema,
+  [TimerMode.EMOM]: emomSchema,
+  [TimerMode.STOP_WATCH]: stopWatchSchema,
+} as const;

@@ -1,6 +1,6 @@
 import { formOptions } from "@tanstack/form-core";
-import { useImperativeHandle } from "react";
-import type { Ref } from "react";
+import { useAtom } from "jotai/react";
+import { useEffect } from "react";
 import { ScrollView } from "react-native";
 
 import {
@@ -11,47 +11,53 @@ import {
   FieldLabel,
   FieldSet,
 } from "@/components/field";
-import { TimerMode } from "@/helpers/timer/factory";
-import type { TimerConfig } from "@/helpers/timer/factory";
 import { forTimeDefaults, forTimeSchema } from "@/screens/menu/schema";
-import type { FormHandle } from "@/screens/menu/schema";
+import { forTimeWorkoutAtom } from "@/stores/workout";
 
 import { useAppForm } from "./form-utils";
 
 const forTimeFormOpts = formOptions({
   defaultValues: forTimeDefaults,
   validators: {
-    onSubmit: forTimeSchema,
+    onChange: forTimeSchema,
   },
 });
 
-interface ForTimeFormProps {
-  ref?: Ref<FormHandle>;
+export interface ForTimeFormProps {
   paddingBottom: number;
-  onSubmit: (config: TimerConfig) => void;
 }
 
-export const ForTimeForm = ({
-  onSubmit,
-  paddingBottom,
-  ref,
-}: ForTimeFormProps) => {
+export const ForTimeForm = ({ paddingBottom }: ForTimeFormProps) => {
+  const [forTime, setForTime] = useAtom(forTimeWorkoutAtom);
+
   const form = useAppForm({
     ...forTimeFormOpts,
-    onSubmit: ({ value }) => {
-      const config: TimerConfig = {
-        mode: TimerMode.FOR_TIME,
-        timecapMs: value.timecapMs,
-      };
-      onSubmit(config);
-    },
+    defaultValues: forTime,
   });
 
-  useImperativeHandle(ref, () => ({
-    submit: () => {
-      form.handleSubmit();
-    },
-  }));
+  useEffect(() => {
+    form.validateSync("change");
+    const subscription = form.store.subscribe(() => {
+      setForTime((prev) => {
+        const next = form.state.values;
+        if (prev.timecapMs === next.timecapMs) {
+          return prev;
+        }
+        return next;
+      });
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [form, setForTime]);
+
+  useEffect(() => {
+    if (form.state.values.timecapMs !== forTime.timecapMs) {
+      form.reset(forTime);
+      form.validateSync("change");
+    }
+  }, [forTime, form]);
 
   return (
     <ScrollView

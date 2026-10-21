@@ -1,6 +1,6 @@
 import { formOptions } from "@tanstack/form-core";
-import { useCallback, useImperativeHandle } from "react";
-import type { Ref } from "react";
+import { useAtom } from "jotai/react";
+import { useCallback, useEffect } from "react";
 import { ScrollView } from "react-native";
 
 import {
@@ -12,45 +12,60 @@ import {
   FieldSet,
 } from "@/components/field";
 import { Col, Grid, Row } from "@/components/grid";
-import { TimerMode } from "@/helpers/timer/factory";
-import type { TimerConfig } from "@/helpers/timer/factory";
 import { EmomPresetButton } from "@/screens/menu/components/preset-button";
 import { emomDefaults, emomSchema } from "@/screens/menu/schema";
-import type { FormHandle } from "@/screens/menu/schema";
+import { emomWorkoutAtom } from "@/stores/workout";
 
 import { useAppForm } from "./form-utils";
 
 const emomFormOpts = formOptions({
   defaultValues: emomDefaults,
   validators: {
-    onSubmit: emomSchema,
+    onChange: emomSchema,
   },
 });
 
-interface EmomFormProps {
-  ref?: Ref<FormHandle>;
+export interface EmomFormProps {
   paddingBottom: number;
-  onSubmit: (config: TimerConfig) => void;
 }
 
-export const EmomForm = ({ onSubmit, paddingBottom, ref }: EmomFormProps) => {
+export const EmomForm = ({ paddingBottom }: EmomFormProps) => {
+  const [emom, setEmom] = useAtom(emomWorkoutAtom);
+
   const form = useAppForm({
     ...emomFormOpts,
-    onSubmit: ({ value }) => {
-      const config: TimerConfig = {
-        mode: TimerMode.EMOM,
-        roundDurationMs: value.roundDurationMs,
-        totalRounds: value.totalRounds,
-      };
-      onSubmit(config);
-    },
+    defaultValues: emom,
   });
 
-  useImperativeHandle(ref, () => ({
-    submit: () => {
-      form.handleSubmit();
-    },
-  }));
+  useEffect(() => {
+    form.validateSync("change");
+    const subscription = form.store.subscribe(() => {
+      setEmom((prev) => {
+        const next = form.state.values;
+        if (
+          prev.roundDurationMs === next.roundDurationMs &&
+          prev.totalRounds === next.totalRounds
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [form, setEmom]);
+
+  useEffect(() => {
+    if (
+      form.state.values.roundDurationMs !== emom.roundDurationMs ||
+      form.state.values.totalRounds !== emom.totalRounds
+    ) {
+      form.reset(emom);
+      form.validateSync("change");
+    }
+  }, [emom, form]);
 
   const presetSelectors = useCallback(
     (state: typeof form.state) => ({

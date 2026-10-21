@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { useAtom } from "jotai/react";
-import { createRef, useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo } from "react";
 
 import type { TimerConfig } from "@/helpers/timer/factory";
 import { TimerMode } from "@/helpers/timer/factory";
@@ -11,9 +11,15 @@ import { EmomForm } from "@/screens/menu/components/forms/emom-form";
 import { ForTimeForm } from "@/screens/menu/components/forms/for-time-form";
 import { IntervalForm } from "@/screens/menu/components/forms/interval-form";
 import { StopWatchForm } from "@/screens/menu/components/forms/stopwatch-form";
-import type { FormHandle } from "@/screens/menu/schema";
-import { TIMER_MODES } from "@/screens/menu/schema";
+import { TIMER_MODES, schemasByMode } from "@/screens/menu/schema";
 import { isRawTimerEnabledAtom } from "@/stores/settings";
+import {
+  amrapWorkoutAtom,
+  emomWorkoutAtom,
+  forTimeWorkoutAtom,
+  intervalWorkoutAtom,
+  stopWatchWorkoutAtom,
+} from "@/stores/workout";
 
 const FORM_COMPONENTS = {
   [TimerMode.FOR_TIME]: ForTimeForm,
@@ -23,22 +29,47 @@ const FORM_COMPONENTS = {
   [TimerMode.STOP_WATCH]: StopWatchForm,
 };
 
-export const useTimerForms = () => {
+export const useTimerForms = (currentMode: TimerMode) => {
   const router = useRouter();
   const [isRawTimerEnabled] = useAtom(isRawTimerEnabledAtom);
 
-  const formRefs = useRef(
-    new Map(TIMER_MODES.map((mode) => [mode, createRef<FormHandle>()]))
+  const [forTime] = useAtom(forTimeWorkoutAtom);
+  const [amrap] = useAtom(amrapWorkoutAtom);
+  const [emom] = useAtom(emomWorkoutAtom);
+  const [interval] = useAtom(intervalWorkoutAtom);
+  const [stopWatch] = useAtom(stopWatchWorkoutAtom);
+
+  const configs: Record<TimerMode, TimerConfig> = useMemo(
+    () => ({
+      [TimerMode.FOR_TIME]: { mode: TimerMode.FOR_TIME, ...forTime },
+      [TimerMode.AMRAP]: { mode: TimerMode.AMRAP, ...amrap },
+      [TimerMode.EMOM]: { mode: TimerMode.EMOM, ...emom },
+      [TimerMode.INTERVAL]: { mode: TimerMode.INTERVAL, ...interval },
+      [TimerMode.STOP_WATCH]: { mode: TimerMode.STOP_WATCH, ...stopWatch },
+    }),
+    [forTime, amrap, emom, interval, stopWatch]
   );
 
-  const handleSubmitConfig = useCallback(
-    (config: TimerConfig) => {
+  const activeConfig = configs[currentMode];
+
+  const isValid = useMemo(() => {
+    const schema = schemasByMode[currentMode];
+    return schema.safeParse(activeConfig).success;
+  }, [currentMode, activeConfig]);
+
+  const startTimer = useCallback(
+    (mode: TimerMode) => {
+      const config = configs[mode];
+      const schema = schemasByMode[mode];
+      if (!schema.safeParse(config).success) {
+        return;
+      }
       router.push({
         params: serializeTimerConfig(config),
         pathname: isRawTimerEnabled ? "/timer/inspector" : "/timer",
       });
     },
-    [isRawTimerEnabled, router]
+    [configs, isRawTimerEnabled, router]
   );
 
   const pages = useMemo<FormTabOption<TimerMode>[]>(
@@ -46,23 +77,13 @@ export const useTimerForms = () => {
       TIMER_MODES.map((mode) => {
         const FormComponent = FORM_COMPONENTS[mode];
         return {
-          content: (inset) => (
-            <FormComponent
-              ref={formRefs.current.get(mode)}
-              paddingBottom={inset.bottom}
-              onSubmit={handleSubmitConfig}
-            />
-          ),
+          content: (inset) => <FormComponent paddingBottom={inset.bottom} />,
           label: mode,
           value: mode,
         };
       }),
-    [handleSubmitConfig]
+    []
   );
 
-  const startTimer = useCallback((mode: TimerMode) => {
-    formRefs.current.get(mode)?.current?.submit();
-  }, []);
-
-  return { pages, startTimer };
+  return { activeConfig, isValid, pages, startTimer };
 };

@@ -1,8 +1,6 @@
-import { useField, useForm } from "@tanstack/react-form";
 import { useCallback, useMemo, useState } from "react";
 import type { PressableProps, PressableStateCallbackType } from "react-native";
 import { Pressable, StyleSheet, View } from "react-native";
-import { z } from "zod";
 
 import { colors } from "@/helpers/colors";
 
@@ -12,11 +10,12 @@ import type { TriggerRenderProp } from "./sheet";
 import { Sheet, SheetContent, SheetTrigger } from "./sheet";
 import { Text } from "./text";
 
-type onChangeValueType = (value: number) => void;
+type OnChangeValueType = (value: number) => void;
 
 export interface InputNumberProps {
   value: number;
-  onChangeValue?: onChangeValueType;
+  onChange?: OnChangeValueType;
+  onChangeValue?: OnChangeValueType;
   editable?: PressableProps["disabled"];
   suffix?: string;
   valueSuffix?: string;
@@ -118,7 +117,7 @@ const styles = StyleSheet.create({
 
 type NumberPickerSheetBaseProps = Pick<
   InputNumberProps,
-  "value" | "onChangeValue" | "valueSuffix" | "min" | "max"
+  "value" | "onChange" | "onChangeValue" | "valueSuffix" | "min" | "max"
 >;
 
 export type NumberPickerSheetProps = NumberPickerSheetBaseProps &
@@ -134,159 +133,150 @@ export type NumberPickerSheetProps = NumberPickerSheetBaseProps &
   );
 
 export const NumberPickerSheet: React.FC<NumberPickerSheetProps> = ({
+  value,
+  onChange,
   onChangeValue,
+  valueSuffix,
+  min = 0,
+  max = 99,
   ...props
 }) => {
   const [openSheet, setOpenSheet] = useState(false);
+  const [draftValue, setDraftValue] = useState(value);
 
-  const handleOnChange = useCallback<onChangeValueType>(
-    (value) => {
-      if (onChangeValue) {
-        onChangeValue(value);
+  const handleOpenChange = useCallback(
+    (isOpen: boolean) => {
+      if (isOpen) {
+        setDraftValue(value);
       }
-      setOpenSheet(false);
+      setOpenSheet(isOpen);
     },
-    [onChangeValue, setOpenSheet]
+    [value]
   );
 
+  const handleSave = useCallback(() => {
+    onChange?.(draftValue);
+    onChangeValue?.(draftValue);
+    setOpenSheet(false);
+  }, [draftValue, onChange, onChangeValue]);
+
   return (
-    <Sheet open={openSheet} onOpenChange={setOpenSheet}>
+    <Sheet open={openSheet} onOpenChange={handleOpenChange}>
       {props.withoutTrigger ? (
         props.children
       ) : (
         <SheetTrigger asChild>{props.children}</SheetTrigger>
       )}
       <SheetContent enableDynamicSizing={true}>
-        <NumberPickerForm onChangeValue={handleOnChange} {...props} />
+        <NumberPickerForm
+          value={draftValue}
+          onChange={setDraftValue}
+          onSave={handleSave}
+          valueSuffix={valueSuffix}
+          min={min}
+          max={max}
+        />
       </SheetContent>
     </Sheet>
   );
 };
 
-const NumberPickerForm: React.FC<
-  Pick<
-    NumberPickerSheetProps,
-    "value" | "onChangeValue" | "valueSuffix" | "min" | "max"
-  >
-> = ({ value, onChangeValue, valueSuffix, min = 0, max = 99 }) => {
-  const form = useForm({
-    defaultValues: {
-      number: value,
-    },
-    onSubmit: (props) => {
-      if (onChangeValue) {
-        onChangeValue(props.value.number);
-      }
-    },
-    validators: {
-      onChange: z.object({
-        number: z.number().min(min).max(max),
-      }),
-    },
-  });
+export interface NumberPickerFormProps {
+  value: number;
+  onChange: (value: number) => void;
+  onSave?: () => void;
+  valueSuffix?: string;
+  min?: number;
+  max?: number;
+}
 
-  const handleSubmit = useCallback(() => {
-    form.handleSubmit();
-  }, [form]);
+export const NumberPickerForm: React.FC<NumberPickerFormProps> = ({
+  value,
+  onChange,
+  onSave,
+  valueSuffix,
+  min = 0,
+  max = 99,
+}) => {
+  const handleSubtractTen = useCallback(() => {
+    onChange(Math.max(min, value - 10));
+  }, [min, onChange, value]);
 
-  const numberField = useField({
-    form,
-    name: "number",
-  });
+  const handleSubtractFive = useCallback(() => {
+    onChange(Math.max(min, value - 5));
+  }, [min, onChange, value]);
 
-  const handleSubtractTen = useCallback(
-    () => numberField.handleChange((prev) => prev - 10),
-    [numberField]
-  );
+  const handleAddFive = useCallback(() => {
+    onChange(Math.min(max, value + 5));
+  }, [max, onChange, value]);
 
-  const handleSubtractFive = useCallback(
-    () => numberField.handleChange((prev) => prev - 5),
-    [numberField]
-  );
-
-  const handleAddFive = useCallback(
-    () => numberField.handleChange((prev) => prev + 5),
-    [numberField]
-  );
-
-  const handleAddTen = useCallback(
-    () => numberField.handleChange((prev) => prev + 10),
-    [numberField]
-  );
+  const handleAddTen = useCallback(() => {
+    onChange(Math.min(max, value + 10));
+  }, [max, onChange, value]);
 
   return (
     <>
-      <form.Field name="number">
-        {(field) => {
-          const currentValue = field.state.value;
-
-          return (
-            <>
-              <View style={sheetFormStyles.header}>
-                <Text
-                  style={sheetFormStyles.value}
-                  color="white"
-                  weight="800"
-                  size={48}
-                >
-                  {currentValue}
-                </Text>
-                {valueSuffix && (
-                  <Text colorSubtone="500" weight="700" size={18}>
-                    {valueSuffix}
-                  </Text>
-                )}
-              </View>
-              <View style={sheetFormStyles.content}>
-                <View style={sheetFormStyles.inputWrapper}>
-                  <InputThumbwheel
-                    value={currentValue}
-                    onChangeValue={field.handleChange}
-                    min={min}
-                    max={max}
-                  />
-                </View>
-                <View style={sheetFormStyles.quickActionsRow}>
-                  <View style={sheetFormStyles.quickActionGroup}>
-                    <Button
-                      title="-10"
-                      variant="secondary"
-                      size="sm"
-                      disabled={currentValue - 10 < min}
-                      onPress={handleSubtractTen}
-                    />
-                    <Button
-                      title="-5"
-                      variant="secondary"
-                      size="sm"
-                      disabled={currentValue - 5 < min}
-                      onPress={handleSubtractFive}
-                    />
-                  </View>
-                  <View style={sheetFormStyles.quickActionGroup}>
-                    <Button
-                      title="+5"
-                      variant="secondary"
-                      size="sm"
-                      disabled={currentValue + 5 > max}
-                      onPress={handleAddFive}
-                    />
-                    <Button
-                      title="+10"
-                      variant="secondary"
-                      size="sm"
-                      disabled={currentValue + 10 > max}
-                      onPress={handleAddTen}
-                    />
-                  </View>
-                </View>
-              </View>
-            </>
-          );
-        }}
-      </form.Field>
+      <View style={sheetFormStyles.header}>
+        <Text
+          style={sheetFormStyles.value}
+          color="white"
+          weight="800"
+          size={48}
+        >
+          {value}
+        </Text>
+        {valueSuffix && (
+          <Text colorSubtone="500" weight="700" size={18}>
+            {valueSuffix}
+          </Text>
+        )}
+      </View>
+      <View style={sheetFormStyles.content}>
+        <View style={sheetFormStyles.inputWrapper}>
+          <InputThumbwheel
+            value={value}
+            onChangeValue={onChange}
+            min={min}
+            max={max}
+          />
+        </View>
+        <View style={sheetFormStyles.quickActionsRow}>
+          <View style={sheetFormStyles.quickActionGroup}>
+            <Button
+              title="-10"
+              variant="secondary"
+              size="sm"
+              disabled={value - 10 < min}
+              onPress={handleSubtractTen}
+            />
+            <Button
+              title="-5"
+              variant="secondary"
+              size="sm"
+              disabled={value - 5 < min}
+              onPress={handleSubtractFive}
+            />
+          </View>
+          <View style={sheetFormStyles.quickActionGroup}>
+            <Button
+              title="+5"
+              variant="secondary"
+              size="sm"
+              disabled={value + 5 > max}
+              onPress={handleAddFive}
+            />
+            <Button
+              title="+10"
+              variant="secondary"
+              size="sm"
+              disabled={value + 10 > max}
+              onPress={handleAddTen}
+            />
+          </View>
+        </View>
+      </View>
       <View style={sheetFormStyles.footer}>
-        <Button title="Save" onPress={handleSubmit} />
+        <Button title="Save" onPress={onSave} />
       </View>
     </>
   );

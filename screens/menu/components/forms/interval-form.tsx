@@ -1,6 +1,6 @@
 import { formOptions } from "@tanstack/form-core";
-import { useCallback, useImperativeHandle } from "react";
-import type { Ref } from "react";
+import { useAtom } from "jotai/react";
+import { useCallback, useEffect } from "react";
 import { ScrollView } from "react-native";
 
 import {
@@ -12,50 +12,62 @@ import {
   FieldSet,
 } from "@/components/field";
 import { Col, Grid, Row } from "@/components/grid";
-import { TimerMode } from "@/helpers/timer/factory";
-import type { TimerConfig } from "@/helpers/timer/factory";
 import { IntervalPresetButton } from "@/screens/menu/components/preset-button";
 import { intervalDefaults, intervalSchema } from "@/screens/menu/schema";
-import type { FormHandle } from "@/screens/menu/schema";
+import { intervalWorkoutAtom } from "@/stores/workout";
 
 import { useAppForm } from "./form-utils";
 
 const intervalFormOpts = formOptions({
   defaultValues: intervalDefaults,
   validators: {
-    onSubmit: intervalSchema,
+    onChange: intervalSchema,
   },
 });
 
-interface IntervalFormProps {
-  ref?: Ref<FormHandle>;
+export interface IntervalFormProps {
   paddingBottom: number;
-  onSubmit: (config: TimerConfig) => void;
 }
 
-export const IntervalForm = ({
-  onSubmit,
-  paddingBottom,
-  ref,
-}: IntervalFormProps) => {
+export const IntervalForm = ({ paddingBottom }: IntervalFormProps) => {
+  const [interval, setInterval] = useAtom(intervalWorkoutAtom);
+
   const form = useAppForm({
     ...intervalFormOpts,
-    onSubmit: ({ value }) => {
-      const config: TimerConfig = {
-        mode: TimerMode.INTERVAL,
-        restMs: value.restMs,
-        totalRounds: value.totalRounds,
-        workMs: value.workMs,
-      };
-      onSubmit(config);
-    },
+    defaultValues: interval,
   });
 
-  useImperativeHandle(ref, () => ({
-    submit: () => {
-      form.handleSubmit();
-    },
-  }));
+  useEffect(() => {
+    form.validateSync("change");
+    const subscription = form.store.subscribe(() => {
+      setInterval((prev) => {
+        const next = form.state.values;
+        if (
+          prev.restMs === next.restMs &&
+          prev.totalRounds === next.totalRounds &&
+          prev.workMs === next.workMs
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [form, setInterval]);
+
+  useEffect(() => {
+    if (
+      form.state.values.restMs !== interval.restMs ||
+      form.state.values.totalRounds !== interval.totalRounds ||
+      form.state.values.workMs !== interval.workMs
+    ) {
+      form.reset(interval);
+      form.validateSync("change");
+    }
+  }, [interval, form]);
 
   const presetSelectors = useCallback(
     (state: typeof form.state) => ({
