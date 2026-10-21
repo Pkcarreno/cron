@@ -1,7 +1,7 @@
 import {
-  describe,
-  beforeEach,
   afterEach,
+  beforeEach,
+  describe,
   expect,
   it,
   jest,
@@ -92,5 +92,31 @@ describe("tickEngine", () => {
         totalElapsedMs: 50,
       })
     );
+  });
+
+  it("pauses animation loop and catches up wall-clock elapsed time", () => {
+    engine.start();
+    jest.advanceTimersByTime(100);
+
+    // Pause loop as during app background
+    engine.pauseLoop();
+    const callsAtBackground = mockTickCallback.mock.calls.length;
+
+    // Time advances by 5000ms while visual loop is paused
+    jest.advanceTimersByTime(5000);
+    expect(mockTickCallback.mock.calls.length).toBe(callsAtBackground);
+
+    // Catch up upon returning to foreground
+    const catchUpEvent = engine.catchUp();
+    expect(catchUpEvent).toEqual({
+      deltaMs: 5000,
+      totalElapsedMs: 5100,
+    });
+    expect(mockTickCallback).toHaveBeenCalledWith(catchUpEvent);
+
+    // Resume loop and advance time
+    engine.resumeLoop();
+    jest.advanceTimersByTime(10);
+    expect(engine.getElapsedMs()).toBe(5110);
   });
 });

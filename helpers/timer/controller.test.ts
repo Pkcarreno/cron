@@ -1,20 +1,22 @@
 import {
+  afterEach,
+  beforeEach,
   describe,
   expect,
   it,
-  beforeEach,
-  afterEach,
   jest,
 } from "@jest/globals";
 
 import { TimerController, TimerEventType } from "@/helpers/timer/controller";
 import { DownStrategy } from "@/helpers/timer/strategies/down-strategy";
 import { UpStrategy } from "@/helpers/timer/strategies/up-strategy";
+import type { TimerState } from "@/helpers/timer/strategy";
 import { TimerPhase } from "@/helpers/timer/strategy";
 
 import { IntervalStrategy } from "./strategies/interval-strategy";
 import { StopwatchStrategy } from "./strategies/stopwatch-strategy";
 
+// oxlint-disable eslint/max-lines
 describe("timerController", () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -560,6 +562,201 @@ describe("timerController", () => {
       const summary = controller.getSummary();
 
       expect(summary.checkpoints).toBeDefined();
+    });
+  });
+
+  describe("audio feedback integration", () => {
+    it("dispatches countdown beeps, go cue, phase transitions, and completion cues", () => {
+      const mockAudioService = {
+        playCountdownBeep: jest.fn((_second?: number) => Promise.resolve()),
+        playFinishCue: jest.fn((_isCompleted?: boolean) => Promise.resolve()),
+        playGoCue: jest.fn(() => Promise.resolve()),
+        playLapCue: jest.fn(() => Promise.resolve()),
+        playPhaseTransitionCue: jest.fn((_phase?: TimerPhase) =>
+          Promise.resolve()
+        ),
+        playRoundChangeCue: jest.fn((_round?: number) => Promise.resolve()),
+        stopAudio: jest.fn(),
+      };
+
+      const strategy = new IntervalStrategy(2000, 1000, 2);
+      const preparationMs = 3000;
+      const controller = new TimerController(strategy, preparationMs, {
+        audioService: mockAudioService,
+      });
+
+      controller.start();
+
+      // Preparation countdown: 3s, 2s, 1s
+      jest.advanceTimersByTime(1000);
+      expect(mockAudioService.playCountdownBeep).toHaveBeenCalledWith(2);
+
+      jest.advanceTimersByTime(1000);
+      expect(mockAudioService.playCountdownBeep).toHaveBeenCalledWith(1);
+
+      // Transition to WORK (Go cue)
+      jest.advanceTimersByTime(1000);
+      expect(mockAudioService.playGoCue).toHaveBeenCalledTimes(1);
+
+      // Work phase 1 -> Rest phase 1
+      jest.advanceTimersByTime(2000);
+      expect(mockAudioService.playPhaseTransitionCue).toHaveBeenCalledWith(
+        TimerPhase.REST
+      );
+
+      // Rest phase 1 -> Work phase 2 (Round 2)
+      jest.advanceTimersByTime(1000);
+      expect(mockAudioService.playRoundChangeCue).toHaveBeenCalledWith(2);
+      expect(mockAudioService.playPhaseTransitionCue).toHaveBeenCalledWith(
+        TimerPhase.WORK
+      );
+
+      // Work phase 2 -> Rest phase 2 -> Finish
+      jest.advanceTimersByTime(3000);
+      expect(mockAudioService.playFinishCue).toHaveBeenCalledWith(true);
+    });
+
+    it("dispatches lap cues on recordCheckpoint", () => {
+      const mockAudioService = {
+        playCountdownBeep: jest.fn((_second?: number) => Promise.resolve()),
+        playFinishCue: jest.fn((_isCompleted?: boolean) => Promise.resolve()),
+        playGoCue: jest.fn(() => Promise.resolve()),
+        playLapCue: jest.fn(() => Promise.resolve()),
+        playPhaseTransitionCue: jest.fn((_phase?: TimerPhase) =>
+          Promise.resolve()
+        ),
+        playRoundChangeCue: jest.fn((_round?: number) => Promise.resolve()),
+        stopAudio: jest.fn(),
+      };
+
+      const strategy = new StopwatchStrategy();
+      const controller = new TimerController(strategy, 0, {
+        audioService: mockAudioService,
+      });
+
+      controller.start();
+      jest.advanceTimersByTime(1000);
+      controller.recordCheckpoint();
+
+      expect(mockAudioService.playLapCue).toHaveBeenCalledTimes(1);
+    });
+
+    it("halts audio on pause, reset, and dispose", () => {
+      const mockAudioService = {
+        playCountdownBeep: jest.fn((_second?: number) => Promise.resolve()),
+        playFinishCue: jest.fn((_isCompleted?: boolean) => Promise.resolve()),
+        playGoCue: jest.fn(() => Promise.resolve()),
+        playLapCue: jest.fn(() => Promise.resolve()),
+        playPhaseTransitionCue: jest.fn((_phase?: TimerPhase) =>
+          Promise.resolve()
+        ),
+        playRoundChangeCue: jest.fn((_round?: number) => Promise.resolve()),
+        stopAudio: jest.fn(),
+      };
+
+      const strategy = new UpStrategy(10_000);
+      const controller = new TimerController(strategy, 0, {
+        audioService: mockAudioService,
+      });
+
+      controller.start();
+      controller.pause();
+      expect(mockAudioService.stopAudio).toHaveBeenCalledTimes(1);
+
+      controller.reset();
+      expect(mockAudioService.stopAudio).toHaveBeenCalledTimes(2);
+
+      controller.dispose();
+      expect(mockAudioService.stopAudio).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe("AppState lifecycle and background catch-up", () => {
+    it("pauses visual updates while in background and suppresses UI_TICK", () => {
+      const strategy = new DownStrategy(30_000);
+      const controller = new TimerController(strategy, 0);
+
+      const uiTickSpy = jest.fn();
+      controller.on(TimerEventType.UI_TICK, uiTickSpy);
+
+      controller.start();
+      jest.advanceTimersByTime(1000);
+      expect(uiTickSpy).toHaveBeenCalled();
+      const callsBeforeBg = uiTickSpy.mock.calls.length;
+
+      // Transition to background
+      controller.handleAppStateChange("background");
+      expect(controller.getIsVisualUpdatesPaused()).toBe(true);
+
+      // Advance time while in background: visual updates are paused
+      jest.advanceTimersByTime(5000);
+      expect(uiTickSpy.mock.calls.length).toBe(callsBeforeBg);
+    });
+
+    it("calculates wall-clock delta and runs state catch-up on returning to foreground", () => {
+      const strategy = new DownStrategy(30_000);
+      const controller = new TimerController(strategy, 0);
+
+      const uiTickSpy = jest.fn();
+      controller.on(TimerEventType.UI_TICK, uiTickSpy);
+
+      controller.start();
+      jest.advanceTimersByTime(2000);
+      expect(controller.getSummary().totalSessionTimeMs).toBe(2000);
+
+      // Enter background for 10 seconds
+      controller.handleAppStateChange("background");
+      jest.advanceTimersByTime(10_000);
+
+      // Return to active foreground
+      controller.handleAppStateChange("active");
+      expect(controller.getIsVisualUpdatesPaused()).toBe(false);
+
+      // Verify state caught up to 12s total elapsed (18s remaining in 30s countdown)
+      const lastCall = uiTickSpy.mock.calls.at(-1)?.[0] as TimerState;
+      expect(lastCall.displayTimeMs).toBe(18_000);
+      expect(controller.getSummary().totalSessionTimeMs).toBe(12_000);
+    });
+
+    it("triggers completion when workout finishes while in background", () => {
+      const strategy = new DownStrategy(5000);
+      const mockAudioService = {
+        playCountdownBeep: jest.fn((_second?: number) => Promise.resolve()),
+        playFinishCue: jest.fn((_isCompleted?: boolean) => Promise.resolve()),
+        playGoCue: jest.fn(() => Promise.resolve()),
+        playLapCue: jest.fn(() => Promise.resolve()),
+        playPhaseTransitionCue: jest.fn((_phase?: TimerPhase) =>
+          Promise.resolve()
+        ),
+        playRoundChangeCue: jest.fn((_round?: number) => Promise.resolve()),
+        stopAudio: jest.fn(),
+      };
+      const controller = new TimerController(strategy, 0, {
+        audioService: mockAudioService,
+      });
+
+      const finishSpy = jest.fn();
+      controller.on(TimerEventType.FINISH, finishSpy);
+
+      controller.start();
+      jest.advanceTimersByTime(1000);
+
+      // Go to background and advance beyond workout duration
+      controller.handleAppStateChange("background");
+      jest.advanceTimersByTime(10_000);
+
+      expect(finishSpy).not.toHaveBeenCalled();
+
+      // Return to foreground
+      controller.handleAppStateChange("active");
+
+      expect(finishSpy).toHaveBeenCalledTimes(1);
+      expect(finishSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fullyCompleted: true,
+        })
+      );
+      expect(mockAudioService.playFinishCue).toHaveBeenCalledWith(true);
     });
   });
 });

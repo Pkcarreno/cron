@@ -1,5 +1,6 @@
 import { act, cleanup } from "@testing-library/react-native";
 import { createStore } from "jotai";
+import { AppState } from "react-native";
 
 import type {
   SessionSummary,
@@ -8,12 +9,14 @@ import type {
 import type { TimerConfig } from "@/helpers/timer/factory";
 import { TimerMode } from "@/helpers/timer/factory";
 import { TimerPhase } from "@/helpers/timer/strategy";
+import type { AudioFeedbackService } from "@/services/audio/audio-feedback-service";
 import { preparationTimeMsAtom } from "@/stores/settings";
 import { renderHookWithProviders } from "@/test-utils/render-with-providers";
 
 import type { UICheckpoint } from "./use-timer";
 import { TimerStatus, useTimer, useTimerInstance } from "./use-timer";
 
+// oxlint-disable eslint/max-lines
 describe("useTimer integration", () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -244,6 +247,123 @@ describe("useTimer integration", () => {
       });
       expect(onRoundChange).toHaveBeenCalledWith(2);
       expect(onPhaseChange).toHaveBeenCalledWith(TimerPhase.WORK);
+    });
+
+    it("dispatches audio cues through injected AudioFeedbackService", async () => {
+      const store = createStore();
+      store.set(preparationTimeMsAtom, 3000);
+
+      const mockAudioService: AudioFeedbackService = {
+        playCountdownBeep: jest.fn(() => Promise.resolve()),
+        playFinishCue: jest.fn(() => Promise.resolve()),
+        playGoCue: jest.fn(() => Promise.resolve()),
+        playLapCue: jest.fn(() => Promise.resolve()),
+        playPhaseTransitionCue: jest.fn(() => Promise.resolve()),
+        playRoundChangeCue: jest.fn(() => Promise.resolve()),
+        stopAudio: jest.fn(),
+      };
+
+      const config: TimerConfig = {
+        durationMs: 5000,
+        mode: TimerMode.AMRAP,
+      };
+
+      const { result } = await renderHookWithProviders(
+        () =>
+          useTimer(config, {
+            audioService: mockAudioService,
+          }),
+        { store }
+      );
+
+      await act(() => {
+        result.current.start();
+      });
+
+      // Advance through 3s preparation: countdown beeps and go cue
+      await act(() => {
+        jest.advanceTimersByTime(3000);
+      });
+
+      expect(mockAudioService.playCountdownBeep).toHaveBeenCalled();
+      expect(mockAudioService.playGoCue).toHaveBeenCalledTimes(1);
+
+      // Advance through 5s workout to finish
+      await act(() => {
+        jest.advanceTimersByTime(5000);
+      });
+
+      expect(mockAudioService.playFinishCue).toHaveBeenCalledWith(true);
+    });
+  });
+
+  describe("AppState background lifecycle and catch-up", () => {
+    it("pauses visual render updates during background and catches up on foreground return", async () => {
+      const store = createStore();
+      store.set(preparationTimeMsAtom, 0);
+
+      const config: TimerConfig = {
+        durationMs: 30_000,
+        mode: TimerMode.AMRAP,
+      };
+
+      const appStateListeners: ((state: string) => void)[] = [];
+      const addEventListenerSpy = jest
+        .spyOn(AppState, "addEventListener")
+        .mockImplementation((event, listener) => {
+          if (event === "change") {
+            appStateListeners.push(listener as (state: string) => void);
+          }
+          return {
+            remove: jest.fn(),
+          } as never;
+        });
+
+      let renderCount = 0;
+      const { result } = await renderHookWithProviders(
+        () => {
+          renderCount += 1;
+          return useTimer(config);
+        },
+        { store }
+      );
+
+      await act(() => {
+        result.current.start();
+      });
+
+      // Advance 2s in active foreground
+      await act(() => {
+        jest.advanceTimersByTime(2000);
+      });
+      expect(result.current.displayTimeMs).toBe(28_000);
+      const rendersBeforeBackground = renderCount;
+
+      // Simulate AppState transition to background
+      await act(() => {
+        for (const listener of appStateListeners) {
+          listener("background");
+        }
+      });
+
+      // Advance 5 seconds while backgrounded: no visual React state updates
+      await act(() => {
+        jest.advanceTimersByTime(5000);
+      });
+      expect(renderCount).toBe(rendersBeforeBackground);
+
+      // Simulate AppState transition back to active (foreground)
+      await act(() => {
+        for (const listener of appStateListeners) {
+          listener("active");
+        }
+      });
+
+      // Verify immediate state catch-up: 7s total elapsed (23s display remaining)
+      expect(result.current.displayTimeMs).toBe(23_000);
+      expect(renderCount).toBeGreaterThan(rendersBeforeBackground);
+
+      addEventListenerSpy.mockRestore();
     });
   });
 
