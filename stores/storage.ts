@@ -2,7 +2,7 @@ import { atomWithStorage, createJSONStorage } from "jotai/utils";
 import { getDefaultStore } from "jotai/vanilla";
 import { createMMKV } from "react-native-mmkv";
 
-const storage = createMMKV();
+export const storage = createMMKV();
 
 const getItem = (key: string): string | null => {
   const value = storage.getString(key);

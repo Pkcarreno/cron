@@ -58,6 +58,8 @@ const Button: React.FC<ButtonProps> = ({
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
       onPress={onPress}
       disabled={disabled}
       {...rest}

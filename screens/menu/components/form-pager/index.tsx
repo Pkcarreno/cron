@@ -1,21 +1,21 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { CaretDownIcon } from "phosphor-react-native";
 import React, {
-  useEffect,
-  useRef,
-  useMemo,
-  useState,
   useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
 import type { LayoutChangeEvent, NativeSyntheticEvent } from "react-native";
-import { View, StyleSheet } from "react-native";
+import { StyleSheet, View } from "react-native";
 import type { PagerViewOnPageScrollEventData } from "react-native-pager-view";
 import PagerView from "react-native-pager-view";
 import Animated, {
-  useAnimatedStyle,
-  interpolate,
   Extrapolation,
   createAnimatedComponent,
+  interpolate,
+  useAnimatedStyle,
   withTiming,
 } from "react-native-reanimated";
 
@@ -49,6 +49,7 @@ interface FormPagerProps<T extends string> extends React.PropsWithChildren {
   options: FormTabOption<T>[];
   value?: T;
   onValueChange?: (value: T) => void;
+  testID?: string;
 }
 
 export const FormPager = <T extends string>({
@@ -56,6 +57,7 @@ export const FormPager = <T extends string>({
   onValueChange,
   options,
   children,
+  testID,
 }: FormPagerProps<T>) => {
   const {
     pagerRef,
@@ -239,6 +241,7 @@ export const FormPager = <T extends string>({
       </View>
 
       <AnimatedPagerView
+        testID={testID ?? "form-pager-view"}
         ref={pagerRef}
         style={styles.pagerView}
         initialPage={safeActiveIndex}
