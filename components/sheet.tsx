@@ -17,6 +17,7 @@ import type {
   GestureResponderEvent,
 } from "react-native";
 import { Pressable, View, StyleSheet } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { colors } from "@/helpers/colors";
 
@@ -218,7 +219,9 @@ export const SheetContent: React.FC<SheetContentProps> = ({
       onDidDismiss={handleDidDismiss}
       {...props}
     >
-      <View style={[styles.contentContainer, style]}>{children}</View>
+      <GestureHandlerRootView>
+        <View style={[styles.contentContainer, style]}>{children}</View>
+      </GestureHandlerRootView>
     </TrueSheet>
   );
 };

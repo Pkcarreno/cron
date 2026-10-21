@@ -3,7 +3,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useMemo } from "react";
 import type { LayoutChangeEvent } from "react-native";
 import { View, StyleSheet } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from "react-native-gesture-handler";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -21,7 +25,7 @@ import {
 
 import { Text } from "./text";
 
-const TICK_WIDTH = 20;
+export const TICK_WIDTH = 20;
 
 export interface InputThumbwheelProps {
   value: number;
@@ -96,19 +100,19 @@ const applyRubberBand = (
   return offset;
 };
 
-const getIndexForOffset = (
+export const getIndexForOffset = (
   offset: number,
   width: number,
   totalTicks: number
 ) => {
   "worklet";
-  const rawIndex = (width / 2 - offset) / TICK_WIDTH;
+  const rawIndex = (width / 2 - TICK_WIDTH / 2 - offset) / TICK_WIDTH;
   return Math.max(0, Math.min(Math.round(rawIndex), totalTicks - 1));
 };
 
-const getOffsetForIndex = (index: number, width: number) => {
+export const getOffsetForIndex = (index: number, width: number) => {
   "worklet";
-  return width / 2 - index * TICK_WIDTH;
+  return width / 2 - (index * TICK_WIDTH + TICK_WIDTH / 2);
 };
 
 const Tick = React.memo(({ index, min, step }: TickProps) => {
@@ -120,16 +124,16 @@ const Tick = React.memo(({ index, min, step }: TickProps) => {
       <View
         style={[tickStyles.line, isMajor ? tickStyles.major : tickStyles.minor]}
       />
-      {isMajor && (
+      {isMajor ? (
         <Text
-          weight="400"
+          weight="500"
           colorSubtone="800"
           size={10}
           style={tickStyles.label}
         >
           {currentValue}
         </Text>
-      )}
+      ) : null}
     </View>
   );
 });
@@ -196,16 +200,16 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
   const panGesture = useMemo(
     () =>
       buildPanGesture()
-        .activeOffsetX([-8, 8])
-        .failOffsetY([-12, 12])
+        .activeOffsetX([-4, 4])
         .onBegin(() => {
           isDragging.value = true;
           startX.value = translateX.value;
         })
         .onUpdate((event) => {
           const width = containerWidth.value > 0 ? containerWidth.value : 300;
-          const minTranslate = width / 2 - (totalTicks - 1) * TICK_WIDTH;
-          const maxTranslate = width / 2;
+          const minTranslate =
+            width / 2 - ((totalTicks - 1) * TICK_WIDTH + TICK_WIDTH / 2);
+          const maxTranslate = width / 2 - TICK_WIDTH / 2;
 
           const nextOffset = startX.value + event.translationX;
           translateX.value = applyRubberBand(
@@ -231,8 +235,9 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
         })
         .onEnd((event) => {
           const width = containerWidth.value > 0 ? containerWidth.value : 300;
-          const minTranslate = width / 2 - (totalTicks - 1) * TICK_WIDTH;
-          const maxTranslate = width / 2;
+          const minTranslate =
+            width / 2 - ((totalTicks - 1) * TICK_WIDTH + TICK_WIDTH / 2);
+          const maxTranslate = width / 2 - TICK_WIDTH / 2;
 
           if (translateX.value > maxTranslate) {
             translateX.value = withSpring(
@@ -285,6 +290,9 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
               }
             );
           }
+        })
+        .onFinalize(() => {
+          isDragging.value = false;
         }),
     [
       totalTicks,
@@ -337,46 +345,48 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
   );
 
   return (
-    <View
-      accessible={true}
-      accessibilityRole="adjustable"
-      accessibilityValue={{ max, min, now: value }}
-      accessibilityActions={[
-        { label: "Increment", name: "increment" },
-        { label: "Decrement", name: "decrement" },
-      ]}
-      onAccessibilityAction={handleAccessibilityAction}
-      style={styles.container}
-      onLayout={handleLayout}
-    >
-      <LinearGradient
-        colors={[colors.neutral[400], "transparent"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.fadeLeft}
-        pointerEvents="none"
-      />
-      <LinearGradient
-        colors={["transparent", colors.neutral[400]]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.fadeRight}
-        pointerEvents="none"
-      />
-
-      <Animated.View
-        style={[styles.centerIndicator, needleAnimatedStyle]}
-        pointerEvents="none"
-      />
-
+    <GestureHandlerRootView>
       <GestureDetector gesture={panGesture}>
-        <Animated.View style={[styles.stripContainer, animatedStyle]}>
-          {ticks.map((index) => (
-            <Tick key={index} index={index} min={min} step={step} />
-          ))}
-        </Animated.View>
+        <View
+          accessible={true}
+          accessibilityRole="adjustable"
+          accessibilityValue={{ max, min, now: value }}
+          accessibilityActions={[
+            { label: "Increment", name: "increment" },
+            { label: "Decrement", name: "decrement" },
+          ]}
+          onAccessibilityAction={handleAccessibilityAction}
+          style={styles.container}
+          onLayout={handleLayout}
+        >
+          <LinearGradient
+            colors={[colors.neutral[400], "transparent"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.fadeLeft}
+            pointerEvents="none"
+          />
+          <LinearGradient
+            colors={["transparent", colors.neutral[400]]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.fadeRight}
+            pointerEvents="none"
+          />
+
+          <Animated.View
+            style={[styles.centerIndicator, needleAnimatedStyle]}
+            pointerEvents="none"
+          />
+
+          <Animated.View style={[styles.stripContainer, animatedStyle]}>
+            {ticks.map((index) => (
+              <Tick key={index} index={index} min={min} step={step} />
+            ))}
+          </Animated.View>
+        </View>
       </GestureDetector>
-    </View>
+    </GestureHandlerRootView>
   );
 };
 
@@ -386,11 +396,11 @@ const styles = StyleSheet.create({
   centerIndicator: {
     backgroundColor: colors.red,
     borderRadius: 8,
-    height: 44,
+    height: 38,
     left: "50%",
     marginLeft: -1.5,
-    marginTop: -12,
     position: "absolute",
+    top: 7,
     width: 3,
     zIndex: 10,
   },
@@ -428,14 +438,12 @@ const styles = StyleSheet.create({
 const tickStyles = StyleSheet.create({
   container: {
     alignItems: "center",
-    justifyContent: "center",
-    paddingBottom: 10,
+    height: "100%",
+    paddingTop: 12,
     width: TICK_WIDTH,
   },
   label: {
-    bottom: 5,
-    left: (TICK_WIDTH - 60) / 2,
-    position: "absolute",
+    marginTop: 6,
     textAlign: "center",
     width: 60,
   },
@@ -445,11 +453,11 @@ const tickStyles = StyleSheet.create({
     width: 1.5,
   },
   major: {
-    height: 34,
+    height: 28,
     width: 2,
   },
   minor: {
-    height: 24,
+    height: 16,
     opacity: 0.5,
   },
 });
