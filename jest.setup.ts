@@ -1,4 +1,4 @@
-/* oxlint-disable eslint/class-methods-use-this, eslint/no-empty-function, node/global-require, unicorn/prefer-module, typescript/no-explicit-any */
+/* oxlint-disable eslint/class-methods-use-this, eslint/no-empty-function, node/global-require, unicorn/prefer-module, typescript/no-explicit-any, eslint/max-classes-per-file */
 import "react-native-gesture-handler/jestSetup";
 import type React from "react";
 
@@ -25,9 +25,31 @@ jest.mock("react-native-audio-api", () =>
   jest.requireActual("react-native-audio-api/mock")
 );
 
-jest.mock("@gorhom/bottom-sheet", () =>
-  jest.requireActual("@gorhom/bottom-sheet/mock")
-);
+jest.mock("@lodev09/react-native-true-sheet", () => {
+  const ReactMock = require("react");
+  const { View } = require("react-native");
+
+  class TrueSheet extends ReactMock.Component<any, any> {
+    present: any = jest.fn((...args: any[]): Promise<any> =>
+      TrueSheet.prototype.present.apply(this, args)
+    );
+    dismiss: any = jest.fn((...args: any[]): Promise<any> =>
+      TrueSheet.prototype.dismiss.apply(this, args)
+    );
+    render() {
+      return ReactMock.createElement(
+        View,
+        { style: this.props.style },
+        this.props.children
+      );
+    }
+  }
+
+  TrueSheet.prototype.present = jest.fn(() => Promise.resolve());
+  TrueSheet.prototype.dismiss = jest.fn(() => Promise.resolve());
+
+  return { TrueSheet };
+});
 
 jest.mock("@rn-primitives/portal", () => ({
   Portal: ({ children }: { children: React.ReactNode }) => children,

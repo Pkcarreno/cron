@@ -1,12 +1,5 @@
-import type {
-  BottomSheetModalProps,
-  BottomSheetBackdropProps,
-} from "@gorhom/bottom-sheet";
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-} from "@gorhom/bottom-sheet";
+import type { SheetDetent } from "@lodev09/react-native-true-sheet";
+import { TrueSheet } from "@lodev09/react-native-true-sheet";
 import React, {
   createContext,
   useContext,
@@ -24,7 +17,6 @@ import type {
   GestureResponderEvent,
 } from "react-native";
 import { Pressable, View, StyleSheet } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors } from "@/helpers/colors";
 
@@ -34,7 +26,7 @@ interface SheetContextType {
   handleDismissed: () => void;
   open: boolean;
   setOpen: (open: boolean) => void;
-  sheetRef: React.RefObject<BottomSheetModal | null>;
+  sheetRef: React.RefObject<TrueSheet | null>;
 }
 
 const SheetContext = createContext<SheetContextType | null>(null);
@@ -52,7 +44,7 @@ export interface SheetProps {
   open?: boolean;
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
-  ref?: React.Ref<BottomSheetModal>;
+  ref?: React.Ref<TrueSheet>;
 }
 
 export const Sheet: React.FC<SheetProps> = ({
@@ -62,7 +54,7 @@ export const Sheet: React.FC<SheetProps> = ({
   onOpenChange,
   ref,
 }) => {
-  const sheetRef = useRef<BottomSheetModal>(null);
+  const sheetRef = useRef<TrueSheet>(null);
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
 
   const isControlled = controlledOpen !== undefined;
@@ -70,7 +62,7 @@ export const Sheet: React.FC<SheetProps> = ({
   const prevOpenRef = useRef<boolean>(defaultOpen);
   const isInternalDismissRef = useRef<boolean>(false);
 
-  useImperativeHandle(ref, () => sheetRef.current as BottomSheetModal, []);
+  useImperativeHandle(ref, () => sheetRef.current as TrueSheet, []);
 
   const handleSetOpen = useCallback(
     (newOpen: boolean) => {
@@ -96,29 +88,10 @@ export const Sheet: React.FC<SheetProps> = ({
 
     if (!wasOpen && open) {
       isInternalDismissRef.current = false;
-      const currentStatus = (
-        sheetRef.current as unknown as { status?: { current: number } }
-      )?.status?.current;
-      // Do not present if already presented (1) or animating (5)
-      if (currentStatus !== 1 && currentStatus !== 5) {
-        sheetRef.current?.present();
-      }
+      sheetRef.current?.present();
     } else if (wasOpen && !open) {
       if (isInternalDismissRef.current) {
         isInternalDismissRef.current = false;
-        return;
-      }
-      const currentStatus = (
-        sheetRef.current as unknown as { status?: { current: number } }
-      )?.status?.current;
-      // Do not dismiss if already INITIAL (0), CLOSED (2), DISMISSING (6), or DISMISSED (7)
-      if (
-        currentStatus !== undefined &&
-        (currentStatus === 0 ||
-          currentStatus === 2 ||
-          currentStatus === 6 ||
-          currentStatus === 7)
-      ) {
         return;
       }
       sheetRef.current?.dismiss();
@@ -185,42 +158,34 @@ export const SheetTrigger: React.FC<SheetTriggerProps> = ({
   );
 };
 
-export const SheetBackdrop: React.FC<BottomSheetBackdropProps> = (props) => (
-  <BottomSheetBackdrop
-    {...props}
-    appearsOnIndex={0}
-    disappearsOnIndex={-1}
-    pressBehavior="close"
-  />
-);
-
-export interface SheetContentProps extends Omit<BottomSheetModalProps, "ref"> {
+export interface SheetContentProps extends Omit<ViewProps, "ref"> {
   children: React.ReactNode;
-  ref?: React.Ref<BottomSheetModal>;
+  detents?: SheetDetent[];
+  enableDynamicSizing?: boolean;
+  onDismiss?: () => void;
+  ref?: React.Ref<TrueSheet>;
 }
 
 export const SheetContent: React.FC<SheetContentProps> = ({
   children,
-  onChange,
+  detents,
+  enableDynamicSizing = true,
   onDismiss,
-  snapPoints,
-  enableDynamicSizing,
-  backdropComponent = SheetBackdrop,
   ref,
+  style,
   ...props
 }) => {
   const { sheetRef, handleDismissed } = useSheetContext();
-  const { bottom } = useSafeAreaInsets();
 
-  const resolvedSnapPoints = useMemo(() => {
-    if (snapPoints !== undefined) {
-      return snapPoints;
+  const resolvedDetents = useMemo(() => {
+    if (detents !== undefined) {
+      return detents;
     }
     if (enableDynamicSizing) {
-      return;
+      return ["auto"] as SheetDetent[];
     }
-    return ["50%", "90%"];
-  }, [snapPoints, enableDynamicSizing]);
+    return [0.5, 0.9] as SheetDetent[];
+  }, [detents, enableDynamicSizing]);
 
   useEffect(() => {
     if (!ref) {
@@ -229,54 +194,32 @@ export const SheetContent: React.FC<SheetContentProps> = ({
     if (typeof ref === "function") {
       ref(sheetRef.current);
     } else {
-      (ref as React.RefObject<BottomSheetModal | null>).current =
-        sheetRef.current;
+      (ref as React.RefObject<TrueSheet | null>).current = sheetRef.current;
     }
   }, [ref, sheetRef]);
 
-  const handleChange = useCallback(
-    (...args: Parameters<NonNullable<BottomSheetModalProps["onChange"]>>) => {
-      const [index] = args;
-      if (index === -1) {
-        handleDismissed();
-      }
-      if (onChange) {
-        onChange(...args);
-      }
-    },
-    [onChange, handleDismissed]
-  );
-
-  const handleDismiss = useCallback(() => {
+  const handleDidDismiss = useCallback(() => {
     handleDismissed();
     if (onDismiss) {
       onDismiss();
     }
   }, [handleDismissed, onDismiss]);
 
-  const bottomSheetViewStyles = useMemo(
-    () => ({
-      paddingBottom: bottom + 16,
-    }),
-    [bottom]
-  );
-
   return (
-    <BottomSheetModal
-      {...props}
-      enableDynamicSizing={enableDynamicSizing}
+    <TrueSheet
       ref={sheetRef}
-      snapPoints={resolvedSnapPoints}
-      backdropComponent={backdropComponent}
-      onChange={handleChange}
-      onDismiss={handleDismiss}
-      backgroundStyle={styles.background}
-      handleIndicatorStyle={styles.indicator}
+      detents={resolvedDetents}
+      cornerRadius={24}
+      backgroundColor={colors.neutral[800]}
+      grabber={true}
+      grabberOptions={{
+        color: colors.neutral[600],
+      }}
+      onDidDismiss={handleDidDismiss}
+      {...props}
     >
-      <BottomSheetView style={[styles.contentContainer, bottomSheetViewStyles]}>
-        {children}
-      </BottomSheetView>
-    </BottomSheetModal>
+      <View style={[styles.contentContainer, style]}>{children}</View>
+    </TrueSheet>
   );
 };
 
@@ -303,13 +246,11 @@ export const SheetFooter: React.FC<ViewProps> = ({ style, ...props }) => (
 );
 
 const styles = StyleSheet.create({
-  background: {
-    backgroundColor: colors.neutral[800],
-    borderRadius: 24,
-  },
   contentContainer: {
     gap: 16,
+    paddingBottom: 24,
     paddingHorizontal: 20,
+    paddingTop: 8,
   },
   description: {},
   footer: {
@@ -318,12 +259,8 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   header: {
-    gap: 8,
+    gap: 4,
+    marginBottom: 8,
   },
-  indicator: {
-    backgroundColor: colors.neutral[400],
-  },
-  title: {
-    fontFamily: "Geist",
-  },
+  title: {},
 });

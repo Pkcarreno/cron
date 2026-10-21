@@ -14,11 +14,6 @@ jest.mock("expo-router", () => ({
   Stack: () => null,
 }));
 
-jest.mock("@gorhom/bottom-sheet", () => ({
-  BottomSheetModalProvider: ({ children }: { children: React.ReactNode }) =>
-    children,
-}));
-
 jest.mock("@rn-primitives/portal", () => ({
   PortalHost: () => null,
 }));

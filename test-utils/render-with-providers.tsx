@@ -1,4 +1,3 @@
-import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { PortalHost } from "@rn-primitives/portal";
 import type {
   RenderHookOptions,
@@ -40,10 +39,8 @@ export const TestProviders = ({
   <GestureHandlerRootView style={styles.container}>
     <SafeAreaProvider initialMetrics={initialMetrics}>
       <Provider store={store}>
-        <BottomSheetModalProvider>
-          {children}
-          <PortalHost />
-        </BottomSheetModalProvider>
+        {children}
+        <PortalHost />
       </Provider>
     </SafeAreaProvider>
   </GestureHandlerRootView>

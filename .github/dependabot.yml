@@ -12,7 +12,7 @@ updates:
       - dependency-name: "react-native"
       - dependency-name: "react-native-*"
       - dependency-name: "@rn-primitives/*"
-      - dependency-name: "@gorhom/bottom-sheet"
+      - dependency-name: "@lodev09/react-native-true-sheet"
       - dependency-name: "phosphor-react-native"
       - dependency-name: "@types/react"
       - dependency-name: "@types/jest"

@@ -1,4 +1,4 @@
-import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { TrueSheet } from "@lodev09/react-native-true-sheet";
 import { act, cleanup, fireEvent } from "@testing-library/react-native";
 import React from "react";
 import { Text } from "react-native";
@@ -80,7 +80,7 @@ describe("InputNumber integration", () => {
   });
 
   it("does not trigger open sheet when editable is false", async () => {
-    const presentSpy = jest.spyOn(BottomSheetModal.prototype, "present");
+    const presentSpy = jest.spyOn(TrueSheet.prototype, "present");
 
     const screen = await renderWithProviders(
       <InputNumber value={25} editable={false} />
@@ -105,25 +105,23 @@ describe("Sheet modal lifecycle", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     capturedOnDismiss = undefined;
-    presentSpy = jest.spyOn(BottomSheetModal.prototype, "present");
-    dismissSpy = jest.spyOn(BottomSheetModal.prototype, "dismiss");
+    presentSpy = jest.spyOn(TrueSheet.prototype, "present");
+    dismissSpy = jest.spyOn(TrueSheet.prototype, "dismiss");
     renderSpy = jest
-      .spyOn(BottomSheetModal.prototype, "render")
+      .spyOn(TrueSheet.prototype, "render")
       .mockImplementation(function mockRender(this: unknown) {
         const instance = this as {
           props: {
-            children?:
-              | React.ReactNode
-              | ((props: { data?: unknown }) => React.ReactNode);
-            onDismiss?: () => void;
+            children?: React.ReactNode;
+            onDidDismiss?: () => void;
           };
-          data?: unknown;
         };
-        capturedOnDismiss = instance.props.onDismiss;
-        const { children: Content } = instance.props;
-        return typeof Content === "function"
-          ? React.createElement(Content, { data: instance.data })
-          : Content;
+        capturedOnDismiss = instance.props.onDidDismiss;
+        return React.createElement(
+          React.Fragment,
+          null,
+          instance.props.children
+        );
       });
   });
 
@@ -135,7 +133,7 @@ describe("Sheet modal lifecycle", () => {
   });
 
   it("does not call dismiss on initial mount when controlled with open=false", async () => {
-    const controlledRef = React.createRef<BottomSheetModal>();
+    const controlledRef = React.createRef<TrueSheet>();
 
     await renderWithProviders(
       <Sheet ref={controlledRef} open={false}>
