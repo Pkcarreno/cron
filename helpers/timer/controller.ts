@@ -1,7 +1,12 @@
+import type { AppStateStatus } from "react-native";
+import { AppState } from "react-native";
+
 import type { TimerState, TimerStrategy } from "@/helpers/timer/strategy";
 import { TimerPhase } from "@/helpers/timer/strategy";
 import type { TickEvent } from "@/helpers/timer/tick-engine";
 import { TickEngine } from "@/helpers/timer/tick-engine";
+import type { AudioFeedbackService } from "@/services/audio/audio-feedback-service";
+import { NullAudioFeedbackService } from "@/services/audio/null-audio-feedback-service";
 
 export enum TimerEventType {
   START = "START",
@@ -56,6 +61,8 @@ export type TimerEventHandlerMap = {
 
 export interface TimerControllerOptions {
   uiTickResolutionMs?: number;
+  audioService?: AudioFeedbackService;
+  appState?: typeof AppState;
 }
 
 export class TimerController {
@@ -69,6 +76,10 @@ export class TimerController {
   private lastEmittedQuantizedStep: number | null = null;
   private checkpoints: CheckpointData[] = [];
   private lastKnownElapsedMs = 0;
+  private audioService: AudioFeedbackService;
+  private isVisualUpdatesPaused = false;
+  private currentAppState: AppStateStatus = "active";
+  private appStateSubscription: { remove: () => void } | null = null;
 
   private listeners: {
     [K in keyof TimerEventMap]: TimerEventCallback<K>[];
@@ -89,18 +100,54 @@ export class TimerController {
   constructor(
     strategy: TimerStrategy,
     preparationTimeMs: number,
-    options?: TimerControllerOptions | number
+    options?: TimerControllerOptions | number,
+    audioService?: AudioFeedbackService
   ) {
     this.strategy = strategy;
     this.preparationTimeMs = preparationTimeMs;
+
     if (typeof options === "number") {
       this.uiTickResolutionMs = options;
-    } else if (options?.uiTickResolutionMs !== undefined) {
-      this.uiTickResolutionMs = options.uiTickResolutionMs;
+      this.audioService = audioService ?? new NullAudioFeedbackService();
+    } else {
+      if (options?.uiTickResolutionMs !== undefined) {
+        this.uiTickResolutionMs = options.uiTickResolutionMs;
+      }
+      this.audioService =
+        audioService ?? options?.audioService ?? new NullAudioFeedbackService();
     }
-    this.engine = new TickEngine();
 
+    this.engine = new TickEngine();
     this.engine.onTickCallbacks.push((tickEvent) => this.handleTick(tickEvent));
+
+    let appStateSource: typeof AppState | undefined = AppState;
+    if (typeof options === "object" && options?.appState) {
+      appStateSource = options.appState;
+    }
+
+    if (appStateSource?.currentState) {
+      this.currentAppState = appStateSource.currentState as AppStateStatus;
+      this.isVisualUpdatesPaused =
+        this.currentAppState === "background" ||
+        this.currentAppState === "inactive";
+    }
+
+    if (appStateSource?.addEventListener) {
+      this.appStateSubscription = appStateSource.addEventListener(
+        "change",
+        (nextState: AppStateStatus) => {
+          this.handleAppStateChange(nextState);
+        }
+      );
+    }
+  }
+
+  public setAudioService(audioService: AudioFeedbackService) {
+    this.audioService = audioService;
+  }
+
+  public getAudioService(): AudioFeedbackService {
+    return this.audioService;
   }
 
   public setUiTickResolution(resolutionMs: number | null) {
@@ -109,6 +156,57 @@ export class TimerController {
 
   public getUiTickResolution(): number | null {
     return this.uiTickResolutionMs;
+  }
+
+  public getIsVisualUpdatesPaused(): boolean {
+    return this.isVisualUpdatesPaused;
+  }
+
+  public getCurrentAppState(): AppStateStatus {
+    return this.currentAppState;
+  }
+
+  public handleAppStateChange(nextAppState: AppStateStatus): void {
+    if (this.currentAppState === nextAppState) {
+      return;
+    }
+
+    const wasActive = !this.isVisualUpdatesPaused;
+    const isNowActive = nextAppState === "active";
+    this.currentAppState = nextAppState;
+
+    if (wasActive && !isNowActive) {
+      this.isVisualUpdatesPaused = true;
+      this.engine.pauseLoop();
+    } else if (!wasActive && isNowActive) {
+      this.isVisualUpdatesPaused = false;
+      if (this.engine.getIsRunning()) {
+        this.catchUp();
+        if (!this.previousState?.isFinished) {
+          this.engine.resumeLoop();
+        }
+      }
+    }
+  }
+
+  public catchUp(): void {
+    if (!this.engine.getIsRunning()) {
+      return;
+    }
+
+    const catchUpEvent = this.engine.catchUp();
+    if (catchUpEvent && this.previousState) {
+      this.lastUiTickState = this.previousState;
+      this.lastEmittedUiSecond = Math.ceil(
+        this.previousState.displayTimeMs / 1000
+      );
+      if (this.uiTickResolutionMs !== null && this.uiTickResolutionMs > 0) {
+        this.lastEmittedQuantizedStep = Math.floor(
+          this.previousState.displayTimeMs / this.uiTickResolutionMs
+        );
+      }
+      this.emit(TimerEventType.UI_TICK, this.previousState);
+    }
   }
 
   // oxlint-disable eslint/max-statements
@@ -155,6 +253,10 @@ export class TimerController {
   }
 
   private shouldEmitUiTick(newState: TimerState): boolean {
+    if (this.isVisualUpdatesPaused) {
+      return false;
+    }
+
     if (!this.lastUiTickState) {
       return true;
     }
@@ -237,6 +339,7 @@ export class TimerController {
     this.checkpoints.push(newCheckpoint);
 
     this.emit(TimerEventType.CHECKPOINT, newCheckpoint);
+    this.audioService.playLapCue();
   }
 
   private detectStateChanges(
@@ -249,7 +352,9 @@ export class TimerController {
 
     // detect finish
     if (!oldState.isFinished && newState.isFinished) {
-      this.emit(TimerEventType.FINISH, this.generateSummary(true));
+      const summary = this.generateSummary(true);
+      this.emit(TimerEventType.FINISH, summary);
+      this.audioService.playFinishCue(summary.fullyCompleted);
       return;
     }
 
@@ -259,6 +364,7 @@ export class TimerController {
       newState.phase === TimerPhase.WORK
     ) {
       this.emit(TimerEventType.GO);
+      this.audioService.playGoCue();
       return;
     }
 
@@ -272,10 +378,12 @@ export class TimerController {
       newState.currentRound > 0
     ) {
       this.emit(TimerEventType.ROUND_CHANGE, newState.currentRound);
+      this.audioService.playRoundChangeCue?.(newState.currentRound);
     }
 
     if (oldState.phase !== newState.phase && !newState.isFinished) {
       this.emit(TimerEventType.PHASE_CHANGE, newState.phase);
+      this.audioService.playPhaseTransitionCue(newState.phase);
     }
   }
 
@@ -289,6 +397,7 @@ export class TimerController {
 
     if (oldSeconds !== newSeconds && newSeconds <= 3 && newSeconds > 0) {
       this.emit(TimerEventType.BEEP, newSeconds);
+      this.audioService.playCountdownBeep(newSeconds);
     }
   }
 
@@ -318,6 +427,9 @@ export class TimerController {
 
   public dispose() {
     this.engine.pause();
+    this.appStateSubscription?.remove();
+    this.appStateSubscription = null;
+    this.audioService.stopAudio();
     this.checkpoints = [];
     this.previousState = null;
     this.lastUiTickState = null;
@@ -330,8 +442,10 @@ export class TimerController {
     this.engine.pause();
 
     const isCompleted = this.previousState?.isFinished || false;
+    const summary = this.generateSummary(isCompleted);
 
-    this.emit(TimerEventType.FINISH, this.generateSummary(isCompleted));
+    this.emit(TimerEventType.FINISH, summary);
+    this.audioService.playFinishCue(summary.fullyCompleted);
     this.removeAllListeners();
   }
 
@@ -362,11 +476,13 @@ export class TimerController {
 
   public pause() {
     this.emit(TimerEventType.PAUSE);
+    this.audioService.stopAudio();
     this.engine.pause();
   }
 
   public reset() {
     this.emit(TimerEventType.RESET);
+    this.audioService.stopAudio();
     this.checkpoints = [];
     this.previousState = null;
     this.lastUiTickState = null;

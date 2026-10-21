@@ -1,9 +1,12 @@
 import { useAtom } from "jotai/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { AppStateStatus } from "react-native";
+import { AppState } from "react-native";
 
 import type {
   CheckpointData,
   SessionSummary,
+  TimerControllerOptions,
 } from "@/helpers/timer/controller";
 import { TimerController, TimerEventType } from "@/helpers/timer/controller";
 import type { TimerConfig } from "@/helpers/timer/factory";
@@ -14,6 +17,8 @@ import {
   formatTimeForDisplay,
   getModeAbbreviation,
 } from "@/helpers/timer/utils/formatter";
+import type { AudioFeedbackService } from "@/services/audio/audio-feedback-service";
+import { NullAudioFeedbackService } from "@/services/audio/null-audio-feedback-service";
 import { preparationTimeMsAtom } from "@/stores/settings";
 
 export enum TimerStatus {
@@ -40,6 +45,7 @@ export interface TimerEventHandlers {
   onRoundChange?: (round: number) => void;
   onBeep?: (second: number) => void;
   onCheckpoint?: (checkpoint: UICheckpoint) => void;
+  audioService?: AudioFeedbackService;
 }
 
 const getTimerFlags = (config: TimerConfig, phase: TimerPhase): TimerFlags => {
@@ -55,28 +61,36 @@ const getTimerFlags = (config: TimerConfig, phase: TimerPhase): TimerFlags => {
 };
 
 export const useTimerInstance = (
-  config: TimerConfig
+  config: TimerConfig,
+  audioService?: AudioFeedbackService
 ): React.RefObject<TimerController | null> => {
   const [preparationTimeMs] = useAtom(preparationTimeMsAtom);
   const controllerRef = useRef<TimerController | null>(null);
   const prevConfigKeyRef = useRef<string>("");
   const prevPrepTimeRef = useRef<number>(preparationTimeMs);
+  const prevAudioServiceRef = useRef<AudioFeedbackService | undefined>(
+    audioService
+  );
 
   const configKey = JSON.stringify(config);
 
   if (
     !controllerRef.current ||
     prevConfigKeyRef.current !== configKey ||
-    prevPrepTimeRef.current !== preparationTimeMs
+    prevPrepTimeRef.current !== preparationTimeMs ||
+    prevAudioServiceRef.current !== audioService
   ) {
     if (controllerRef.current) {
       controllerRef.current.dispose();
     }
 
-    const options =
-      config.mode === TimerMode.STOP_WATCH && "uiTickResolutionMs" in config
-        ? { uiTickResolutionMs: config.uiTickResolutionMs }
-        : undefined;
+    const options: TimerControllerOptions = {
+      audioService: audioService ?? new NullAudioFeedbackService(),
+      uiTickResolutionMs:
+        config.mode === TimerMode.STOP_WATCH && "uiTickResolutionMs" in config
+          ? config.uiTickResolutionMs
+          : undefined,
+    };
 
     controllerRef.current = new TimerController(
       createTimerStrategy(config),
@@ -85,6 +99,7 @@ export const useTimerInstance = (
     );
     prevConfigKeyRef.current = configKey;
     prevPrepTimeRef.current = preparationTimeMs;
+    prevAudioServiceRef.current = audioService;
   }
 
   useEffect(
@@ -106,7 +121,7 @@ export const useTimerController = (
   setStatus: React.Dispatch<React.SetStateAction<TimerStatus>>,
   handlers?: TimerEventHandlers
 ) => {
-  const controllerRef = useTimerInstance(config);
+  const controllerRef = useTimerInstance(config, handlers?.audioService);
   const controller = controllerRef.current;
 
   const startedAtRef = useRef<Date | null>(null);
@@ -119,6 +134,19 @@ export const useTimerController = (
   useEffect(() => {
     handlersRef.current = handlers;
   }, [handlers]);
+
+  useEffect(() => {
+    const handleAppState = (nextState: AppStateStatus) => {
+      controllerRef.current?.handleAppStateChange(nextState);
+    };
+
+    const sub = AppState.addEventListener("change", handleAppState);
+    return () => {
+      sub?.remove?.();
+      // oxlint-disable-next-line typescript/no-explicit-any
+      (AppState as any).removeEventListener?.("change", handleAppState);
+    };
+  }, [controllerRef]);
 
   // oxlint-disable eslint/max-statements
   useEffect(() => {

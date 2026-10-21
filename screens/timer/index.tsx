@@ -5,13 +5,15 @@ import { useCallback, useEffect, useMemo } from "react";
 import { HideNavigationBar } from "@/components/hide-navigation-bar";
 import { PressableArea } from "@/components/pressable-area";
 import { colors } from "@/helpers/colors";
-import { playTone, playToneSequence } from "@/helpers/playback-service";
 import { TimerMode } from "@/helpers/timer/factory";
 import { TimerPhase } from "@/helpers/timer/strategy";
 import { deserializeTimerConfig } from "@/helpers/timer/utils/config-serializer";
 import type { TimerRouteParams } from "@/helpers/timer/utils/config-serializer";
 import { useGetCurrentTime } from "@/hooks/use-get-current-time";
 import { TimerStatus, useTimer } from "@/hooks/use-timer";
+import { WebAudioOscillatorService } from "@/services/audio/web-audio-oscillator-service";
+import { isSoundEnabledAtom } from "@/stores/settings";
+import { store } from "@/stores/storage";
 
 import { SummaryFace } from "./components/summary-face";
 import { TimerFace } from "./components/timer-face";
@@ -21,6 +23,15 @@ import type { ContextFormatType } from "./types";
 export const Timer = () => {
   const rawConfigParams = useLocalSearchParams<TimerRouteParams>();
   const timerInput = deserializeTimerConfig(rawConfigParams);
+
+  const audioService = useMemo(
+    () =>
+      new WebAudioOscillatorService({
+        isSoundEnabled: () => store.get(isSoundEnabledAtom),
+      }),
+    []
+  );
+
   const {
     hours,
     minutes,
@@ -38,33 +49,7 @@ export const Timer = () => {
     getSummary,
     handleEndSession,
   } = useTimer(timerInput, {
-    onBeep: () => playTone(659, 200),
-    onCheckpoint: () => {
-      playToneSequence([
-        { durationMs: 80, frequencyHz: 880, silenceAfterMs: 120 },
-        { durationMs: 80, frequencyHz: 880, silenceAfterMs: 0 },
-      ]);
-    },
-    onFinish: (summary) => {
-      if (summary.fullyCompleted) {
-        playToneSequence([
-          { durationMs: 300, frequencyHz: 523, silenceAfterMs: 150 },
-          { durationMs: 300, frequencyHz: 523, silenceAfterMs: 150 },
-          { durationMs: 800, frequencyHz: 523, silenceAfterMs: 0 },
-        ]);
-      }
-    },
-    onGo: () => playTone(880, 600),
-    onPhaseChange: (newPhase) => {
-      if (newPhase === TimerPhase.REST) {
-        playTone(523, 500);
-      }
-    },
-    onRoundChange: () =>
-      playToneSequence([
-        { durationMs: 200, frequencyHz: 698, silenceAfterMs: 100 },
-        { durationMs: 200, frequencyHz: 698, silenceAfterMs: 0 },
-      ]),
+    audioService,
   });
   const currentTime = useGetCurrentTime();
 
@@ -83,8 +68,9 @@ export const Timer = () => {
 
     return () => {
       reset();
+      audioService.stopAudio();
     };
-  }, [start, reset]);
+  }, [start, reset, audioService]);
 
   const timerContextLabelState = useMemo<ContextFormatType>(() => {
     if (phase === TimerPhase.PREPARATION) {
