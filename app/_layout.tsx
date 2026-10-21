@@ -1,4 +1,3 @@
-import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { PortalHost } from "@rn-primitives/portal";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -20,26 +19,24 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.container}>
       <SafeAreaProvider>
-        <BottomSheetModalProvider>
-          {/* oxlint-disable react/style-prop-object */}
-          <StatusBar style="light" />
-          <Stack
-            screenOptions={{
-              contentStyle: styles.contentStyle,
-              headerShown: false,
-              headerStyle: {
-                backgroundColor: colors.neutral[950],
-              },
-              headerTintColor: colors.neutral[400],
-              headerTitleStyle: {
-                fontFamily: "Geist",
-                fontWeight: "600",
-              },
-            }}
-          />
+        {/* oxlint-disable react/style-prop-object */}
+        <StatusBar style="light" />
+        <Stack
+          screenOptions={{
+            contentStyle: styles.contentStyle,
+            headerShown: false,
+            headerStyle: {
+              backgroundColor: colors.neutral[950],
+            },
+            headerTintColor: colors.neutral[400],
+            headerTitleStyle: {
+              fontFamily: "Geist",
+              fontWeight: "600",
+            },
+          }}
+        />
 
-          <PortalHost />
-        </BottomSheetModalProvider>
+        <PortalHost />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

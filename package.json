@@ -23,7 +23,7 @@
     "prepare": "lefthook install"
   },
   "dependencies": {
-    "@gorhom/bottom-sheet": "^5.2.14",
+    "@lodev09/react-native-true-sheet": "^3.11.18",
     "@rn-primitives/dropdown-menu": "^1.5.2",
     "@rn-primitives/portal": "^1.5.3",
     "@rn-primitives/switch": "^1.5.2",
