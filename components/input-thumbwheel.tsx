@@ -2,11 +2,10 @@ import { AndroidHaptics, ImpactFeedbackStyle } from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useMemo } from "react";
 import type { LayoutChangeEvent } from "react-native";
-import { PanResponder, StyleSheet, View } from "react-native";
+import { PanResponder, Platform, StyleSheet, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
-  withDecay,
   withSpring,
 } from "react-native-reanimated";
 
@@ -50,6 +49,9 @@ const applyRubberBand = (
   maxTranslate: number
 ) => {
   "worklet";
+  if (!Number.isFinite(offset)) {
+    return 0;
+  }
   if (offset > maxTranslate) {
     const overdrag = offset - maxTranslate;
     return maxTranslate + 35 * Math.log10(1 + overdrag / 35);
@@ -67,12 +69,21 @@ export const getIndexForOffset = (
   totalTicks: number
 ) => {
   "worklet";
+  if (!Number.isFinite(offset)) {
+    return 0;
+  }
   const rawIndex = (width / 2 - TICK_WIDTH / 2 - offset) / TICK_WIDTH;
+  if (!Number.isFinite(rawIndex)) {
+    return 0;
+  }
   return Math.max(0, Math.min(Math.round(rawIndex), totalTicks - 1));
 };
 
 export const getOffsetForIndex = (index: number, width: number) => {
   "worklet";
+  if (!Number.isFinite(index)) {
+    return 0;
+  }
   return width / 2 - (index * TICK_WIDTH + TICK_WIDTH / 2);
 };
 
@@ -127,34 +138,45 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
 
   const notifyChange = useCallback(
     (nextVal: number) => {
-      onChangeValue?.(nextVal);
+      if (Number.isFinite(nextVal)) {
+        onChangeValue?.(nextVal);
+      }
     },
     [onChangeValue]
   );
 
   const playHaptic = useCallback((index: number) => {
-    if (index % 5 === 0) {
-      triggerHaptic({
-        mode: ImpactFeedbackStyle.Medium,
-        type: triggerType.Impact,
-      });
-      triggerAndroidHaptic(AndroidHaptics.Confirm);
+    if (Platform.OS === "android") {
+      triggerAndroidHaptic(
+        index % 5 === 0 ? AndroidHaptics.Confirm : AndroidHaptics.Clock_Tick
+      );
     } else {
-      triggerHaptic({
-        type: triggerType.Selection,
-      });
+      triggerHaptic(
+        index % 5 === 0
+          ? {
+              mode: ImpactFeedbackStyle.Medium,
+              type: triggerType.Impact,
+            }
+          : {
+              type: triggerType.Selection,
+            }
+      );
     }
   }, []);
 
   const panResponder = useMemo(
     () =>
       PanResponder.create({
-        onMoveShouldSetPanResponder: (_, gestureState) =>
-          Math.abs(gestureState.dx) > 2 &&
-          Math.abs(gestureState.dx) > Math.abs(gestureState.dy),
-        onMoveShouldSetPanResponderCapture: (_, gestureState) =>
-          Math.abs(gestureState.dx) > 2 &&
-          Math.abs(gestureState.dx) > Math.abs(gestureState.dy),
+        onMoveShouldSetPanResponder: (_, gestureState) => {
+          const dx = Math.abs(gestureState.dx || 0);
+          const dy = Math.abs(gestureState.dy || 0);
+          return dx > 2 && dx > dy;
+        },
+        onMoveShouldSetPanResponderCapture: (_, gestureState) => {
+          const dx = Math.abs(gestureState.dx || 0);
+          const dy = Math.abs(gestureState.dy || 0);
+          return dx > 2 && dx > dy;
+        },
         onPanResponderGrant: () => {
           isDragging.value = true;
           startX.value = translateX.value;
@@ -165,7 +187,8 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
             width / 2 - ((totalTicks - 1) * TICK_WIDTH + TICK_WIDTH / 2);
           const maxTranslate = width / 2 - TICK_WIDTH / 2;
 
-          const nextOffset = startX.value + gestureState.dx;
+          const dx = Number.isFinite(gestureState?.dx) ? gestureState.dx : 0;
+          const nextOffset = startX.value + dx;
           translateX.value = applyRubberBand(
             nextOffset,
             minTranslate,
@@ -190,59 +213,28 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
             width / 2 - ((totalTicks - 1) * TICK_WIDTH + TICK_WIDTH / 2);
           const maxTranslate = width / 2 - TICK_WIDTH / 2;
 
+          let targetIndex: number;
           if (translateX.value > maxTranslate) {
-            translateX.value = withSpring(
-              maxTranslate,
-              SPRING_CONFIG,
-              (finished) => {
-                if (finished) {
-                  isDragging.value = false;
-                }
-              }
-            );
+            targetIndex = 0;
           } else if (translateX.value < minTranslate) {
-            translateX.value = withSpring(
-              minTranslate,
-              SPRING_CONFIG,
-              (finished) => {
-                if (finished) {
-                  isDragging.value = false;
-                }
-              }
-            );
+            targetIndex = totalTicks - 1;
           } else {
-            const velocity = (gestureState.vx || 0) * 1000;
-            translateX.value = withDecay(
-              {
-                deceleration: 0.993,
-                velocity,
-              },
-              (finished) => {
-                if (finished) {
-                  const targetIndex = getIndexForOffset(
-                    translateX.value,
-                    width,
-                    totalTicks
-                  );
-                  const targetOffset = getOffsetForIndex(targetIndex, width);
-                  translateX.value = withSpring(
-                    targetOffset,
-                    SPRING_CONFIG,
-                    (springDone) => {
-                      if (springDone) {
-                        isDragging.value = false;
-                        if (targetIndex !== lastHapticIndex.value) {
-                          lastHapticIndex.value = targetIndex;
-                          playHaptic(targetIndex);
-                          notifyChange(min + targetIndex * step);
-                        }
-                      }
-                    }
-                  );
-                }
-              }
-            );
+            // Project target offset from fling velocity
+            const vx = Number.isFinite(gestureState?.vx) ? gestureState.vx : 0;
+            const velocity = vx * 1000;
+            const projectedOffset = translateX.value + velocity * 0.16;
+            targetIndex = getIndexForOffset(projectedOffset, width, totalTicks);
           }
+
+          const targetOffset = getOffsetForIndex(targetIndex, width);
+          isDragging.value = false;
+          translateX.value = withSpring(targetOffset, SPRING_CONFIG);
+
+          if (targetIndex !== lastHapticIndex.value) {
+            lastHapticIndex.value = targetIndex;
+            playHaptic(targetIndex);
+          }
+          notifyChange(min + targetIndex * step);
         },
         onPanResponderTerminate: () => {
           isDragging.value = false;
@@ -254,6 +246,7 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
           );
           const targetOffset = getOffsetForIndex(targetIndex, width);
           translateX.value = withSpring(targetOffset, SPRING_CONFIG);
+          notifyChange(min + targetIndex * step);
         },
         onPanResponderTerminationRequest: () => false,
         onStartShouldSetPanResponder: () => true,
@@ -441,10 +434,13 @@ const tickStyles = StyleSheet.create({
     alignItems: "center",
     height: "100%",
     paddingTop: 12,
+    position: "relative",
     width: TICK_WIDTH,
   },
   label: {
-    marginTop: 6,
+    bottom: 8,
+    left: (TICK_WIDTH - 60) / 2,
+    position: "absolute",
     textAlign: "center",
     width: 60,
   },
@@ -458,6 +454,5 @@ const tickStyles = StyleSheet.create({
   },
   minor: {
     height: 16,
-    opacity: 0.5,
   },
 });

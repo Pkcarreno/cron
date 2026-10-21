@@ -137,19 +137,32 @@ describe("InputThumbwheel", () => {
     expect(onChangeValue).toHaveBeenCalledWith(0);
   });
 
-  it("renders major tick labels correctly", async () => {
+  it("renders major tick labels correctly with absolute positioning to prevent flex width inflation", async () => {
     const screen = await renderWithProviders(
       <InputThumbwheel value={10} min={0} max={20} step={1} />
     );
 
-    expect(screen.getByText("0")).toBeTruthy();
-    expect(screen.getByText("5")).toBeTruthy();
-    expect(screen.getByText("10")).toBeTruthy();
-    expect(screen.getByText("15")).toBeTruthy();
-    expect(screen.getByText("20")).toBeTruthy();
+    const label0 = screen.getByText("0");
+    const label5 = screen.getByText("5");
+    const label10 = screen.getByText("10");
+    const label15 = screen.getByText("15");
+    const label20 = screen.getByText("20");
+
+    expect(label0).toBeTruthy();
+    expect(label5).toBeTruthy();
+    expect(label10).toBeTruthy();
+    expect(label15).toBeTruthy();
+    expect(label20).toBeTruthy();
+
+    // Verify absolute positioning on labels
+    expect(label0.props.style).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ position: "absolute" }),
+      ])
+    );
   });
 
-  it("configures PanResponder to handle drag gestures inside TrueSheet modals", async () => {
+  it("configures PanResponder to handle drag gestures and snap smoothly on release", async () => {
     const onChangeValue = jest.fn();
     const screen = await renderWithProviders(
       <InputThumbwheel
@@ -174,8 +187,8 @@ describe("InputThumbwheel", () => {
       nativeEvent: { layout: { height: 64, width: 300, x: 0, y: 0 } },
     });
 
-    // Mock touch event with standard Responder touchBank structure
-    const mockEvent = {
+    // Touch down event
+    const grantEvent = {
       touchHistory: {
         indexOfSingleActiveTouch: 0,
         mostRecentTimeStamp: 1,
@@ -185,17 +198,44 @@ describe("InputThumbwheel", () => {
             currentPageX: 150,
             currentPageY: 30,
             currentTimeStamp: 1,
+            previousPageX: 150,
+            previousPageY: 30,
+            previousTimeStamp: 1,
             touchActive: true,
           },
         ],
       },
     } as unknown as GestureResponderEvent;
 
-    // Simulate drag interaction
-    wheel.props.onResponderGrant(mockEvent);
-    wheel.props.onResponderMove(mockEvent, { dx: -20 });
-    expect(onChangeValue).toHaveBeenCalled();
+    // Move left by 20px (from 150 to 130) -> advances by +1 tick (from 10 to 11)
+    const moveEvent = {
+      touchHistory: {
+        indexOfSingleActiveTouch: 0,
+        mostRecentTimeStamp: 2,
+        numberActiveTouches: 1,
+        touchBank: [
+          {
+            currentPageX: 130,
+            currentPageY: 30,
+            currentTimeStamp: 2,
+            previousPageX: 150,
+            previousPageY: 30,
+            previousTimeStamp: 1,
+            touchActive: true,
+          },
+        ],
+      },
+    } as unknown as GestureResponderEvent;
 
-    wheel.props.onResponderRelease(mockEvent, { vx: 0 });
+    wheel.props.onResponderGrant(grantEvent);
+    wheel.props.onResponderMove(moveEvent);
+    expect(onChangeValue).toHaveBeenCalledWith(11);
+
+    // Release with velocity snaps without throwing or crashing
+    expect(() => {
+      wheel.props.onResponderRelease(moveEvent);
+    }).not.toThrow();
+
+    expect(onChangeValue).toHaveBeenCalled();
   });
 });
