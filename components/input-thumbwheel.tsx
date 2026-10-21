@@ -1,18 +1,16 @@
 import { AndroidHaptics, ImpactFeedbackStyle } from "expo-haptics";
-import React, {
-  useRef,
-  useEffect,
-  useCallback,
-  useState,
-  useMemo,
-} from "react";
-import type {
-  NativeSyntheticEvent,
-  NativeScrollEvent,
-  LayoutChangeEvent,
-} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import React, { useCallback, useEffect, useMemo } from "react";
+import type { LayoutChangeEvent } from "react-native";
 import { View, StyleSheet } from "react-native";
-import { FlatList } from "react-native-gesture-handler";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withDecay,
+  withSpring,
+} from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 
 import { colors } from "@/helpers/colors";
 import {
@@ -23,7 +21,7 @@ import {
 
 import { Text } from "./text";
 
-const TICK_WIDTH = 16;
+const TICK_WIDTH = 20;
 
 export interface InputThumbwheelProps {
   value: number;
@@ -39,261 +37,83 @@ interface TickProps {
   step: number;
 }
 
-const keyExtractor = (item: number) => item.toString();
+const buildPanGesture = () => Gesture.Pan();
 
-const getItemLayout = (_: unknown, index: number) => ({
-  index,
-  length: TICK_WIDTH,
-  offset: TICK_WIDTH * index,
-});
-
-const getThumbwheelData = (min: number, max: number, step: number) => {
-  const totalTicks = Math.round((max - min) / step) + 1;
-  return {
-    data: Array.from({ length: totalTicks }, (_, i) => i),
-    totalTicks,
-  };
-};
-
-const getScrollMetrics = (offsetX: number, totalTicks: number) => {
-  const rawIndex = Math.max(0, offsetX) / TICK_WIDTH;
-  const closestIndex = Math.max(
-    0,
-    Math.min(Math.round(rawIndex), totalTicks - 1)
-  );
-  return { closestIndex, distanceToCenter: Math.abs(rawIndex - closestIndex) };
-};
-
-interface ScrollState {
-  isScrolling: boolean;
-  isProgrammatic: boolean;
-  isInitialMount: boolean;
-  lastHapticTime: number;
-}
-
-const processHaptics = (
+const fireHaptic = (
   newValue: number,
   min: number,
   max: number,
-  scrollState: React.RefObject<ScrollState>
+  velocity = 0
 ) => {
-  const now = Date.now();
   const isLimit = newValue === min || newValue === max;
   const isMajor = Math.abs(newValue % 5) < 0.001;
 
-  if (now - scrollState.current.lastHapticTime > 40 || isLimit || isMajor) {
-    if (isLimit) {
-      triggerHaptic({
-        mode: ImpactFeedbackStyle.Rigid,
-        type: triggerType.Impact,
-      });
-    } else if (isMajor) {
+  if (isLimit) {
+    triggerHaptic({
+      mode: ImpactFeedbackStyle.Rigid,
+      type: triggerType.Impact,
+    });
+    return;
+  }
+
+  // Fast flick filter: only trigger on major ticks when velocity is high to prevent actuator saturation
+  if (Math.abs(velocity) > 1200) {
+    if (isMajor) {
       triggerAndroidHaptic(AndroidHaptics.Segment_Tick, {
         mode: ImpactFeedbackStyle.Light,
         type: triggerType.Impact,
       });
-    } else {
-      triggerAndroidHaptic(AndroidHaptics.Segment_Frequent_Tick, {
-        type: triggerType.Selection,
-      });
     }
-    scrollState.current.lastHapticTime = now;
+    return;
+  }
+
+  if (isMajor) {
+    triggerAndroidHaptic(AndroidHaptics.Segment_Tick, {
+      mode: ImpactFeedbackStyle.Light,
+      type: triggerType.Impact,
+    });
+  } else {
+    triggerAndroidHaptic(AndroidHaptics.Segment_Frequent_Tick, {
+      type: triggerType.Selection,
+    });
   }
 };
 
-const getUpdatedValue = (
-  closestIndex: number,
-  lastIndex: number,
-  distance: number,
-  params: { min: number; step: number }
+const applyRubberBand = (
+  offset: number,
+  minBound: number,
+  maxBound: number
 ) => {
-  const isNearCenter = distance < 0.3;
-  const isFastScroll = Math.abs(closestIndex - lastIndex) > 1;
-
-  if (isNearCenter || isFastScroll) {
-    return Number((params.min + closestIndex * params.step).toFixed(2));
+  "worklet";
+  if (offset > maxBound) {
+    const over = offset - maxBound;
+    return maxBound + over * 0.35;
   }
-  return null;
+  if (offset < minBound) {
+    const over = minBound - offset;
+    return minBound - over * 0.35;
+  }
+  return offset;
 };
 
-const useThumbwheelLogic = (
-  value: number,
-  min: number,
-  max: number,
-  step: number,
-  onChangeValue?: (value: number) => void
+const getIndexForOffset = (
+  offset: number,
+  width: number,
+  totalTicks: number
 ) => {
-  const [dynamicPadding, setDynamicPadding] = useState(0);
-  const flatListRef = useRef<FlatList<number>>(null);
-
-  const initialIndex = Math.round(
-    (Math.max(min, Math.min(value, max)) - min) / step
-  );
-  const lastReportedIndex = useRef<number>(initialIndex);
-
-  const scrollState = useRef({
-    isInitialMount: true,
-    isProgrammatic: false,
-    isScrolling: false,
-    lastHapticTime: 0,
-  });
-
-  const { totalTicks, data } = useMemo(
-    () => getThumbwheelData(min, max, step),
-    [min, max, step]
-  );
-
-  useEffect(() => {
-    if (!scrollState.current.isScrolling && flatListRef.current) {
-      const safeValue = Math.min(Math.max(value, min), max);
-      const index = Math.round((safeValue - min) / step);
-
-      if (
-        !scrollState.current.isInitialMount &&
-        index === lastReportedIndex.current
-      ) {
-        return;
-      }
-
-      scrollState.current.isProgrammatic = true;
-      lastReportedIndex.current = index;
-
-      const timeoutId = setTimeout(() => {
-        flatListRef.current?.scrollToOffset({
-          animated: !scrollState.current.isInitialMount,
-          offset: index * TICK_WIDTH,
-        });
-        scrollState.current.isInitialMount = false;
-      }, 50);
-
-      return () => {
-        clearTimeout(timeoutId);
-      };
-    }
-  }, [value, min, max, step]);
-
-  const handleScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const { closestIndex, distanceToCenter } = getScrollMetrics(
-        event.nativeEvent.contentOffset.x,
-        totalTicks
-      );
-
-      if (closestIndex === lastReportedIndex.current) {
-        return;
-      }
-
-      const newValue = getUpdatedValue(
-        closestIndex,
-        lastReportedIndex.current,
-        distanceToCenter,
-        { min, step }
-      );
-
-      if (newValue !== null) {
-        lastReportedIndex.current = closestIndex;
-        if (!scrollState.current.isProgrammatic) {
-          processHaptics(newValue, min, max, scrollState);
-          onChangeValue?.(newValue);
-        }
-      }
-    },
-    [min, max, step, totalTicks, onChangeValue]
-  );
-
-  const scrollHandlers = useMemo(
-    () => ({
-      onMomentumScrollEnd: () => {
-        scrollState.current.isScrolling = false;
-      },
-      onScrollAnimationEnd: () => {
-        scrollState.current.isProgrammatic = false;
-      },
-      onScrollBeginDrag: () => {
-        scrollState.current.isScrolling = true;
-        scrollState.current.isProgrammatic = false;
-      },
-      onScrollEndDrag: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-        if (e.nativeEvent.velocity?.x === 0) {
-          scrollState.current.isScrolling = false;
-        }
-      },
-    }),
-    []
-  );
-
-  return {
-    data,
-    dynamicPadding,
-    flatListRef,
-    handleScroll,
-    scrollHandlers,
-    setDynamicPadding,
-  };
+  "worklet";
+  const rawIndex = (width / 2 - offset) / TICK_WIDTH;
+  return Math.max(0, Math.min(Math.round(rawIndex), totalTicks - 1));
 };
 
-const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
-  value,
-  onChangeValue,
-  min = 0,
-  max = 200,
-  step = 1,
-}) => {
-  const {
-    dynamicPadding,
-    setDynamicPadding,
-    flatListRef,
-    data,
-    handleScroll,
-    scrollHandlers,
-  } = useThumbwheelLogic(value, min, max, step, onChangeValue);
-
-  const handleLayout = useCallback(
-    (e: LayoutChangeEvent) => {
-      setDynamicPadding(e.nativeEvent.layout.width / 2 - TICK_WIDTH / 2);
-    },
-    [setDynamicPadding]
-  );
-
-  const renderItem = useCallback(
-    ({ item: index }: { item: number }) => (
-      <Tick index={index} min={min} step={step} />
-    ),
-    [min, step]
-  );
-
-  return (
-    <View style={styles.container} onLayout={handleLayout}>
-      <View style={styles.centerIndicator} pointerEvents="none" />
-
-      {dynamicPadding > 0 && (
-        <FlatList
-          ref={flatListRef}
-          horizontal
-          data={data}
-          keyExtractor={keyExtractor}
-          renderItem={renderItem}
-          showsHorizontalScrollIndicator={false}
-          snapToInterval={TICK_WIDTH}
-          decelerationRate="fast"
-          bounces={false}
-          scrollEventThrottle={16}
-          nestedScrollEnabled={true}
-          contentContainerStyle={{ paddingHorizontal: dynamicPadding }}
-          onScroll={handleScroll}
-          getItemLayout={getItemLayout}
-          {...scrollHandlers}
-        />
-      )}
-    </View>
-  );
+const getOffsetForIndex = (index: number, width: number) => {
+  "worklet";
+  return width / 2 - index * TICK_WIDTH;
 };
-
-export default InputThumbwheel;
 
 const Tick = React.memo(({ index, min, step }: TickProps) => {
   const currentValue = min + index * step;
-  const isMajor = currentValue % 5 === 0;
+  const isMajor = Math.abs(currentValue % 5) < 0.001;
 
   return (
     <View style={tickStyles.container}>
@@ -316,6 +136,252 @@ const Tick = React.memo(({ index, min, step }: TickProps) => {
 
 Tick.displayName = "Tick";
 
+const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
+  value,
+  onChangeValue,
+  min = 0,
+  max = 200,
+  step = 1,
+}) => {
+  const totalTicks = Math.round((max - min) / step) + 1;
+  const safeInitialValue = Math.min(Math.max(value, min), max);
+  const initialIndex = Math.round((safeInitialValue - min) / step);
+
+  const containerWidth = useSharedValue(0);
+  const translateX = useSharedValue(0);
+  const startX = useSharedValue(0);
+  const isDragging = useSharedValue(false);
+  const lastHapticIndex = useSharedValue(initialIndex);
+  const needleScaleY = useSharedValue(1);
+
+  const handleIndexChanged = useCallback(
+    (index: number, velocity = 0) => {
+      const newValue = Number((min + index * step).toFixed(2));
+      fireHaptic(newValue, min, max, velocity);
+      onChangeValue?.(newValue);
+    },
+    [min, step, max, onChangeValue]
+  );
+
+  // Synchronize when external value prop changes (e.g. +5, -10 buttons)
+  useEffect(() => {
+    if (!isDragging.get()) {
+      const width = containerWidth.get() > 0 ? containerWidth.get() : 300;
+      const targetIndex = Math.round(
+        (Math.max(min, Math.min(value, max)) - min) / step
+      );
+      const targetOffset = getOffsetForIndex(targetIndex, width);
+
+      translateX.set(
+        containerWidth.get() > 0
+          ? withSpring(targetOffset, {
+              dampingRatio: 0.8,
+              duration: 300,
+            })
+          : targetOffset
+      );
+      lastHapticIndex.set(targetIndex);
+    }
+  }, [
+    value,
+    min,
+    max,
+    step,
+    isDragging,
+    containerWidth,
+    translateX,
+    lastHapticIndex,
+  ]);
+
+  const panGesture = useMemo(
+    () =>
+      buildPanGesture()
+        .activeOffsetX([-8, 8])
+        .failOffsetY([-12, 12])
+        .onBegin(() => {
+          isDragging.value = true;
+          startX.value = translateX.value;
+        })
+        .onUpdate((event) => {
+          const width = containerWidth.value > 0 ? containerWidth.value : 300;
+          const minTranslate = width / 2 - (totalTicks - 1) * TICK_WIDTH;
+          const maxTranslate = width / 2;
+
+          const nextOffset = startX.value + event.translationX;
+          translateX.value = applyRubberBand(
+            nextOffset,
+            minTranslate,
+            maxTranslate
+          );
+
+          const currentIndex = getIndexForOffset(
+            translateX.value,
+            width,
+            totalTicks
+          );
+          if (currentIndex !== lastHapticIndex.value) {
+            lastHapticIndex.value = currentIndex;
+            needleScaleY.value = 0.92;
+            needleScaleY.value = withSpring(1, {
+              dampingRatio: 0.8,
+              duration: 120,
+            });
+            scheduleOnRN(handleIndexChanged, currentIndex, event.velocityX);
+          }
+        })
+        .onEnd((event) => {
+          const width = containerWidth.value > 0 ? containerWidth.value : 300;
+          const minTranslate = width / 2 - (totalTicks - 1) * TICK_WIDTH;
+          const maxTranslate = width / 2;
+
+          if (translateX.value > maxTranslate) {
+            translateX.value = withSpring(
+              maxTranslate,
+              { dampingRatio: 0.8, duration: 250 },
+              (finished) => {
+                if (finished) {
+                  isDragging.value = false;
+                  scheduleOnRN(handleIndexChanged, 0, 0);
+                }
+              }
+            );
+          } else if (translateX.value < minTranslate) {
+            translateX.value = withSpring(
+              minTranslate,
+              { dampingRatio: 0.8, duration: 250 },
+              (finished) => {
+                if (finished) {
+                  isDragging.value = false;
+                  scheduleOnRN(handleIndexChanged, totalTicks - 1, 0);
+                }
+              }
+            );
+          } else {
+            translateX.value = withDecay(
+              {
+                clamp: [minTranslate, maxTranslate],
+                deceleration: 0.994,
+                velocity: event.velocityX,
+              },
+              (finished) => {
+                if (finished) {
+                  isDragging.value = false;
+                  const finalIndex = getIndexForOffset(
+                    translateX.value,
+                    width,
+                    totalTicks
+                  );
+                  const targetOffset = getOffsetForIndex(finalIndex, width);
+                  translateX.value = withSpring(
+                    targetOffset,
+                    { dampingRatio: 1, duration: 150 },
+                    (snapFinished) => {
+                      if (snapFinished) {
+                        scheduleOnRN(handleIndexChanged, finalIndex, 0);
+                      }
+                    }
+                  );
+                }
+              }
+            );
+          }
+        }),
+    [
+      totalTicks,
+      handleIndexChanged,
+      isDragging,
+      startX,
+      translateX,
+      containerWidth,
+      lastHapticIndex,
+      needleScaleY,
+    ]
+  );
+
+  const handleLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      const { width } = e.nativeEvent.layout;
+      containerWidth.set(width);
+      const targetIndex = Math.round(
+        (Math.max(min, Math.min(value, max)) - min) / step
+      );
+      translateX.set(getOffsetForIndex(targetIndex, width));
+    },
+    [min, max, step, value, containerWidth, translateX]
+  );
+
+  const handleAccessibilityAction = useCallback(
+    (event: { nativeEvent: { actionName: string } }) => {
+      if (event.nativeEvent.actionName === "increment") {
+        const nextValue = Math.min(max, value + step);
+        onChangeValue?.(nextValue);
+      } else if (event.nativeEvent.actionName === "decrement") {
+        const nextValue = Math.max(min, value - step);
+        onChangeValue?.(nextValue);
+      }
+    },
+    [max, min, onChangeValue, step, value]
+  );
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  const needleAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scaleY: needleScaleY.value }],
+  }));
+
+  const ticks = useMemo(
+    () => Array.from({ length: totalTicks }, (_, i) => i),
+    [totalTicks]
+  );
+
+  return (
+    <View
+      accessible={true}
+      accessibilityRole="adjustable"
+      accessibilityValue={{ max, min, now: value }}
+      accessibilityActions={[
+        { label: "Increment", name: "increment" },
+        { label: "Decrement", name: "decrement" },
+      ]}
+      onAccessibilityAction={handleAccessibilityAction}
+      style={styles.container}
+      onLayout={handleLayout}
+    >
+      <LinearGradient
+        colors={[colors.neutral[400], "transparent"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.fadeLeft}
+        pointerEvents="none"
+      />
+      <LinearGradient
+        colors={["transparent", colors.neutral[400]]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.fadeRight}
+        pointerEvents="none"
+      />
+
+      <Animated.View
+        style={[styles.centerIndicator, needleAnimatedStyle]}
+        pointerEvents="none"
+      />
+
+      <GestureDetector gesture={panGesture}>
+        <Animated.View style={[styles.stripContainer, animatedStyle]}>
+          {ticks.map((index) => (
+            <Tick key={index} index={index} min={min} step={step} />
+          ))}
+        </Animated.View>
+      </GestureDetector>
+    </View>
+  );
+};
+
+export default InputThumbwheel;
+
 const styles = StyleSheet.create({
   centerIndicator: {
     backgroundColor: colors.red,
@@ -334,6 +400,28 @@ const styles = StyleSheet.create({
     height: 80,
     justifyContent: "center",
     overflow: "hidden",
+    position: "relative",
+  },
+  fadeLeft: {
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    top: 0,
+    width: 24,
+    zIndex: 5,
+  },
+  fadeRight: {
+    bottom: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+    width: 24,
+    zIndex: 5,
+  },
+  stripContainer: {
+    alignItems: "center",
+    flexDirection: "row",
+    height: "100%",
   },
 });
 
