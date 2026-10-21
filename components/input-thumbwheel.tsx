@@ -2,15 +2,13 @@ import { AndroidHaptics, ImpactFeedbackStyle } from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useMemo } from "react";
 import type { LayoutChangeEvent } from "react-native";
-import { StyleSheet, View } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { PanResponder, StyleSheet, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withDecay,
   withSpring,
 } from "react-native-reanimated";
-import { scheduleOnRN } from "react-native-worklets";
 
 import { colors } from "@/helpers/colors";
 import {
@@ -36,8 +34,6 @@ interface TickProps {
   min: number;
   step: number;
 }
-
-const buildPanGesture = () => Gesture.Pan();
 
 const SPRING_CONFIG = {
   damping: 30,
@@ -150,23 +146,26 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
     }
   }, []);
 
-  const panGesture = useMemo(
+  const panResponder = useMemo(
     () =>
-      buildPanGesture()
-        .activeOffsetX([-4, 4])
-        .onBegin(() => {
-          "worklet";
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          Math.abs(gestureState.dx) > 2 &&
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy),
+        onMoveShouldSetPanResponderCapture: (_, gestureState) =>
+          Math.abs(gestureState.dx) > 2 &&
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy),
+        onPanResponderGrant: () => {
           isDragging.value = true;
           startX.value = translateX.value;
-        })
-        .onUpdate((event) => {
-          "worklet";
+        },
+        onPanResponderMove: (_, gestureState) => {
           const width = containerWidth.value > 0 ? containerWidth.value : 300;
           const minTranslate =
             width / 2 - ((totalTicks - 1) * TICK_WIDTH + TICK_WIDTH / 2);
           const maxTranslate = width / 2 - TICK_WIDTH / 2;
 
-          const nextOffset = startX.value + event.translationX;
+          const nextOffset = startX.value + gestureState.dx;
           translateX.value = applyRubberBand(
             nextOffset,
             minTranslate,
@@ -181,12 +180,11 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
 
           if (currentIndex !== lastHapticIndex.value) {
             lastHapticIndex.value = currentIndex;
-            scheduleOnRN(playHaptic, currentIndex);
-            scheduleOnRN(notifyChange, min + currentIndex * step);
+            playHaptic(currentIndex);
+            notifyChange(min + currentIndex * step);
           }
-        })
-        .onEnd((event) => {
-          "worklet";
+        },
+        onPanResponderRelease: (_, gestureState) => {
           const width = containerWidth.value > 0 ? containerWidth.value : 300;
           const minTranslate =
             width / 2 - ((totalTicks - 1) * TICK_WIDTH + TICK_WIDTH / 2);
@@ -197,7 +195,6 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
               maxTranslate,
               SPRING_CONFIG,
               (finished) => {
-                "worklet";
                 if (finished) {
                   isDragging.value = false;
                 }
@@ -208,20 +205,19 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
               minTranslate,
               SPRING_CONFIG,
               (finished) => {
-                "worklet";
                 if (finished) {
                   isDragging.value = false;
                 }
               }
             );
           } else {
+            const velocity = (gestureState.vx || 0) * 1000;
             translateX.value = withDecay(
               {
                 deceleration: 0.993,
-                velocity: event.velocityX,
+                velocity,
               },
               (finished) => {
-                "worklet";
                 if (finished) {
                   const targetIndex = getIndexForOffset(
                     translateX.value,
@@ -233,13 +229,12 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
                     targetOffset,
                     SPRING_CONFIG,
                     (springDone) => {
-                      "worklet";
                       if (springDone) {
                         isDragging.value = false;
                         if (targetIndex !== lastHapticIndex.value) {
                           lastHapticIndex.value = targetIndex;
-                          scheduleOnRN(playHaptic, targetIndex);
-                          scheduleOnRN(notifyChange, min + targetIndex * step);
+                          playHaptic(targetIndex);
+                          notifyChange(min + targetIndex * step);
                         }
                       }
                     }
@@ -248,11 +243,22 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
               }
             );
           }
-        })
-        .onFinalize(() => {
-          "worklet";
+        },
+        onPanResponderTerminate: () => {
           isDragging.value = false;
-        }),
+          const width = containerWidth.value > 0 ? containerWidth.value : 300;
+          const targetIndex = getIndexForOffset(
+            translateX.value,
+            width,
+            totalTicks
+          );
+          const targetOffset = getOffsetForIndex(targetIndex, width);
+          translateX.value = withSpring(targetOffset, SPRING_CONFIG);
+        },
+        onPanResponderTerminationRequest: () => false,
+        onStartShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponderCapture: () => false,
+      }),
     [
       totalTicks,
       containerWidth,
@@ -340,46 +346,45 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
   );
 
   return (
-    <GestureDetector gesture={panGesture}>
-      <View
-        accessibilityActions={[
-          { label: "Increment", name: "increment" },
-          { label: "Decrement", name: "decrement" },
-        ]}
-        accessibilityRole="adjustable"
-        accessibilityValue={{ max, min, now: value }}
-        accessible={true}
-        onAccessibilityAction={handleAccessibilityAction}
-        onLayout={handleLayout}
-        style={styles.container}
-      >
-        <LinearGradient
-          colors={[colors.neutral[400], "transparent"]}
-          end={{ x: 1, y: 0 }}
-          pointerEvents="none"
-          start={{ x: 0, y: 0 }}
-          style={styles.fadeLeft}
-        />
-        <LinearGradient
-          colors={["transparent", colors.neutral[400]]}
-          end={{ x: 1, y: 0 }}
-          pointerEvents="none"
-          start={{ x: 0, y: 0 }}
-          style={styles.fadeRight}
-        />
+    <View
+      accessibilityActions={[
+        { label: "Increment", name: "increment" },
+        { label: "Decrement", name: "decrement" },
+      ]}
+      accessibilityRole="adjustable"
+      accessibilityValue={{ max, min, now: value }}
+      accessible={true}
+      onAccessibilityAction={handleAccessibilityAction}
+      onLayout={handleLayout}
+      style={styles.container}
+      {...panResponder.panHandlers}
+    >
+      <LinearGradient
+        colors={[colors.neutral[400], "transparent"]}
+        end={{ x: 1, y: 0 }}
+        pointerEvents="none"
+        start={{ x: 0, y: 0 }}
+        style={styles.fadeLeft}
+      />
+      <LinearGradient
+        colors={["transparent", colors.neutral[400]]}
+        end={{ x: 1, y: 0 }}
+        pointerEvents="none"
+        start={{ x: 0, y: 0 }}
+        style={styles.fadeRight}
+      />
 
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.centerIndicator, needleAnimatedStyle]}
-        />
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.centerIndicator, needleAnimatedStyle]}
+      />
 
-        <Animated.View style={[styles.stripContainer, animatedStyle]}>
-          {ticks.map((index) => (
-            <Tick index={index} key={index} min={min} step={step} />
-          ))}
-        </Animated.View>
-      </View>
-    </GestureDetector>
+      <Animated.View style={[styles.stripContainer, animatedStyle]}>
+        {ticks.map((index) => (
+          <Tick index={index} key={index} min={min} step={step} />
+        ))}
+      </Animated.View>
+    </View>
   );
 };
 
