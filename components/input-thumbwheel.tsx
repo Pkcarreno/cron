@@ -1,9 +1,10 @@
 import { AndroidHaptics, ImpactFeedbackStyle } from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import type { LayoutChangeEvent } from "react-native";
 import { PanResponder, Platform, StyleSheet, View } from "react-native";
 import Animated, {
+  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -136,9 +137,13 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
   const lastHapticIndex = useSharedValue(initialIndex);
   const isMounted = useSharedValue(false);
 
+  // Track the last value notified by thumbwheel gestures to avoid feedback loop
+  const lastNotifiedValueRef = useRef<number>(value);
+
   const notifyChange = useCallback(
     (nextVal: number) => {
       if (Number.isFinite(nextVal)) {
+        lastNotifiedValueRef.current = nextVal;
         onChangeValue?.(nextVal);
       }
     },
@@ -170,14 +175,10 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
         onMoveShouldSetPanResponder: (_, gestureState) => {
           const dx = Math.abs(gestureState.dx || 0);
           const dy = Math.abs(gestureState.dy || 0);
-          return dx > 2 && dx > dy;
-        },
-        onMoveShouldSetPanResponderCapture: (_, gestureState) => {
-          const dx = Math.abs(gestureState.dx || 0);
-          const dy = Math.abs(gestureState.dy || 0);
-          return dx > 2 && dx > dy;
+          return dx > 4 && dx > dy;
         },
         onPanResponderGrant: () => {
+          cancelAnimation(translateX);
           isDragging.value = true;
           startX.value = translateX.value;
         },
@@ -219,15 +220,33 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
           } else if (translateX.value < minTranslate) {
             targetIndex = totalTicks - 1;
           } else {
-            // Project target offset from fling velocity
             const vx = Number.isFinite(gestureState?.vx) ? gestureState.vx : 0;
-            const velocity = vx * 1000;
-            const projectedOffset = translateX.value + velocity * 0.16;
-            targetIndex = getIndexForOffset(projectedOffset, width, totalTicks);
+            const isFlick = Math.abs(vx) >= 0.2;
+            if (isFlick) {
+              const velocity = vx * 1000;
+              const maxFling = 5 * TICK_WIDTH;
+              const flingDistance = Math.max(
+                -maxFling,
+                Math.min(maxFling, velocity * 0.12)
+              );
+              const projectedOffset = translateX.value + flingDistance;
+              targetIndex = getIndexForOffset(
+                projectedOffset,
+                width,
+                totalTicks
+              );
+            } else {
+              targetIndex = getIndexForOffset(
+                translateX.value,
+                width,
+                totalTicks
+              );
+            }
           }
 
           const targetOffset = getOffsetForIndex(targetIndex, width);
           isDragging.value = false;
+          cancelAnimation(translateX);
           translateX.value = withSpring(targetOffset, SPRING_CONFIG);
 
           if (targetIndex !== lastHapticIndex.value) {
@@ -245,11 +264,12 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
             totalTicks
           );
           const targetOffset = getOffsetForIndex(targetIndex, width);
+          cancelAnimation(translateX);
           translateX.value = withSpring(targetOffset, SPRING_CONFIG);
           notifyChange(min + targetIndex * step);
         },
         onPanResponderTerminationRequest: () => false,
-        onStartShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponder: () => false,
         onStartShouldSetPanResponderCapture: () => false,
       }),
     [
@@ -274,25 +294,33 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
       if (!isMounted.value) {
         isMounted.value = true;
         const initialOffset = getOffsetForIndex(initialIndex, width);
+        cancelAnimation(translateX);
         translateX.value = initialOffset;
         startX.value = initialOffset;
+        lastNotifiedValueRef.current = value;
       }
     },
-    [containerWidth, isMounted, initialIndex, translateX, startX]
+    [containerWidth, isMounted, initialIndex, translateX, startX, value]
   );
 
   useEffect(() => {
-    if (isMounted.value && !isDragging.value && containerWidth.value > 0) {
-      const targetIndex = Math.max(
-        0,
-        Math.min(Math.round((value - min) / step), totalTicks - 1)
-      );
-      const targetOffset = getOffsetForIndex(targetIndex, containerWidth.value);
-      if (Math.abs(translateX.value - targetOffset) > 1) {
-        translateX.value = withSpring(targetOffset, SPRING_CONFIG);
-        lastHapticIndex.value = targetIndex;
-      }
+    if (!isMounted.value || containerWidth.value <= 0) {
+      return;
     }
+    // Prevent feedback loop when value change originated from thumbwheel drag
+    if (value === lastNotifiedValueRef.current) {
+      return;
+    }
+    lastNotifiedValueRef.current = value;
+
+    const targetIndex = Math.max(
+      0,
+      Math.min(Math.round((value - min) / step), totalTicks - 1)
+    );
+    const targetOffset = getOffsetForIndex(targetIndex, containerWidth.value);
+    cancelAnimation(translateX);
+    translateX.value = withSpring(targetOffset, SPRING_CONFIG);
+    lastHapticIndex.value = targetIndex;
   }, [
     value,
     min,
@@ -300,7 +328,6 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
     totalTicks,
     containerWidth,
     isMounted,
-    isDragging,
     translateX,
     lastHapticIndex,
   ]);

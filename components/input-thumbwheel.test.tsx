@@ -176,8 +176,8 @@ describe("InputThumbwheel", () => {
 
     const wheel = screen.getByRole("adjustable");
 
-    // Starts on touch
-    expect(wheel.props.onStartShouldSetResponder()).toBe(true);
+    // Static touch does not claim responder (prevents jitter and accidental taps)
+    expect(wheel.props.onStartShouldSetResponder()).toBe(false);
 
     // Prevents sheet from terminating pan once granted
     expect(wheel.props.onResponderTerminationRequest()).toBe(false);
@@ -189,6 +189,7 @@ describe("InputThumbwheel", () => {
 
     // Touch down event
     const grantEvent = {
+      nativeEvent: { touches: [{ pageX: 150, pageY: 30 }] },
       touchHistory: {
         indexOfSingleActiveTouch: 0,
         mostRecentTimeStamp: 1,
@@ -209,6 +210,7 @@ describe("InputThumbwheel", () => {
 
     // Move left by 20px (from 150 to 130) -> advances by +1 tick (from 10 to 11)
     const moveEvent = {
+      nativeEvent: { touches: [{ pageX: 130, pageY: 30 }] },
       touchHistory: {
         indexOfSingleActiveTouch: 0,
         mostRecentTimeStamp: 2,
@@ -227,13 +229,38 @@ describe("InputThumbwheel", () => {
       },
     } as unknown as GestureResponderEvent;
 
+    // Subsequent move event after responder grant
+    const moveEvent2 = {
+      nativeEvent: { touches: [{ pageX: 130, pageY: 30 }] },
+      touchHistory: {
+        indexOfSingleActiveTouch: 0,
+        mostRecentTimeStamp: 3,
+        numberActiveTouches: 1,
+        touchBank: [
+          {
+            currentPageX: 130,
+            currentPageY: 30,
+            currentTimeStamp: 3,
+            previousPageX: 150,
+            previousPageY: 30,
+            previousTimeStamp: 1,
+            touchActive: true,
+          },
+        ],
+      },
+    } as unknown as GestureResponderEvent;
+
+    // Simulate touch move cycle in Responder system: Capture updates geometry, then bubble checks
+    wheel.props.onMoveShouldSetResponderCapture(moveEvent);
+    expect(wheel.props.onMoveShouldSetResponder(moveEvent)).toBe(true);
+
     wheel.props.onResponderGrant(grantEvent);
-    wheel.props.onResponderMove(moveEvent);
+    wheel.props.onResponderMove(moveEvent2);
     expect(onChangeValue).toHaveBeenCalledWith(11);
 
     // Release with velocity snaps without throwing or crashing
     expect(() => {
-      wheel.props.onResponderRelease(moveEvent);
+      wheel.props.onResponderRelease(moveEvent2);
     }).not.toThrow();
 
     expect(onChangeValue).toHaveBeenCalled();
