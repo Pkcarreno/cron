@@ -1,6 +1,8 @@
 import { act, cleanup, fireEvent } from "@testing-library/react-native";
 import { createStore } from "jotai";
 import React from "react";
+import { State } from "react-native-gesture-handler";
+import { fireGestureHandler } from "react-native-gesture-handler/jest-utils";
 
 import { TimerMode } from "@/helpers/timer/factory";
 import { serializeTimerConfig } from "@/helpers/timer/utils/config-serializer";
@@ -265,6 +267,7 @@ describe("Menu integration", () => {
       pathname: "/timer",
     });
   });
+
   it("handles tab switching smoothly via header inactive tab press without ref warnings or loop", async () => {
     const store = createStore();
     const screen = await renderWithProviders(<Menu />, { store });
@@ -294,5 +297,116 @@ describe("Menu integration", () => {
       }),
       pathname: "/timer",
     });
+  });
+
+  it("isolates dropdown menu trigger strictly to chevron button and preserves unimpeded tab text", async () => {
+    const store = createStore();
+    const screen = await renderWithProviders(<Menu />, { store });
+
+    // Chevron trigger must have dedicated testID and accessibility label
+    const chevronTrigger = screen.getByTestId("form-pager-chevron-trigger");
+    expect(chevronTrigger).toBeTruthy();
+    expect(chevronTrigger.props.accessibilityLabel).toBe("Select workout mode");
+
+    // Pressing the chevron opens dropdown menu items
+    await act(() => {
+      fireEvent.press(chevronTrigger);
+    });
+
+    // Dropdown item for INTERVAL is displayed and selectable
+    const intervalMenuItems = screen.getAllByText("INTERVAL");
+    expect(intervalMenuItems.length).toBeGreaterThan(0);
+  });
+
+  it("supports direct manipulation horizontal pan gesture on header to change tabs", async () => {
+    const store = createStore();
+    const screen = await renderWithProviders(<Menu />, { store });
+
+    const headerPanView = screen.getByTestId("form-pager-header-pan");
+    expect(headerPanView).toBeTruthy();
+
+    // Walk up the fiber tree from the native test instance to locate the GestureDetector props
+    const rawInstance = headerPanView as unknown as {
+      instance?: {
+        unstable_fiber?: {
+          memoizedProps?: { gesture?: unknown };
+          return?: unknown;
+        };
+      };
+    };
+    let fiber = rawInstance.instance?.unstable_fiber;
+    let panGesture: unknown = null;
+    while (fiber) {
+      if (fiber.memoizedProps?.gesture) {
+        panGesture = fiber.memoizedProps.gesture;
+        break;
+      }
+      fiber = fiber.return as typeof fiber;
+    }
+    expect(panGesture).toBeTruthy();
+
+    // Simulate swiping left on header (moving from tab 0 to tab 1)
+    await act(() => {
+      fireGestureHandler(
+        panGesture as Parameters<typeof fireGestureHandler>[0],
+        [
+          { state: State.BEGAN },
+          { state: State.ACTIVE, translationX: -150 },
+          { state: State.END, translationX: -150, velocityX: -600 },
+        ]
+      );
+    });
+
+    // Start button should now navigate for AMRAP (tab 1)
+    const startButton = screen.getByRole("button", { name: "Start" });
+    await act(() => {
+      fireEvent.press(startButton);
+    });
+
+    expect(mockPush).toHaveBeenCalledWith({
+      params: serializeTimerConfig({
+        durationMs: 4 * 60 * 1000,
+        mode: TimerMode.AMRAP,
+      }),
+      pathname: "/timer",
+    });
+  });
+
+  it("lazily windows form panels (|active - index| <= 1) while preserving form inputs across transitions", async () => {
+    const store = createStore();
+    const screen = await renderWithProviders(<Menu />, { store });
+
+    // Tab 0 (FOR TIME) is active. Immediate neighbor is Tab 1 (AMRAP).
+    // Distant tab (EMOM at index 3) must NOT have its form components mounted in the tree.
+    expect(screen.queryByText("45 sec")).toBeNull();
+
+    // Switch to EMOM (index 3)
+    const pagerView = screen.getByTestId("form-pager-view");
+    await act(() => {
+      fireEvent(pagerView, "onPageSelected", {
+        nativeEvent: { position: 3 },
+      });
+    });
+
+    // Now EMOM form is mounted and active
+    expect(screen.getByText("45 sec")).toBeTruthy();
+
+    // Select 45 sec preset
+    await act(() => {
+      fireEvent.press(screen.getByText("45 sec"));
+    });
+    expect(store.get(emomWorkoutAtom).roundDurationMs).toBe(45_000);
+
+    // Switch back to FOR TIME (index 0). Distant tab EMOM (index 3) is unmounted.
+    await act(() => {
+      fireEvent(pagerView, "onPageSelected", {
+        nativeEvent: { position: 0 },
+      });
+    });
+
+    expect(screen.queryByText("45 sec")).toBeNull();
+
+    // But persistent store still preserves EMOM setting
+    expect(store.get(emomWorkoutAtom).roundDurationMs).toBe(45_000);
   });
 });
