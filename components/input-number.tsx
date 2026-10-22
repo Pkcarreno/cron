@@ -1,5 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
-import type { PressableProps, PressableStateCallbackType } from "react-native";
+import { memo, useCallback, useMemo, useState } from "react";
+import type {
+  LayoutChangeEvent,
+  PressableProps,
+  PressableStateCallbackType,
+} from "react-native";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { colors } from "@/helpers/colors";
@@ -181,6 +185,93 @@ export const NumberPickerSheet: React.FC<NumberPickerSheetProps> = ({
   );
 };
 
+// Memoized direct value readout: 0ms overhead, perfectly synchronized with thumbwheel
+const HeaderValueDisplay = memo(
+  ({ value, suffix }: { value: number; suffix?: string }) => (
+    <View style={sheetFormStyles.header}>
+      <Text style={sheetFormStyles.value} color="white" weight="800" size={48}>
+        {value}
+      </Text>
+      {suffix && (
+        <Text colorSubtone="500" weight="700" size={18}>
+          {suffix}
+        </Text>
+      )}
+    </View>
+  )
+);
+
+HeaderValueDisplay.displayName = "HeaderValueDisplay";
+
+const QuickActionsRow = memo(
+  ({
+    value,
+    min,
+    max,
+    onChange,
+  }: {
+    value: number;
+    min: number;
+    max: number;
+    onChange: (val: number) => void;
+  }) => {
+    const handleSubtractTen = useCallback(() => {
+      onChange(Math.max(min, value - 10));
+    }, [min, onChange, value]);
+
+    const handleSubtractFive = useCallback(() => {
+      onChange(Math.max(min, value - 5));
+    }, [min, onChange, value]);
+
+    const handleAddFive = useCallback(() => {
+      onChange(Math.min(max, value + 5));
+    }, [max, onChange, value]);
+
+    const handleAddTen = useCallback(() => {
+      onChange(Math.min(max, value + 10));
+    }, [max, onChange, value]);
+
+    return (
+      <View style={sheetFormStyles.quickActionsRow}>
+        <View style={sheetFormStyles.quickActionGroup}>
+          <Button
+            title="-10"
+            variant="secondary"
+            size="sm"
+            disabled={value - 10 < min}
+            onPress={handleSubtractTen}
+          />
+          <Button
+            title="-5"
+            variant="secondary"
+            size="sm"
+            disabled={value - 5 < min}
+            onPress={handleSubtractFive}
+          />
+        </View>
+        <View style={sheetFormStyles.quickActionGroup}>
+          <Button
+            title="+5"
+            variant="secondary"
+            size="sm"
+            disabled={value + 5 > max}
+            onPress={handleAddFive}
+          />
+          <Button
+            title="+10"
+            variant="secondary"
+            size="sm"
+            disabled={value + 10 > max}
+            onPress={handleAddTen}
+          />
+        </View>
+      </View>
+    );
+  }
+);
+
+QuickActionsRow.displayName = "QuickActionsRow";
+
 export interface NumberPickerFormProps {
   value: number;
   onChange: (value: number) => void;
@@ -198,39 +289,31 @@ export const NumberPickerForm: React.FC<NumberPickerFormProps> = ({
   min = 0,
   max = 99,
 }) => {
-  const handleSubtractTen = useCallback(() => {
-    onChange(Math.max(min, value - 10));
-  }, [min, onChange, value]);
+  // Lock natural content height on initial mount to prevent TrueSheet requestLayout thrashing
+  const [lockedHeight, setLockedHeight] = useState<number | undefined>();
 
-  const handleSubtractFive = useCallback(() => {
-    onChange(Math.max(min, value - 5));
-  }, [min, onChange, value]);
-
-  const handleAddFive = useCallback(() => {
-    onChange(Math.min(max, value + 5));
-  }, [max, onChange, value]);
-
-  const handleAddTen = useCallback(() => {
-    onChange(Math.min(max, value + 10));
-  }, [max, onChange, value]);
+  const handleContainerLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      if (lockedHeight === undefined) {
+        const { height } = e.nativeEvent.layout;
+        if (height > 0) {
+          setLockedHeight(Math.round(height));
+        }
+      }
+    },
+    [lockedHeight]
+  );
 
   return (
-    <>
-      <View style={sheetFormStyles.header}>
-        <Text
-          style={sheetFormStyles.value}
-          color="white"
-          weight="800"
-          size={48}
-        >
-          {value}
-        </Text>
-        {valueSuffix && (
-          <Text colorSubtone="500" weight="700" size={18}>
-            {valueSuffix}
-          </Text>
-        )}
-      </View>
+    <View
+      onLayout={handleContainerLayout}
+      style={[
+        sheetFormStyles.root,
+        lockedHeight ? { height: lockedHeight } : undefined,
+      ]}
+    >
+      <HeaderValueDisplay value={value} suffix={valueSuffix} />
+
       <View style={sheetFormStyles.content}>
         <View style={sheetFormStyles.inputWrapper}>
           <InputThumbwheel
@@ -240,45 +323,18 @@ export const NumberPickerForm: React.FC<NumberPickerFormProps> = ({
             max={max}
           />
         </View>
-        <View style={sheetFormStyles.quickActionsRow}>
-          <View style={sheetFormStyles.quickActionGroup}>
-            <Button
-              title="-10"
-              variant="secondary"
-              size="sm"
-              disabled={value - 10 < min}
-              onPress={handleSubtractTen}
-            />
-            <Button
-              title="-5"
-              variant="secondary"
-              size="sm"
-              disabled={value - 5 < min}
-              onPress={handleSubtractFive}
-            />
-          </View>
-          <View style={sheetFormStyles.quickActionGroup}>
-            <Button
-              title="+5"
-              variant="secondary"
-              size="sm"
-              disabled={value + 5 > max}
-              onPress={handleAddFive}
-            />
-            <Button
-              title="+10"
-              variant="secondary"
-              size="sm"
-              disabled={value + 10 > max}
-              onPress={handleAddTen}
-            />
-          </View>
-        </View>
+
+        <QuickActionsRow
+          value={value}
+          min={min}
+          max={max}
+          onChange={onChange}
+        />
       </View>
       <View style={sheetFormStyles.footer}>
         <Button title="Save" onPress={onSave} />
       </View>
-    </>
+    </View>
   );
 };
 
@@ -302,6 +358,9 @@ const sheetFormStyles = StyleSheet.create({
     flexDirection: "row",
     gap: 16,
     justifyContent: "space-between",
+  },
+  root: {
+    gap: 16,
   },
   value: {
     fontVariant: ["tabular-nums"],

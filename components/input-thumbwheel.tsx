@@ -1,29 +1,42 @@
-import { AndroidHaptics, ImpactFeedbackStyle } from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
 import React, {
-  useRef,
-  useEffect,
   useCallback,
-  useState,
+  useEffect,
   useMemo,
+  useRef,
+  useState,
 } from "react";
 import type {
-  NativeSyntheticEvent,
-  NativeScrollEvent,
   LayoutChangeEvent,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
 } from "react-native";
-import { View, StyleSheet } from "react-native";
-import { FlatList } from "react-native-gesture-handler";
+import { StyleSheet, View } from "react-native";
+import type { SharedValue } from "react-native-reanimated";
+import Animated, {
+  useAnimatedReaction,
+  useAnimatedRef,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+} from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 
 import { colors } from "@/helpers/colors";
-import {
-  triggerAndroidHaptic,
-  triggerHaptic,
-  triggerType,
-} from "@/helpers/haptics";
 
 import { Text } from "./text";
 
-const TICK_WIDTH = 16;
+const TICK_WIDTH = 20;
+
+const HIDDEN_TICK_STYLE = {
+  opacity: 0,
+  transform: [{ scale: 0 }],
+};
+
+const FULL_TICK_STYLE = {
+  opacity: 1,
+  transform: [{ scale: 1 }],
+};
 
 export interface InputThumbwheelProps {
   value: number;
@@ -31,21 +44,16 @@ export interface InputThumbwheelProps {
   min?: number;
   max?: number;
   step?: number;
+  testID?: string;
 }
 
-interface TickProps {
+interface AnimatedTickProps {
   index: number;
   min: number;
   step: number;
+  scrollX: SharedValue<number>;
+  halfWidth: number;
 }
-
-const keyExtractor = (item: number) => item.toString();
-
-const getItemLayout = (_: unknown, index: number) => ({
-  index,
-  length: TICK_WIDTH,
-  offset: TICK_WIDTH * index,
-});
 
 const getThumbwheelData = (min: number, max: number, step: number) => {
   const totalTicks = Math.round((max - min) / step) + 1;
@@ -55,275 +63,308 @@ const getThumbwheelData = (min: number, max: number, step: number) => {
   };
 };
 
-const getScrollMetrics = (offsetX: number, totalTicks: number) => {
-  const rawIndex = Math.max(0, offsetX) / TICK_WIDTH;
-  const closestIndex = Math.max(
-    0,
-    Math.min(Math.round(rawIndex), totalTicks - 1)
-  );
-  return { closestIndex, distanceToCenter: Math.abs(rawIndex - closestIndex) };
-};
+const AnimatedTick = React.memo(
+  ({ index, min, step, scrollX, halfWidth }: AnimatedTickProps) => {
+    const currentValue = min + index * step;
+    const isMajor = currentValue % 5 === 0;
+    const tickPosition = index * TICK_WIDTH;
 
-interface ScrollState {
-  isScrolling: boolean;
-  isProgrammatic: boolean;
-  isInitialMount: boolean;
-  lastHapticTime: number;
-}
+    const animatedStyle = useAnimatedStyle(() => {
+      "worklet";
+      if (halfWidth <= 0) {
+        return FULL_TICK_STYLE;
+      }
 
-const processHaptics = (
-  newValue: number,
-  min: number,
-  max: number,
-  scrollState: React.RefObject<ScrollState>
-) => {
-  const now = Date.now();
-  const isLimit = newValue === min || newValue === max;
-  const isMajor = Math.abs(newValue % 5) < 0.001;
+      const distance = Math.abs(tickPosition - scrollX.get());
 
-  if (now - scrollState.current.lastHapticTime > 40 || isLimit || isMajor) {
-    if (isLimit) {
-      triggerHaptic({
-        mode: ImpactFeedbackStyle.Rigid,
-        type: triggerType.Impact,
-      });
-    } else if (isMajor) {
-      triggerAndroidHaptic(AndroidHaptics.Segment_Tick, {
-        mode: ImpactFeedbackStyle.Light,
-        type: triggerType.Impact,
-      });
-    } else {
-      triggerAndroidHaptic(AndroidHaptics.Segment_Frequent_Tick, {
-        type: triggerType.Selection,
-      });
-    }
-    scrollState.current.lastHapticTime = now;
+      // If tick is outside the visible half-width, collapse completely to skip paint
+      if (distance >= halfWidth) {
+        return HIDDEN_TICK_STYLE;
+      }
+
+      // Full size and opacity in center 40% zone
+      const fadeStart = halfWidth * 0.4;
+      if (distance <= fadeStart) {
+        return FULL_TICK_STYLE;
+      }
+
+      // Smooth falloff towards the edge (outer 60% of halfWidth)
+      const progress = (distance - fadeStart) / (halfWidth - fadeStart);
+      const factor = Math.max(0, Math.min(1, 1 - progress));
+      const scale = factor * factor;
+
+      return {
+        opacity: factor,
+        transform: [{ scale }],
+      };
+    }, [tickPosition, halfWidth]);
+
+    return (
+      <Animated.View style={[tickStyles.container, animatedStyle]}>
+        <View
+          style={[
+            tickStyles.line,
+            isMajor ? tickStyles.major : tickStyles.minor,
+          ]}
+        />
+        {isMajor && (
+          <Text
+            weight="500"
+            colorSubtone="800"
+            size={11}
+            style={tickStyles.label}
+          >
+            {currentValue}
+          </Text>
+        )}
+      </Animated.View>
+    );
   }
-};
+);
 
-const getUpdatedValue = (
-  closestIndex: number,
-  lastIndex: number,
-  distance: number,
-  params: { min: number; step: number }
-) => {
-  const isNearCenter = distance < 0.3;
-  const isFastScroll = Math.abs(closestIndex - lastIndex) > 1;
+AnimatedTick.displayName = "AnimatedTick";
 
-  if (isNearCenter || isFastScroll) {
-    return Number((params.min + closestIndex * params.step).toFixed(2));
-  }
-  return null;
-};
+const InputThumbwheel: React.FC<InputThumbwheelProps> = React.memo(
+  ({ value, onChangeValue, min = 0, max = 200, step = 1, testID }) => {
+    const [containerWidth, setContainerWidth] = useState(0);
+    const scrollRef = useAnimatedRef<Animated.ScrollView>();
 
-const useThumbwheelLogic = (
-  value: number,
-  min: number,
-  max: number,
-  step: number,
-  onChangeValue?: (value: number) => void
-) => {
-  const [dynamicPadding, setDynamicPadding] = useState(0);
-  const flatListRef = useRef<FlatList<number>>(null);
+    const safeInitialValue = Math.min(Math.max(value, min), max);
+    const initialIndex = Math.round((safeInitialValue - min) / step);
 
-  const initialIndex = Math.round(
-    (Math.max(min, Math.min(value, max)) - min) / step
-  );
-  const lastReportedIndex = useRef<number>(initialIndex);
+    const scrollX = useSharedValue(initialIndex * TICK_WIDTH);
 
-  const scrollState = useRef({
-    isInitialMount: true,
-    isProgrammatic: false,
-    isScrolling: false,
-    lastHapticTime: 0,
-  });
+    const isUserInteracting = useRef(false);
+    const isProgrammatic = useRef(false);
+    const isInitialMounted = useRef(false);
+    const lastReportedIndex = useRef(initialIndex);
 
-  const { totalTicks, data } = useMemo(
-    () => getThumbwheelData(min, max, step),
-    [min, max, step]
-  );
+    const { totalTicks, data } = useMemo(
+      () => getThumbwheelData(min, max, step),
+      [min, max, step]
+    );
 
-  useEffect(() => {
-    if (!scrollState.current.isScrolling && flatListRef.current) {
+    const dynamicPadding = useMemo(() => {
+      if (containerWidth <= 0) {
+        return 0;
+      }
+      return Math.max(0, containerWidth / 2 - TICK_WIDTH / 2);
+    }, [containerWidth]);
+
+    const halfWidth = useMemo(
+      () => (containerWidth > 0 ? containerWidth / 2 : 0),
+      [containerWidth]
+    );
+
+    const handleLayout = useCallback((e: LayoutChangeEvent) => {
+      const { width } = e.nativeEvent.layout;
+      if (width > 0) {
+        setContainerWidth(width);
+      }
+    }, []);
+
+    // Emits discrete integer change back to React runtime
+    const emitValueChange = useCallback(
+      (newIndex: number) => {
+        if (isProgrammatic.current) {
+          return;
+        }
+        if (newIndex !== lastReportedIndex.current) {
+          lastReportedIndex.current = newIndex;
+          const newValue = Number((min + newIndex * step).toFixed(2));
+          onChangeValue?.(newValue);
+        }
+      },
+      [min, step, onChangeValue]
+    );
+
+    // Settle cleanly on integer mark when momentum or drag ends
+    const settleToNearest = useCallback(
+      (offsetX: number) => {
+        const closestIndex = Math.max(
+          0,
+          Math.min(Math.round(offsetX / TICK_WIDTH), totalTicks - 1)
+        );
+        const targetOffset = closestIndex * TICK_WIDTH;
+
+        if (Math.abs(targetOffset - offsetX) > 0.5) {
+          scrollRef.current?.scrollTo({
+            animated: true,
+            x: targetOffset,
+          });
+        }
+
+        if (closestIndex !== lastReportedIndex.current) {
+          lastReportedIndex.current = closestIndex;
+          const finalValue = Number((min + closestIndex * step).toFixed(2));
+          onChangeValue?.(finalValue);
+        }
+      },
+      [totalTicks, min, step, onChangeValue, scrollRef]
+    );
+
+    // Pure 120fps UI runtime scroll tracking: ZERO bridge traffic inside onScroll
+    const scrollHandler = useAnimatedScrollHandler({
+      onBeginDrag: () => {
+        "worklet";
+        // User started direct interaction
+      },
+      onScroll: (event) => {
+        "worklet";
+        scrollX.set(event.contentOffset.x);
+      },
+    });
+
+    // Reactive integer change on UI thread: only schedules to RN when integer changes
+    useAnimatedReaction(
+      () => {
+        "worklet";
+        const rawIndex = scrollX.get() / TICK_WIDTH;
+        return Math.max(0, Math.min(Math.round(rawIndex), totalTicks - 1));
+      },
+      (currentIndex, previousIndex) => {
+        "worklet";
+        if (previousIndex !== null && currentIndex !== previousIndex) {
+          scheduleOnRN(emitValueChange, currentIndex);
+        }
+      },
+      [totalTicks, emitValueChange]
+    );
+
+    // Handle external value changes (e.g. +5, -10 buttons or initial mount)
+    useEffect(() => {
+      if (isUserInteracting.current || dynamicPadding <= 0) {
+        return;
+      }
+
       const safeValue = Math.min(Math.max(value, min), max);
-      const index = Math.round((safeValue - min) / step);
+      const targetIndex = Math.round((safeValue - min) / step);
 
       if (
-        !scrollState.current.isInitialMount &&
-        index === lastReportedIndex.current
+        isInitialMounted.current &&
+        targetIndex === lastReportedIndex.current
       ) {
         return;
       }
 
-      scrollState.current.isProgrammatic = true;
-      lastReportedIndex.current = index;
+      isProgrammatic.current = true;
+      lastReportedIndex.current = targetIndex;
 
-      const timeoutId = setTimeout(() => {
-        flatListRef.current?.scrollToOffset({
-          animated: !scrollState.current.isInitialMount,
-          offset: index * TICK_WIDTH,
-        });
-        scrollState.current.isInitialMount = false;
-      }, 50);
+      const shouldAnimate = isInitialMounted.current;
+      isInitialMounted.current = true;
 
-      return () => {
-        clearTimeout(timeoutId);
-      };
-    }
-  }, [value, min, max, step]);
+      scrollRef.current?.scrollTo({
+        animated: shouldAnimate,
+        x: targetIndex * TICK_WIDTH,
+      });
 
-  const handleScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const { closestIndex, distanceToCenter } = getScrollMetrics(
-        event.nativeEvent.contentOffset.x,
-        totalTicks
-      );
-
-      if (closestIndex === lastReportedIndex.current) {
-        return;
+      // Reset programmatic flag after smooth transition finishes
+      if (shouldAnimate) {
+        const timer = setTimeout(() => {
+          isProgrammatic.current = false;
+        }, 350);
+        return () => clearTimeout(timer);
       }
+      isProgrammatic.current = false;
+    }, [value, min, max, step, dynamicPadding, scrollRef]);
 
-      const newValue = getUpdatedValue(
-        closestIndex,
-        lastReportedIndex.current,
-        distanceToCenter,
-        { min, step }
-      );
+    const handleScrollBeginDrag = useCallback(() => {
+      isUserInteracting.current = true;
+      isProgrammatic.current = false;
+    }, []);
 
-      if (newValue !== null) {
-        lastReportedIndex.current = closestIndex;
-        if (!scrollState.current.isProgrammatic) {
-          processHaptics(newValue, min, max, scrollState);
-          onChangeValue?.(newValue);
-        }
-      }
-    },
-    [min, max, step, totalTicks, onChangeValue]
-  );
-
-  const scrollHandlers = useMemo(
-    () => ({
-      onMomentumScrollEnd: () => {
-        scrollState.current.isScrolling = false;
-      },
-      onScrollAnimationEnd: () => {
-        scrollState.current.isProgrammatic = false;
-      },
-      onScrollBeginDrag: () => {
-        scrollState.current.isScrolling = true;
-        scrollState.current.isProgrammatic = false;
-      },
-      onScrollEndDrag: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-        if (e.nativeEvent.velocity?.x === 0) {
-          scrollState.current.isScrolling = false;
+    const handleScrollEndDrag = useCallback(
+      (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+        const velocityX = e.nativeEvent.velocity?.x ?? 0;
+        // If release was with minimal velocity, settle immediately
+        if (Math.abs(velocityX) < 0.05) {
+          isUserInteracting.current = false;
+          settleToNearest(e.nativeEvent.contentOffset.x);
         }
       },
-    }),
-    []
-  );
+      [settleToNearest]
+    );
 
-  return {
-    data,
-    dynamicPadding,
-    flatListRef,
-    handleScroll,
-    scrollHandlers,
-    setDynamicPadding,
-  };
-};
+    const handleMomentumScrollEnd = useCallback(
+      (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+        isUserInteracting.current = false;
+        settleToNearest(e.nativeEvent.contentOffset.x);
+      },
+      [settleToNearest]
+    );
 
-const InputThumbwheel: React.FC<InputThumbwheelProps> = ({
-  value,
-  onChangeValue,
-  min = 0,
-  max = 200,
-  step = 1,
-}) => {
-  const {
-    dynamicPadding,
-    setDynamicPadding,
-    flatListRef,
-    data,
-    handleScroll,
-    scrollHandlers,
-  } = useThumbwheelLogic(value, min, max, step, onChangeValue);
+    // Memoize ticks so React reconciliation takes 0ms when parent re-renders value
+    const renderedTicks = useMemo(
+      () =>
+        data.map((itemIndex) => (
+          <AnimatedTick
+            key={itemIndex}
+            index={itemIndex}
+            min={min}
+            step={step}
+            scrollX={scrollX}
+            halfWidth={halfWidth}
+          />
+        )),
+      [data, min, step, scrollX, halfWidth]
+    );
 
-  const handleLayout = useCallback(
-    (e: LayoutChangeEvent) => {
-      setDynamicPadding(e.nativeEvent.layout.width / 2 - TICK_WIDTH / 2);
-    },
-    [setDynamicPadding]
-  );
+    return (
+      <View style={styles.container} testID={testID} onLayout={handleLayout}>
+        <View style={styles.centerIndicator} pointerEvents="none" />
 
-  const renderItem = useCallback(
-    ({ item: index }: { item: number }) => (
-      <Tick index={index} min={min} step={step} />
-    ),
-    [min, step]
-  );
-
-  return (
-    <View style={styles.container} onLayout={handleLayout}>
-      <View style={styles.centerIndicator} pointerEvents="none" />
-
-      {dynamicPadding > 0 && (
-        <FlatList
-          ref={flatListRef}
-          horizontal
-          data={data}
-          keyExtractor={keyExtractor}
-          renderItem={renderItem}
-          showsHorizontalScrollIndicator={false}
-          snapToInterval={TICK_WIDTH}
-          decelerationRate="fast"
-          bounces={false}
-          scrollEventThrottle={16}
-          nestedScrollEnabled={true}
-          contentContainerStyle={{ paddingHorizontal: dynamicPadding }}
-          onScroll={handleScroll}
-          getItemLayout={getItemLayout}
-          {...scrollHandlers}
+        {/* Lateral edge fade masks */}
+        <LinearGradient
+          colors={[colors.neutral[400], "transparent"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.leftFadeMask}
+          pointerEvents="none"
         />
-      )}
-    </View>
-  );
-};
+        <LinearGradient
+          colors={["transparent", colors.neutral[400]]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.rightFadeMask}
+          pointerEvents="none"
+        />
+
+        {dynamicPadding > 0 && (
+          <Animated.ScrollView
+            ref={scrollRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            nestedScrollEnabled={true}
+            snapToInterval={TICK_WIDTH}
+            decelerationRate="fast"
+            bounces={true}
+            overScrollMode="never"
+            scrollEventThrottle={1}
+            contentContainerStyle={{ paddingHorizontal: dynamicPadding }}
+            onScroll={scrollHandler}
+            onScrollBeginDrag={handleScrollBeginDrag}
+            onScrollEndDrag={handleScrollEndDrag}
+            onMomentumScrollEnd={handleMomentumScrollEnd}
+          >
+            {renderedTicks}
+          </Animated.ScrollView>
+        )}
+      </View>
+    );
+  }
+);
+
+InputThumbwheel.displayName = "InputThumbwheel";
 
 export default InputThumbwheel;
-
-const Tick = React.memo(({ index, min, step }: TickProps) => {
-  const currentValue = min + index * step;
-  const isMajor = currentValue % 5 === 0;
-
-  return (
-    <View style={tickStyles.container}>
-      <View
-        style={[tickStyles.line, isMajor ? tickStyles.major : tickStyles.minor]}
-      />
-      {isMajor && (
-        <Text
-          weight="400"
-          colorSubtone="800"
-          size={10}
-          style={tickStyles.label}
-        >
-          {currentValue}
-        </Text>
-      )}
-    </View>
-  );
-});
-
-Tick.displayName = "Tick";
 
 const styles = StyleSheet.create({
   centerIndicator: {
     backgroundColor: colors.red,
     borderRadius: 8,
-    height: 44,
+    height: 48,
     left: "50%",
     marginLeft: -1.5,
-    marginTop: -12,
     position: "absolute",
     width: 3,
     zIndex: 10,
@@ -331,9 +372,27 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.neutral[400],
     borderRadius: 16,
-    height: 80,
+    height: 84,
     justifyContent: "center",
     overflow: "hidden",
+    position: "relative",
+    width: "100%",
+  },
+  leftFadeMask: {
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    top: 0,
+    width: 44,
+    zIndex: 5,
+  },
+  rightFadeMask: {
+    bottom: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+    width: 44,
+    zIndex: 5,
   },
 });
 
@@ -341,11 +400,12 @@ const tickStyles = StyleSheet.create({
   container: {
     alignItems: "center",
     justifyContent: "center",
-    paddingBottom: 10,
+    paddingBottom: 12,
     width: TICK_WIDTH,
   },
   label: {
-    bottom: 5,
+    bottom: 4,
+    fontVariant: ["tabular-nums"],
     left: (TICK_WIDTH - 60) / 2,
     position: "absolute",
     textAlign: "center",
@@ -357,11 +417,12 @@ const tickStyles = StyleSheet.create({
     width: 1.5,
   },
   major: {
-    height: 34,
-    width: 2,
+    height: 36,
+    width: 2.5,
   },
   minor: {
-    height: 24,
-    opacity: 0.5,
+    backgroundColor: colors.neutral[700],
+    height: 22,
+    opacity: 0.6,
   },
 });
