@@ -265,4 +265,34 @@ describe("Menu integration", () => {
       pathname: "/timer",
     });
   });
+  it("handles tab switching smoothly via header inactive tab press without ref warnings or loop", async () => {
+    const store = createStore();
+    const screen = await renderWithProviders(<Menu />, { store });
+
+    // Look for all instances of "AMRAP"
+    const amrapButtons = screen.getAllByText("AMRAP");
+    expect(amrapButtons.length).toBeGreaterThan(0);
+
+    // amrapButtons[0] is in the measurement container, amrapButtons[1] is in the interactive movingTrack
+    await act(() => {
+      fireEvent.press(amrapButtons[1] || amrapButtons[0]);
+    });
+
+    const pagerView = screen.getByTestId("form-pager-view");
+    expect(pagerView).toBeTruthy();
+
+    // Start button should now navigate for AMRAP
+    const startButton = screen.getByRole("button", { name: "Start" });
+    await act(() => {
+      fireEvent.press(startButton);
+    });
+
+    expect(mockPush).toHaveBeenCalledWith({
+      params: serializeTimerConfig({
+        durationMs: 4 * 60 * 1000,
+        mode: TimerMode.AMRAP,
+      }),
+      pathname: "/timer",
+    });
+  });
 });

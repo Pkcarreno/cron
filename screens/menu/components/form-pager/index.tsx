@@ -1,19 +1,12 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { CaretDownIcon } from "phosphor-react-native";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import type { LayoutChangeEvent, NativeSyntheticEvent } from "react-native";
 import { StyleSheet, View } from "react-native";
 import type { PagerViewOnPageScrollEventData } from "react-native-pager-view";
 import PagerView from "react-native-pager-view";
 import Animated, {
   Extrapolation,
-  createAnimatedComponent,
   interpolate,
   useAnimatedStyle,
   withTiming,
@@ -43,8 +36,6 @@ import {
 import type { FormTabOption } from "./types";
 import { useFormPager } from "./use-form-pager";
 
-const AnimatedPagerView = createAnimatedComponent(PagerView);
-
 interface FormPagerProps<T extends string> extends React.PropsWithChildren {
   options: FormTabOption<T>[];
   value?: T;
@@ -52,13 +43,10 @@ interface FormPagerProps<T extends string> extends React.PropsWithChildren {
   testID?: string;
 }
 
-export const FormPager = <T extends string>({
-  value,
-  onValueChange,
-  options,
-  children,
-  testID,
-}: FormPagerProps<T>) => {
+export const FormPager = <T extends string>(
+  props: FormPagerProps<T>
+): React.ReactElement => {
+  const { value, onValueChange, options, children, testID } = props;
   const {
     pagerRef,
     scrollPosition,
@@ -71,6 +59,7 @@ export const FormPager = <T extends string>({
     safePillWidths,
     scrollHandler,
     handlePageSelected,
+    handlePageScrollStateChanged,
     handleMeasureOnLayout,
     handleOnPressInactiveTab,
     isDropdownOpen,
@@ -87,21 +76,6 @@ export const FormPager = <T extends string>({
     },
     []
   );
-
-  const propIndex = useMemo(() => {
-    if (value) {
-      return options.findIndex((opt) => opt.value === value);
-    }
-    return -1;
-  }, [options, value]);
-  const currentIndexRef = useRef(Math.max(propIndex, 0));
-
-  useEffect(() => {
-    if (propIndex >= 0 && propIndex !== currentIndexRef.current) {
-      pagerRef.current?.setPage(propIndex);
-      currentIndexRef.current = propIndex;
-    }
-  }, [propIndex, pagerRef, currentIndexRef]);
 
   const textRowAnimatedStyle = useAnimatedStyle(() => {
     if (!allWidthsMeasured) {
@@ -240,7 +214,7 @@ export const FormPager = <T extends string>({
         </Animated.View>
       </View>
 
-      <AnimatedPagerView
+      <PagerView
         testID={testID ?? "form-pager-view"}
         ref={pagerRef}
         style={styles.pagerView}
@@ -251,6 +225,7 @@ export const FormPager = <T extends string>({
             e: NativeSyntheticEvent<PagerViewOnPageScrollEventData>
           ) => void
         }
+        onPageScrollStateChanged={handlePageScrollStateChanged}
         onPageSelected={handlePageSelected}
       >
         {options.map((option) => (
@@ -260,7 +235,7 @@ export const FormPager = <T extends string>({
               : option.content}
           </View>
         ))}
-      </AnimatedPagerView>
+      </PagerView>
 
       <LinearGradient
         onLayout={handleFooterMeasuraOnLayout}

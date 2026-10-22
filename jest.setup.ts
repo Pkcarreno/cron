@@ -107,3 +107,39 @@ jest.mock("@tanstack/devtools-event-client", () => ({
     stopConnectLoop() {}
   },
 }));
+
+jest.mock("react-native-pager-view", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+
+  class PagerViewMock extends React.Component<any, any> {
+    setPage = jest.fn((selectedPage: number) => {
+      this.props.onPageSelected?.({
+        nativeEvent: { position: selectedPage },
+      });
+    });
+    setPageWithoutAnimation = jest.fn((selectedPage: number) => {
+      this.props.onPageSelected?.({
+        nativeEvent: { position: selectedPage },
+      });
+    });
+    setScrollEnabled = jest.fn();
+
+    render() {
+      return React.createElement(
+        View,
+        {
+          style: this.props.style,
+          testID: this.props.testID,
+        },
+        this.props.children
+      );
+    }
+  }
+
+  return {
+    PagerView: PagerViewMock,
+    __esModule: true,
+    default: PagerViewMock,
+  };
+});

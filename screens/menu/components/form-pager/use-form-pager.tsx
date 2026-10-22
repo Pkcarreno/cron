@@ -1,6 +1,7 @@
 import { AndroidHaptics, ImpactFeedbackStyle } from "expo-haptics";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
+  PageScrollStateChangedNativeEvent,
   PagerViewOnPageScrollEventData,
   PagerViewOnPageSelectedEvent,
 } from "react-native-pager-view";
@@ -22,6 +23,7 @@ const usePagerState = <T extends string>(
 ) => {
   const pagerRef = useRef<PagerView>(null);
   const [internalIndex, setInternalIndex] = useState(0);
+  const scrollStateRef = useRef<"idle" | "dragging" | "settling">("idle");
 
   const propIndex = useMemo(
     () => (value ? options.findIndex((opt) => opt.value === value) : -1),
@@ -37,6 +39,7 @@ const usePagerState = <T extends string>(
     pagerRef,
     propIndex,
     safeActiveIndex,
+    scrollStateRef,
     setInternalIndex,
   };
 };
@@ -133,6 +136,7 @@ export const useFormPager = <T extends string>(
     propIndex,
     safeActiveIndex,
     currentIndexRef,
+    scrollStateRef,
   } = usePagerState(options, value);
   const { tabWidths, tabHeight, allWidthsMeasured, handleMeasureOnLayout } =
     useTabMeasurements(options.length);
@@ -149,11 +153,15 @@ export const useFormPager = <T extends string>(
   const scrollPosition = useSharedValue(safeActiveIndex);
 
   useEffect(() => {
-    if (propIndex >= 0 && propIndex !== currentIndexRef.current) {
+    if (
+      propIndex >= 0 &&
+      propIndex !== currentIndexRef.current &&
+      scrollStateRef.current === "idle"
+    ) {
       pagerRef.current?.setPage(propIndex);
       currentIndexRef.current = propIndex;
     }
-  }, [propIndex, currentIndexRef, pagerRef]);
+  }, [propIndex, currentIndexRef, pagerRef, scrollStateRef]);
 
   const scrollHandler = useEvent(
     (event: PagerViewOnPageScrollEventData) => {
@@ -161,6 +169,13 @@ export const useFormPager = <T extends string>(
       scrollPosition.value = event.position + event.offset;
     },
     ["onPageScroll"]
+  );
+
+  const handlePageScrollStateChanged = useCallback(
+    (e: PageScrollStateChangedNativeEvent) => {
+      scrollStateRef.current = e.nativeEvent.pageScrollState;
+    },
+    [scrollStateRef]
   );
 
   const handlePageSelected = useCallback(
@@ -180,9 +195,15 @@ export const useFormPager = <T extends string>(
   );
 
   const handleOnPressInactiveTab = useCallback(
-    ({ index }: PressableWithIndexOnActionType) =>
-      pagerRef.current?.setPage(index),
-    [pagerRef]
+    ({ index }: PressableWithIndexOnActionType) => {
+      pagerRef.current?.setPage(index);
+      currentIndexRef.current = index;
+      setInternalIndex(index);
+      if (options[index]?.value) {
+        onValueChange?.(options[index].value);
+      }
+    },
+    [pagerRef, currentIndexRef, setInternalIndex, options, onValueChange]
   );
 
   return {
@@ -191,6 +212,7 @@ export const useFormPager = <T extends string>(
     handleOnDropdownStateChange,
     handleOnPressDropdownMenuItem,
     handleOnPressInactiveTab,
+    handlePageScrollStateChanged,
     handlePageSelected,
     isDropdownOpen,
     pagerRef,
