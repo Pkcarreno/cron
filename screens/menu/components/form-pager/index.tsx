@@ -1,10 +1,9 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { CaretDownIcon } from "phosphor-react-native";
 import React, { useCallback, useMemo, useState } from "react";
-import type { LayoutChangeEvent, NativeSyntheticEvent } from "react-native";
+import type { LayoutChangeEvent } from "react-native";
 import { Pressable, StyleSheet, View } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
-import type { PagerViewOnPageScrollEventData } from "react-native-pager-view";
 import PagerView from "react-native-pager-view";
 import Animated, {
   Extrapolation,
@@ -58,7 +57,7 @@ export const FormPager = <T extends string>(
     safeInputRange,
     safeTranslations,
     safePillWidths,
-    scrollHandler,
+    handlePageScroll,
     handlePageSelected,
     handlePageScrollStateChanged,
     handleMeasureOnLayout,
@@ -91,7 +90,7 @@ export const FormPager = <T extends string>(
       Extrapolation.CLAMP
     );
     return { transform: [{ translateX }] };
-  }, [allWidthsMeasured, safeInputRange, safeTranslations]);
+  });
 
   const activeZoneAnimatedStyle = useAnimatedStyle(() => {
     if (!allWidthsMeasured) {
@@ -107,7 +106,7 @@ export const FormPager = <T extends string>(
       transform: [{ scaleX: headerScaleX.value }],
       width: width + ICON_SPACE,
     };
-  }, [allWidthsMeasured, safeInputRange, safePillWidths, headerScaleX]);
+  });
 
   const tabBarContainerHeightStyles = useMemo(
     () => ({
@@ -237,11 +236,7 @@ export const FormPager = <T extends string>(
         style={styles.pagerView}
         initialPage={safeActiveIndex}
         overdrag={true}
-        onPageScroll={
-          scrollHandler as unknown as (
-            e: NativeSyntheticEvent<PagerViewOnPageScrollEventData>
-          ) => void
-        }
+        onPageScroll={handlePageScroll}
         onPageScrollStateChanged={handlePageScrollStateChanged}
         onPageSelected={handlePageSelected}
       >

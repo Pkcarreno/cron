@@ -409,4 +409,18 @@ describe("Menu integration", () => {
     // But persistent store still preserves EMOM setting
     expect(store.get(emomWorkoutAtom).roundDurationMs).toBe(45_000);
   });
+
+  it("handles onPageScroll event without TypeError: Object is not a function", async () => {
+    const store = createStore();
+    const screen = await renderWithProviders(<Menu />, { store });
+
+    const pagerView = screen.getByTestId("form-pager-view");
+    expect(pagerView).toBeTruthy();
+
+    await act(() => {
+      fireEvent(pagerView, "onPageScroll", {
+        nativeEvent: { offset: 0.2, position: 0 },
+      });
+    });
+  });
 });

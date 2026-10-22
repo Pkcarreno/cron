@@ -129,6 +129,7 @@ jest.mock("react-native-pager-view", () => {
       return React.createElement(
         View,
         {
+          ...this.props,
           style: this.props.style,
           testID: this.props.testID,
         },

@@ -1,6 +1,7 @@
 /* oxlint-disable react/capitalized-calls */
 import { AndroidHaptics, ImpactFeedbackStyle } from "expo-haptics";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { NativeSyntheticEvent } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
 import type {
   PageScrollStateChangedNativeEvent,
@@ -8,7 +9,7 @@ import type {
   PagerViewOnPageSelectedEvent,
 } from "react-native-pager-view";
 import type PagerView from "react-native-pager-view";
-import { useEvent, useSharedValue, withSpring } from "react-native-reanimated";
+import { useSharedValue, withSpring } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 
 import { triggerAndroidHaptic, triggerType } from "@/helpers/haptics";
@@ -168,12 +169,11 @@ export const useFormPager = <T extends string>(
     }
   }, [propIndex, currentIndexRef, pagerRef, scrollStateRef]);
 
-  const scrollHandler = useEvent(
-    (event: PagerViewOnPageScrollEventData) => {
-      "worklet";
-      scrollPosition.value = event.position + event.offset;
+  const handlePageScroll = useCallback(
+    (e: NativeSyntheticEvent<PagerViewOnPageScrollEventData>) => {
+      scrollPosition.value = e.nativeEvent.position + e.nativeEvent.offset;
     },
-    ["onPageScroll"]
+    [scrollPosition]
   );
 
   const handlePageScrollStateChanged = useCallback(
@@ -289,6 +289,7 @@ export const useFormPager = <T extends string>(
     handleOnDropdownStateChange,
     handleOnPressDropdownMenuItem,
     handleOnPressInactiveTab,
+    handlePageScroll,
     handlePageScrollStateChanged,
     handlePageSelected,
     headerPanGesture,
@@ -299,7 +300,6 @@ export const useFormPager = <T extends string>(
     safeInputRange,
     safePillWidths,
     safeTranslations,
-    scrollHandler,
     scrollPosition,
     tabHeight,
     tabWidths,
