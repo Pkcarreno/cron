@@ -27,12 +27,7 @@ import {
   PressableWithIndex,
   ViewWithIndexOnLayout,
 } from "./components/utils";
-import {
-  ICON_SPACE,
-  sharedStyles,
-  TAB_FONT_SIZE,
-  TAB_ICON_SIZE,
-} from "./shared";
+import { sharedStyles, TAB_FONT_SIZE, TAB_ICON_SIZE } from "./shared";
 import type { FormTabOption } from "./types";
 import { useFormPager } from "./use-form-pager";
 
@@ -116,7 +111,7 @@ export const FormPager = <T extends string>(
       safePillWidths,
       Extrapolation.CLAMP
     );
-    const stretchedWidth = (width + ICON_SPACE) * headerScaleX.value;
+    const stretchedWidth = width * headerScaleX.value;
     return {
       width: stretchedWidth,
     };
@@ -181,11 +176,7 @@ export const FormPager = <T extends string>(
                 index={index}
                 onAction={handleOnPressInactiveTab}
               >
-                <AnimatedTabWrapper
-                  index={index}
-                  scrollPosition={scrollPosition}
-                  baseWidth={tabWidths[index]}
-                >
+                <AnimatedTabWrapper index={index} baseWidth={tabWidths[index]}>
                   <Text weight="200" size={TAB_FONT_SIZE}>
                     {option.label}
                   </Text>
@@ -202,7 +193,6 @@ export const FormPager = <T extends string>(
                 <AnimatedTabWrapper
                   key={`active-${option.value || "undef"}`}
                   index={index}
-                  scrollPosition={scrollPosition}
                   baseWidth={tabWidths[index]}
                 >
                   <Text size={TAB_FONT_SIZE} weight="500" color="black">

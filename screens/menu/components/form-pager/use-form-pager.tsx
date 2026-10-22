@@ -1,5 +1,6 @@
 /* oxlint-disable react/capitalized-calls */
 import { AndroidHaptics, ImpactFeedbackStyle } from "expo-haptics";
+import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { NativeSyntheticEvent } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
@@ -9,6 +10,7 @@ import type {
   PagerViewOnPageSelectedEvent,
 } from "react-native-pager-view";
 import type PagerView from "react-native-pager-view";
+import type { SharedValue } from "react-native-reanimated";
 import { useSharedValue, withSpring } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 
@@ -19,6 +21,7 @@ import type {
   PressableWithIndexOnActionType,
   ViewWithIndexOnLayoutType,
 } from "./components/utils";
+import { ICON_SPACE } from "./shared";
 import type { FormTabOption } from "./types";
 
 const usePagerState = <T extends string>(
@@ -75,7 +78,7 @@ const usePagerMath = (optionsLength: number, tabWidths: number[]) => {
   const translations = useMemo(() => {
     const trans = [0];
     for (let i = 1; i < tabWidths.length; i += 1) {
-      trans.push(trans[i - 1] - tabWidths[i - 1]);
+      trans.push(trans[i - 1] - (tabWidths[i - 1] + ICON_SPACE));
     }
     return trans;
   }, [tabWidths]);
@@ -96,15 +99,24 @@ const usePagerMath = (optionsLength: number, tabWidths: number[]) => {
   );
   const safePillWidths = useMemo(
     () =>
-      optionsLength > 1 ? tabWidths : [tabWidths[0] || 0, tabWidths[0] || 0],
+      optionsLength > 1
+        ? tabWidths.map((w) => w + ICON_SPACE)
+        : [tabWidths[0] + ICON_SPACE, tabWidths[0] + ICON_SPACE],
     [tabWidths, optionsLength]
   );
 
   return { safeInputRange, safePillWidths, safeTranslations };
 };
 
-const useDropdownChevronManager = (
-  pagerRef: React.RefObject<PagerView | null>
+const useDropdownChevronManager = <T extends string>(
+  pagerRef: React.RefObject<PagerView | null>,
+  scrollPosition: SharedValue<number>,
+  isDraggingHeader: SharedValue<boolean>,
+  currentIndexRef: React.MutableRefObject<number>,
+  setInternalIndex: React.Dispatch<React.SetStateAction<number>>,
+  options: FormTabOption<T>[],
+  lastReportedValueRef: React.MutableRefObject<T | undefined>,
+  onValueChange?: (value: T) => void
 ) => {
   const isDropdownOpen = useSharedValue(false);
 
@@ -117,9 +129,37 @@ const useDropdownChevronManager = (
 
   const handleOnPressDropdownMenuItem = useCallback(
     ({ index }: DropdownMenuItemWithIndexOnActionType) => {
-      pagerRef.current?.setPage(index);
+      isDraggingHeader.value = true;
+      currentIndexRef.current = index;
+      setInternalIndex(index);
+      if (options[index]?.value) {
+        lastReportedValueRef.current = options[index].value;
+        onValueChange?.(options[index].value);
+      }
+      pagerRef.current?.setPageWithoutAnimation(index);
+      scrollPosition.value = withSpring(
+        index,
+        {
+          damping: 22,
+          stiffness: 280,
+        },
+        (finished) => {
+          if (finished) {
+            isDraggingHeader.value = false;
+          }
+        }
+      );
     },
-    [pagerRef]
+    [
+      pagerRef,
+      currentIndexRef,
+      setInternalIndex,
+      options,
+      lastReportedValueRef,
+      onValueChange,
+      scrollPosition,
+      isDraggingHeader,
+    ]
   );
 
   return {
@@ -148,32 +188,58 @@ export const useFormPager = <T extends string>(
     options.length,
     tabWidths
   );
-  const {
-    isDropdownOpen,
-    handleOnDropdownStateChange,
-    handleOnPressDropdownMenuItem,
-  } = useDropdownChevronManager(pagerRef);
 
   const scrollPosition = useSharedValue(safeActiveIndex);
   const dragStartPosition = useSharedValue(0);
   const headerScaleX = useSharedValue(1);
+  const isDraggingHeader = useSharedValue(false);
+  const lastReportedValueRef = useRef<T | undefined>(value);
+
+  const {
+    isDropdownOpen,
+    handleOnDropdownStateChange,
+    handleOnPressDropdownMenuItem,
+  } = useDropdownChevronManager(
+    pagerRef,
+    scrollPosition,
+    isDraggingHeader,
+    currentIndexRef,
+    setInternalIndex,
+    options,
+    lastReportedValueRef,
+    onValueChange
+  );
 
   useEffect(() => {
-    if (
-      propIndex >= 0 &&
-      propIndex !== currentIndexRef.current &&
-      scrollStateRef.current === "idle"
-    ) {
-      pagerRef.current?.setPage(propIndex);
-      currentIndexRef.current = propIndex;
+    if (value !== undefined && value !== lastReportedValueRef.current) {
+      lastReportedValueRef.current = value;
+      if (propIndex >= 0 && propIndex !== currentIndexRef.current) {
+        pagerRef.current?.setPageWithoutAnimation(propIndex);
+        currentIndexRef.current = propIndex;
+        setInternalIndex(propIndex);
+        scrollPosition.value = withSpring(propIndex, {
+          damping: 22,
+          stiffness: 280,
+        });
+      }
     }
-  }, [propIndex, currentIndexRef, pagerRef, scrollStateRef]);
+  }, [
+    value,
+    propIndex,
+    scrollPosition,
+    pagerRef,
+    currentIndexRef,
+    setInternalIndex,
+  ]);
 
   const handlePageScroll = useCallback(
     (e: NativeSyntheticEvent<PagerViewOnPageScrollEventData>) => {
+      if (isDraggingHeader.value) {
+        return;
+      }
       scrollPosition.value = e.nativeEvent.position + e.nativeEvent.offset;
     },
-    [scrollPosition]
+    [scrollPosition, isDraggingHeader]
   );
 
   const handlePageScrollStateChanged = useCallback(
@@ -189,11 +255,14 @@ export const useFormPager = <T extends string>(
       if (newIndex !== currentIndexRef.current) {
         currentIndexRef.current = newIndex;
         setInternalIndex(newIndex);
+        if (options[newIndex]?.value) {
+          lastReportedValueRef.current = options[newIndex].value;
+          onValueChange?.(options[newIndex].value);
+        }
         triggerAndroidHaptic(AndroidHaptics.Segment_Tick, {
           mode: ImpactFeedbackStyle.Soft,
           type: triggerType.Impact,
         });
-        onValueChange?.(options[newIndex].value);
       }
     },
     [currentIndexRef, setInternalIndex, onValueChange, options]
@@ -201,19 +270,41 @@ export const useFormPager = <T extends string>(
 
   const handleOnPressInactiveTab = useCallback(
     ({ index }: PressableWithIndexOnActionType) => {
-      pagerRef.current?.setPage(index);
+      isDraggingHeader.value = true;
       currentIndexRef.current = index;
       setInternalIndex(index);
       if (options[index]?.value) {
+        lastReportedValueRef.current = options[index].value;
         onValueChange?.(options[index].value);
       }
+      pagerRef.current?.setPageWithoutAnimation(index);
+      scrollPosition.value = withSpring(
+        index,
+        {
+          damping: 22,
+          stiffness: 280,
+        },
+        (finished) => {
+          if (finished) {
+            isDraggingHeader.value = false;
+          }
+        }
+      );
     },
-    [pagerRef, currentIndexRef, setInternalIndex, options, onValueChange]
+    [
+      pagerRef,
+      currentIndexRef,
+      setInternalIndex,
+      options,
+      onValueChange,
+      scrollPosition,
+      isDraggingHeader,
+    ]
   );
 
   const onGestureEndOnRN = useCallback(
     (targetIndex: number) => {
-      pagerRef.current?.setPage(targetIndex);
+      pagerRef.current?.setPageWithoutAnimation(targetIndex);
       currentIndexRef.current = targetIndex;
       setInternalIndex(targetIndex);
       triggerAndroidHaptic(AndroidHaptics.Segment_Tick, {
@@ -221,6 +312,7 @@ export const useFormPager = <T extends string>(
         type: triggerType.Impact,
       });
       if (options[targetIndex]?.value) {
+        lastReportedValueRef.current = options[targetIndex].value;
         onValueChange?.(options[targetIndex].value);
       }
     },
@@ -233,10 +325,11 @@ export const useFormPager = <T extends string>(
         .activeOffsetX([-10, 10])
         .failOffsetY([-15, 15])
         .onStart(() => {
+          isDraggingHeader.value = true;
           dragStartPosition.value = scrollPosition.value;
         })
         .onUpdate((event) => {
-          const stepWidth = 80;
+          const stepWidth = 100;
           const deltaIndex = -event.translationX / stepWidth;
           let target = dragStartPosition.value + deltaIndex;
           const maxIndex = options.length - 1;
@@ -248,13 +341,13 @@ export const useFormPager = <T extends string>(
           scrollPosition.value = target;
 
           const stretch = Math.min(
-            1.15,
-            Math.max(1, 1 + Math.abs(event.velocityX) / 4000)
+            1.12,
+            Math.max(1, 1 + Math.abs(event.velocityX) / 5000)
           );
           headerScaleX.value = stretch;
         })
         .onEnd((event) => {
-          const stepWidth = 80;
+          const stepWidth = 100;
           const velocityIndex = -event.velocityX / (stepWidth * 8);
           const projected = scrollPosition.value + velocityIndex;
           const maxIndex = options.length - 1;
@@ -263,12 +356,21 @@ export const useFormPager = <T extends string>(
             Math.min(maxIndex, Math.round(projected))
           );
 
-          scrollPosition.value = withSpring(clampedTarget, {
-            damping: 20,
-            stiffness: 300,
-          });
+          scrollPosition.value = withSpring(
+            clampedTarget,
+            {
+              damping: 22,
+              stiffness: 280,
+              velocity: velocityIndex,
+            },
+            (finished) => {
+              if (finished) {
+                isDraggingHeader.value = false;
+              }
+            }
+          );
           headerScaleX.value = withSpring(1, {
-            damping: 20,
+            damping: 24,
             stiffness: 320,
           });
 
@@ -278,6 +380,7 @@ export const useFormPager = <T extends string>(
       dragStartPosition,
       scrollPosition,
       headerScaleX,
+      isDraggingHeader,
       options.length,
       onGestureEndOnRN,
     ]

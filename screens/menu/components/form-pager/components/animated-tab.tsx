@@ -1,10 +1,5 @@
 import type React from "react";
-import type { SharedValue } from "react-native-reanimated";
-import Animated, {
-  Extrapolation,
-  interpolate,
-  useAnimatedStyle,
-} from "react-native-reanimated";
+import { View } from "react-native";
 
 import {
   ICON_SPACE,
@@ -13,35 +8,19 @@ import {
 
 interface AnimatedTabWrapperProps extends React.PropsWithChildren {
   index: number;
-  scrollPosition?: SharedValue<number>;
   baseWidth: number;
 }
 
 export const AnimatedTabWrapper: React.FC<AnimatedTabWrapperProps> = ({
-  index,
-  scrollPosition,
   baseWidth,
   children,
-}) => {
-  const animatedWidthStyle = useAnimatedStyle(() => {
-    if (!baseWidth) {
-      return { width: 0 };
-    }
-    if (!scrollPosition) {
-      return { width: baseWidth };
-    }
-    const extraWidth = interpolate(
-      scrollPosition.value,
-      [index - 1, index, index + 1],
-      [0, ICON_SPACE, 0],
-      Extrapolation.CLAMP
-    );
-    return { width: baseWidth + extraWidth };
-  });
-
-  return (
-    <Animated.View style={[sharedStyles.pillLayout, animatedWidthStyle]}>
-      {children}
-    </Animated.View>
-  );
-};
+}) => (
+  <View
+    style={[
+      sharedStyles.pillLayout,
+      baseWidth > 0 ? { width: baseWidth + ICON_SPACE } : undefined,
+    ]}
+  >
+    {children}
+  </View>
+);
