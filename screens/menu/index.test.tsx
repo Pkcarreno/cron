@@ -372,12 +372,12 @@ describe("Menu integration", () => {
     });
   });
 
-  it("lazily windows form panels (|active - index| <= 1) while preserving form inputs across transitions", async () => {
+  it("lazily loads unvisited distant form panels while caching visited tabs to prevent swipe remount lag", async () => {
     const store = createStore();
     const screen = await renderWithProviders(<Menu />, { store });
 
     // Tab 0 (FOR TIME) is active. Immediate neighbor is Tab 1 (AMRAP).
-    // Distant tab (EMOM at index 3) must NOT have its form components mounted in the tree.
+    // Distant tab (EMOM at index 3) must NOT have its form components mounted in the tree on initial load.
     expect(screen.queryByText("45 sec")).toBeNull();
 
     // Switch to EMOM (index 3)
@@ -397,16 +397,17 @@ describe("Menu integration", () => {
     });
     expect(store.get(emomWorkoutAtom).roundDurationMs).toBe(45_000);
 
-    // Switch back to FOR TIME (index 0). Distant tab EMOM (index 3) is unmounted.
+    // Switch back to FOR TIME (index 0). Visited tabs are kept warm to prevent swipe lag and remount churn.
     await act(() => {
       fireEvent(pagerView, "onPageSelected", {
         nativeEvent: { position: 0 },
       });
     });
 
-    expect(screen.queryByText("45 sec")).toBeNull();
+    // EMOM remains mounted in memory so revisiting it is instant
+    expect(screen.getByText("45 sec")).toBeTruthy();
 
-    // But persistent store still preserves EMOM setting
+    // And persistent store still preserves EMOM setting
     expect(store.get(emomWorkoutAtom).roundDurationMs).toBe(45_000);
   });
 
@@ -419,8 +420,11 @@ describe("Menu integration", () => {
 
     await act(() => {
       fireEvent(pagerView, "onPageScroll", {
-        nativeEvent: { offset: 0.2, position: 0 },
+        nativeEvent: { offset: 0.5, position: 0 },
       });
     });
+
+    // Reanimated scroll position updated without native crash
+    expect(screen.getAllByText("FOR_TIME").length).toBeGreaterThan(0);
   });
 });

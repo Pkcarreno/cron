@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { CaretDownIcon } from "phosphor-react-native";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import type { LayoutChangeEvent } from "react-native";
 import { Pressable, StyleSheet, View } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
@@ -71,6 +71,20 @@ export const FormPager = <T extends string>(
 
   const [footerHeight, setFooterHeight] = useState(0);
 
+  const visitedTabsRef = useRef<Set<number>>(null);
+  if (!visitedTabsRef.current) {
+    visitedTabsRef.current = new Set<number>();
+  }
+  for (const idx of [
+    safeActiveIndex - 1,
+    safeActiveIndex,
+    safeActiveIndex + 1,
+  ]) {
+    if (idx >= 0 && idx < options.length) {
+      visitedTabsRef.current.add(idx);
+    }
+  }
+
   const handleFooterMeasuraOnLayout = useCallback(
     (event: LayoutChangeEvent) => {
       const { height } = event.nativeEvent.layout;
@@ -102,9 +116,9 @@ export const FormPager = <T extends string>(
       safePillWidths,
       Extrapolation.CLAMP
     );
+    const stretchedWidth = (width + ICON_SPACE) * headerScaleX.value;
     return {
-      transform: [{ scaleX: headerScaleX.value }],
-      width: width + ICON_SPACE,
+      width: stretchedWidth,
     };
   });
 
@@ -198,13 +212,17 @@ export const FormPager = <T extends string>(
               ))}
             </Animated.View>
 
-            <DropdownMenu onOpenChange={handleOnDropdownStateChange}>
+            <DropdownMenu
+              style={StyleSheet.absoluteFill}
+              pointerEvents="box-none"
+              onOpenChange={handleOnDropdownStateChange}
+            >
               <DropdownMenuTrigger asChild>
                 <Pressable
                   testID="form-pager-chevron-trigger"
                   accessibilityRole="button"
                   accessibilityLabel="Select workout mode"
-                  hitSlop={12}
+                  hitSlop={{ bottom: 12, left: 16, right: 16, top: 12 }}
                   style={tabBarStyles.dropdownIcon}
                 >
                   <Animated.View style={chevronAnimatedStyle}>
@@ -241,9 +259,9 @@ export const FormPager = <T extends string>(
         onPageSelected={handlePageSelected}
       >
         {options.map((option, index) => {
-          const isWithinWindow = Math.abs(safeActiveIndex - index) <= 1;
+          const isMounted = visitedTabsRef.current?.has(index);
           let content: React.ReactNode = null;
-          if (isWithinWindow) {
+          if (isMounted) {
             content =
               typeof option.content === "function"
                 ? option.content({ bottom: footerHeight + 12 })
@@ -311,7 +329,6 @@ const tabBarStyles = StyleSheet.create({
     left: 0,
     overflow: "hidden",
     position: "absolute",
-    transformOrigin: "left",
     zIndex: 2,
   },
   container: {
@@ -319,10 +336,12 @@ const tabBarStyles = StyleSheet.create({
     position: "relative",
   },
   dropdownIcon: {
+    alignItems: "center",
     height: "100%",
     justifyContent: "center",
     position: "absolute",
-    right: 12,
+    right: 8,
+    width: 20,
   },
   movingTrack: {
     backgroundColor: colors.neutral[700],
