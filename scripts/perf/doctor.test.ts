@@ -1,5 +1,7 @@
 import {
+  DoctorExitCode,
   checkAdbInstalled,
+  checkCliTool,
   checkConnectedDevice,
   checkDisplayRefreshRate,
   checkFlashlightInstalled,
@@ -72,6 +74,22 @@ describe("Performance Doctor (scripts/perf/doctor)", () => {
       expect(result.message).toContain("emulator-5554");
     });
 
+    it("picks active connected device when an offline device is also listed", async () => {
+      const executor = createMockExecutor({
+        "adb devices": {
+          exitCode: 0,
+          stderr: "",
+          stdout:
+            "List of devices attached\nstale-device\toffline\nemulator-5554\tdevice\n\n",
+        },
+      });
+
+      const result = await checkConnectedDevice(executor);
+      expect(result.isOk).toBe(true);
+      expect(result.deviceId).toBe("emulator-5554");
+      expect(result.message).toContain("emulator-5554");
+    });
+
     it("reports failure when device is unauthorized", async () => {
       const executor = createMockExecutor({
         "adb devices": {
@@ -84,6 +102,20 @@ describe("Performance Doctor (scripts/perf/doctor)", () => {
       const result = await checkConnectedDevice(executor);
       expect(result.isOk).toBe(false);
       expect(result.remediation).toContain("USB debugging");
+    });
+
+    it("reports failure when the only connected device is offline", async () => {
+      const executor = createMockExecutor({
+        "adb devices": {
+          exitCode: 0,
+          stderr: "",
+          stdout: "List of devices attached\nemulator-5554\toffline\n\n",
+        },
+      });
+
+      const result = await checkConnectedDevice(executor);
+      expect(result.isOk).toBe(false);
+      expect(result.remediation).toContain("kill-server");
     });
 
     it("reports failure when no devices are connected", async () => {
@@ -111,6 +143,29 @@ describe("Performance Doctor (scripts/perf/doctor)", () => {
 
     it("parses 120.0 fps from dumpsys output", () => {
       const dumpsys = "DisplayDeviceInfo{... 1440 x 3120, 120.0 fps, ...}";
+      const parsed = parseRefreshRate(dumpsys);
+      expect(parsed?.rateHz).toBe(120);
+      expect(parsed?.isVariable).toBe(false);
+    });
+
+    it("targets active mode indicators in dumpsys over earlier supported modes", () => {
+      const dumpsys = `
+        supportedModes:
+          DisplayMode{id=1, width=1080, height=2400, fps=60.0}
+          DisplayMode{id=2, width=1080, height=2400, fps=120.0}
+        mActiveModeId=2
+        DisplayMode{id=2, width=1080, height=2400, fps=120.0} (active)
+      `;
+      const parsed = parseRefreshRate(dumpsys);
+      expect(parsed?.rateHz).toBe(120);
+      expect(parsed?.isVariable).toBe(false);
+    });
+
+    it("targets mBaseDisplayInfo when present in dumpsys display output", () => {
+      const dumpsys = `
+        supportedModes=[DisplayMode{id=1, fps=60.0}, DisplayMode{id=2, fps=120.0}]
+        mBaseDisplayInfo=DisplayInfo{"Built-in Screen", 120.0 fps}
+      `;
       const parsed = parseRefreshRate(dumpsys);
       expect(parsed?.rateHz).toBe(120);
       expect(parsed?.isVariable).toBe(false);
@@ -238,6 +293,42 @@ describe("Performance Doctor (scripts/perf/doctor)", () => {
     });
   });
 
+  describe("checkCliTool", () => {
+    it("reports ok when the tool exits with 0", async () => {
+      const executor = createMockExecutor({
+        "maestro --version": {
+          exitCode: 0,
+          stderr: "",
+          stdout: "1.39.0",
+        },
+      });
+
+      const result = await checkCliTool(
+        executor,
+        "maestro",
+        "Maestro CLI",
+        "Maestro CLI",
+        "Install Maestro"
+      );
+      expect(result.isOk).toBe(true);
+      expect(result.message).toContain("1.39.0");
+    });
+
+    it("reports failure when the tool fails", async () => {
+      const executor = createMockExecutor({});
+
+      const result = await checkCliTool(
+        executor,
+        "maestro",
+        "Maestro CLI",
+        "Maestro CLI",
+        "Install Maestro"
+      );
+      expect(result.isOk).toBe(false);
+      expect(result.remediation).toBe("Install Maestro");
+    });
+  });
+
   describe("checkMaestroInstalled", () => {
     it("reports ok when maestro is available", async () => {
       const executor = createMockExecutor({
@@ -287,33 +378,93 @@ describe("Performance Doctor (scripts/perf/doctor)", () => {
   });
 
   describe("runDoctor", () => {
+    const validPassingResponses = {
+      "adb devices": {
+        exitCode: 0,
+        stderr: "",
+        stdout: "List of devices attached\nemulator-5554\tdevice\n",
+      },
+      "adb version": {
+        exitCode: 0,
+        stderr: "",
+        stdout: "Android Debug Bridge version 1.0.41",
+      },
+      "dumpsys display": {
+        exitCode: 0,
+        stderr: "",
+        stdout: "60.0 fps",
+      },
+      "flashlight --version": {
+        exitCode: 0,
+        stderr: "",
+        stdout: "0.9.0",
+      },
+      "maestro --version": {
+        exitCode: 0,
+        stderr: "",
+        stdout: "1.39.0",
+      },
+      "settings get system min_refresh_rate": {
+        exitCode: 0,
+        stderr: "",
+        stdout: "60.0",
+      },
+      "settings get system peak_refresh_rate": {
+        exitCode: 0,
+        stderr: "",
+        stdout: "60.0",
+      },
+    };
+
     it("returns isSuccess=true and exitCode=0 when all checks pass", async () => {
+      const executor = createMockExecutor(validPassingResponses);
+
+      const reporter = jest.fn();
+      const outcome = await runDoctor({ executor, reporter });
+
+      expect(outcome.isSuccess).toBe(true);
+      expect(outcome.exitCode).toBe(DoctorExitCode.SUCCESS);
+      expect(outcome.results).toHaveLength(5);
+      expect(reporter).toHaveBeenCalled();
+    });
+
+    it("returns exitCode=1 (MISSING_CLI_TOOL) when a CLI tool is missing", async () => {
       const executor = createMockExecutor({
+        ...validPassingResponses,
+        "maestro --version": {
+          exitCode: 127,
+          stderr: "maestro: not found",
+          stdout: "",
+        },
+      });
+
+      const reporter = jest.fn();
+      const outcome = await runDoctor({ executor, reporter });
+
+      expect(outcome.isSuccess).toBe(false);
+      expect(outcome.exitCode).toBe(DoctorExitCode.MISSING_CLI_TOOL);
+    });
+
+    it("returns exitCode=2 (DEVICE_ERROR) when CLI tools exist but no device is found", async () => {
+      const executor = createMockExecutor({
+        ...validPassingResponses,
         "adb devices": {
           exitCode: 0,
           stderr: "",
-          stdout: "List of devices attached\nemulator-5554\tdevice\n",
+          stdout: "List of devices attached\n\n",
         },
-        "adb version": {
-          exitCode: 0,
-          stderr: "",
-          stdout: "Android Debug Bridge version 1.0.41",
-        },
-        "dumpsys display": {
-          exitCode: 0,
-          stderr: "",
-          stdout: "60.0 fps",
-        },
-        "flashlight --version": {
-          exitCode: 0,
-          stderr: "",
-          stdout: "0.9.0",
-        },
-        "maestro --version": {
-          exitCode: 0,
-          stderr: "",
-          stdout: "1.39.0",
-        },
+      });
+
+      const reporter = jest.fn();
+      const outcome = await runDoctor({ executor, reporter });
+
+      expect(outcome.isSuccess).toBe(false);
+      expect(outcome.exitCode).toBe(DoctorExitCode.DEVICE_ERROR);
+    });
+
+    it("returns exitCode=3 (REFRESH_RATE_ERROR) when device is connected but refresh rate is invalid", async () => {
+      const executor = createMockExecutor({
+        ...validPassingResponses,
         "settings get system min_refresh_rate": {
           exitCode: 0,
           stderr: "",
@@ -322,28 +473,15 @@ describe("Performance Doctor (scripts/perf/doctor)", () => {
         "settings get system peak_refresh_rate": {
           exitCode: 0,
           stderr: "",
-          stdout: "60.0",
+          stdout: "120.0",
         },
       });
 
       const reporter = jest.fn();
       const outcome = await runDoctor({ executor, reporter });
 
-      expect(outcome.isSuccess).toBe(true);
-      expect(outcome.exitCode).toBe(0);
-      expect(outcome.results).toHaveLength(5);
-      expect(reporter).toHaveBeenCalled();
-    });
-
-    it("returns isSuccess=false and exitCode=1 when any check fails", async () => {
-      const executor = createMockExecutor({});
-
-      const reporter = jest.fn();
-      const outcome = await runDoctor({ executor, reporter });
-
       expect(outcome.isSuccess).toBe(false);
-      expect(outcome.exitCode).toBe(1);
-      expect(reporter).toHaveBeenCalled();
+      expect(outcome.exitCode).toBe(DoctorExitCode.REFRESH_RATE_ERROR);
     });
   });
 });

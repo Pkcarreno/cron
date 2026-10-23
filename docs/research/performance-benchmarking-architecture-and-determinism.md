@@ -1,60 +1,60 @@
-# Investigación de Arquitectura: Medición Determinista de Rendimiento (Expo 58, Fabric y Flashlight + Maestro)
+# Architecture Research: Deterministic Performance Measurement (Expo 58, Fabric, Flashlight, and Maestro)
 
-- **Repositorio**: `cron`
-- **Entorno**: React Native 0.88.0, Expo SDK ~58.0.16, New Architecture (Fabric), React 19.3.0
-- **Librerías Clave**: `react-native-reanimated@4.7.1`, `@lodev09/react-native-true-sheet@^3.11.18`, `react-native-worklets@0.13.0`
-- **Herramientas de Evaluación**: Flashlight (`/bamlab/flashlight`), Maestro (`maestro.mobile.dev`), Android ADB / UIAutomator
-- **Fecha**: Octubre 2026
-- **Estado**: Aprobado / Especificación de Arquitectura de Pruebas
-
----
-
-## 1. Resumen Ejecutivo y Hallazgos Críticos
-
-La investigación contra fuentes primarias (código fuente de Flashlight `BAMPerfProfiler`, especificaciones de Android Developers sobre `<profileable>` y trazas de Fabric en React Native 0.88) valida la viabilidad del stack **Flashlight + Maestro**, pero revela **seis trampas técnicas críticas** que deben mitigarse para evitar mediciones sesgadas:
-
-1. **Atribución de Hilos en Reanimated 4**: Los worklets de animación no corren en el hilo de JavaScript (`mqt_js`), sino en el **UI Thread** (hilo principal). Una sobrecarga de animación saturará el UI Thread mientras `mqt_js` marca 0% de uso.
-2. **Presupuesto de Fotogramas y Pantallas de 120 Hz**: Flashlight asume por defecto 60 Hz (16.66 ms). Las pantallas con refresco adaptativo (LTPO) introducen varianza aleatoria. Se debe forzar el bloqueo de tasa de refresco a 60 Hz o 120 Hz vía ADB antes de medir.
-3. **Requisito de `<profileable android:shell="true" />`**: En Android 10+ (API 29+), las trazas nativas de aplicación y Simpleperf se bloquean en compilaciones de producción a menos que se declare esta etiqueta en `AndroidManifest.xml`.
-4. **Fabric View Flattening y `testID`**: Fabric elimina vistas nativas estructurales. Para que Maestro resuelva un `testID` en un contenedor plano, se debe asignar `collapsable={false}`.
-5. **Alineación de Gestos en TrueSheet**: Los gestos en modales nativos deben contener coordenadas relativas explícitas y duración fija para evitar activar el dismiss del backdrop.
-6. **Eliminación de JIT en Android**: Para evitar la variabilidad del compilador en tiempo de ejecución (JIT), se debe forzar la precompilación AOT de ART (`cmd package compile -m speed`) antes de iniciar la prueba.
+- **Repository**: `cron`
+- **Environment**: React Native 0.88.0, Expo SDK ~58.0.16, New Architecture (Fabric), React 19.3.0
+- **Key Libraries**: `react-native-reanimated@4.7.1`, `@lodev09/react-native-true-sheet@^3.11.18`, `react-native-worklets@0.13.0`
+- **Evaluation Tools**: Flashlight (`/bamlab/flashlight`), Maestro (`maestro.mobile.dev`), Android ADB / UIAutomator
+- **Date**: October 2026
+- **Status**: Approved / Test Architecture Specification
 
 ---
 
-## 2. Flashlight en Android con New Architecture
+## 1. Executive Summary and Critical Findings
 
-### 2.1 Identificación de Hilos y Monitoreo de Kernel
+Research against primary sources (Flashlight `BAMPerfProfiler` source code, Android Developers documentation on `<profileable>`, and Fabric traces in React Native 0.88) validates the **Flashlight + Maestro** stack. The research identified **six critical technical pitfalls** that teams must mitigate to prevent biased measurements:
 
-Flashlight no inyecta bibliotecas en el código fuente de la aplicación. Despliega un ejecutable nativo en C++ (`BAMPerfProfiler`) en `/data/local/tmp/` mediante ADB:
-
-- Lee directamente los archivos `/proc/<PID>/stat` y `/proc/<PID>/task/<TID>/stat` del kernel Linux.
-- Calcula el consumo delta $(\Delta \text{utime} + \Delta \text{stime}) / \Delta \text{total\_time}$ para cada hilo de ejecución.
-- En React Native 0.88 (Fabric), el hilo de ejecución de Hermes conserva el nombre nativo `mqt_js` en `/proc/<PID>/task/<TID>/comm`.
-- **Diferencia con Legacy Architecture**: El antiguo hilo `mqt_native_modules` desaparece en Fabric, ya que las llamadas a TurboModules se resuelven de forma síncrona en C++ o en pools de hilos auxiliares.
-
-### 2.2 Requisito de Manifiesto (`<profileable>`)
-
-En compilaciones de Release (`android:debuggable="false"`), el entorno seguro de Android restringe las trazas de `atrace` y Perfetto a nivel de aplicación. Declarar `<profileable android:shell="true" />`:
-
-- Habilita la captura completa de trazas nativas y contadores por parte del usuario ADB `shell`.
-- Mantiene activas todas las optimizaciones de producción de R8, optimizaciones de bytecode de Hermes y compilación nativa C++ en Release.
+1. **Thread Attribution in Reanimated 4**: Animation worklets do not run on the JavaScript thread (`mqt_js`). They run on the **UI Thread** (main thread). Heavy animation load saturates the UI thread while `mqt_js` reports 0% CPU usage.
+2. **Frame Budget and 120 Hz Displays**: Flashlight assumes a 60 Hz baseline (16.66 ms) by default. Displays with adaptive refresh rates (LTPO) introduce random measurement variance. Lock the display refresh rate to 60 Hz or 120 Hz with ADB before measurement.
+3. **Requirement for `<profileable android:shell="true" />`**: On Android 10+ (API 29+), the operating system blocks native application traces and Simpleperf in release builds unless this tag exists in `AndroidManifest.xml`.
+4. **Fabric View Flattening and `testID`**: Fabric removes structural native views. To ensure Maestro resolves a `testID` on a flat container, you must set `collapsable={false}`.
+5. **Gesture Alignment in TrueSheet**: Gestures inside native modals require explicit relative coordinates and fixed durations. This prevents accidental dismissal of the backdrop sheet.
+6. **Elimination of Android JIT Variance**: To prevent runtime compiler variance from the Just-In-Time (JIT) compiler, force Android Runtime (ART) Ahead-Of-Time (AOT) compilation (`cmd package compile -m speed`) before test execution.
 
 ---
 
-## 3. Maestro en React Native Release y Fabric
+## 2. Flashlight on Android with New Architecture
 
-### 3.1 Resolución de Identificadores y Optimización de Vistas
+### 2.1 Thread Identification and Kernel Monitoring
 
-Maestro localiza elementos mediante la API de accesibilidad de Android (`AccessibilityNodeInfo`). En React Native:
+Flashlight does not inject libraries into the application source code. It deploys a native C++ executable (`BAMPerfProfiler`) to `/data/local/tmp/` through ADB:
 
-- `testID` se propaga como identificador de vista accesible.
-- Los optimizadores de Fabric C++ colapsan (_view flattening_) cualquier `<View>` que no contenga estilos visuales o detectores de gestos.
-- **Regla obligatoria para pruebas**: Todo contenedor padre referenciado por `testID` en flujos de Maestro debe llevar `collapsable={false}`.
+- It reads `/proc/<PID>/stat` and `/proc/<PID>/task/<TID>/stat` kernel files directly.
+- It calculates the delta consumption $(\Delta \text{utime} + \Delta \text{stime}) / \Delta \text{total\_time}$ for each execution thread.
+- In React Native 0.88 (Fabric), the Hermes execution thread keeps the native name `mqt_js` in `/proc/<PID>/task/<TID>/comm`.
+- **Difference from Legacy Architecture**: The legacy `mqt_native_modules` thread does not exist in Fabric. TurboModule calls resolve synchronously in C++ or on auxiliary thread pools.
 
-### 3.2 Gestos Deterministas y Repetibles
+### 2.2 Manifest Requirement (`<profileable>`)
 
-Los comandos con dirección genérica (`swipe: UP`) generan velocidad variable según el dispositivo. Los flujos en `.maestro/perf/` deben usar coordenadas porcentuales y duración fija:
+In release builds (`android:debuggable="false"`), Android security policies restrict `atrace` and Perfetto application-level traces. Declaring `<profileable android:shell="true" />`:
+
+- Enables complete capture of native traces and performance counters by the ADB `shell` user.
+- Preserves all production optimizations from R8, Hermes bytecode optimizations, and native C++ Release compilation.
+
+---
+
+## 3. Maestro in React Native Release and Fabric
+
+### 3.1 Identifier Resolution and View Optimization
+
+Maestro locates elements through the Android accessibility API (`AccessibilityNodeInfo`). In React Native:
+
+- The `testID` property propagates as the accessible view identifier.
+- Fabric C++ optimizers flatten (_view flattening_) any `<View>` that lacks visual styles or gesture detectors.
+- **Mandatory test rule**: Every parent container referenced by `testID` in Maestro flows must include `collapsable={false}`.
+
+### 3.2 Deterministic and Repeatable Gestures
+
+Commands with generic directional gestures (`swipe: UP`) produce variable velocities across different devices. Flows in `.maestro/perf/` must use percentage coordinates and a fixed duration:
 
 ```yaml
 - swipe:
@@ -63,45 +63,45 @@ Los comandos con dirección genérica (`swipe: UP`) generan velocidad variable s
     duration: 800
 ```
 
-Tras cada interacción de arrastre, se debe incluir una pausa de asentamiento físico para esperar a que los algoritmos de decaimiento inercial de Reanimated lleguen a reposo.
+After each swipe interaction, include a settling delay. This delay gives Reanimated inertial decay algorithms enough time to reach rest.
 
 ---
 
-## 4. Protocolo de Mitigación de Varianza en Hardware
+## 4. Hardware Variance Mitigation Protocol
 
-Para garantizar que las métricas entre la versión base y la candidata sean comparables dentro de un margen de error menor al ±2%, el banco de pruebas debe ejecutar las siguientes fases:
+To ensure metrics between baseline and candidate versions are comparable within a ±2% error margin, the benchmark harness must execute the following phases:
 
-1. **Calentamiento (Warmup)**: Ejecución de una pasada previa no computada para precargar bibliotecas nativas (`.so`), compilar cierres de worklets e inicializar estructuras de JSI.
-2. **Compilación AOT de ART**:
+1. **Warmup**: Execute an unmeasured initial run to preload native libraries (`.so`), compile worklet closures, and initialize JSI structures.
+2. **ART AOT Compilation**:
    ```bash
    adb shell cmd package compile -m speed -f com.pkcarreno.cron.preview
    ```
-3. **Bloqueo de Tasa de Refresco**:
+3. **Display Refresh Rate Lock**:
    ```bash
    adb shell settings put system min_refresh_rate 60.0
    adb shell settings put system peak_refresh_rate 60.0
    ```
-4. **Aislamiento Térmico y de Red**:
-   - Activar modo avión (`adb shell cmd connectivity airplane-mode enable`).
-   - Pausa de reposo de 5 a 6 segundos entre iteraciones para disipación térmica.
-   - Batería del dispositivo entre 60% y 85% para evitar límites de ahorro de energía.
-5. **Muestra Estadística**: Mínimo de 10 iteraciones por escenario, reportando mediana y percentil 90.
+4. **Thermal and Network Isolation**:
+   - Enable airplane mode (`adb shell cmd connectivity airplane-mode enable`).
+   - Add a 5 to 6 second rest delay between iterations for thermal dissipation.
+   - Keep device battery charge between 60% and 85% to prevent thermal throttling and battery saver limits.
+5. **Statistical Sample**: Run a minimum of 10 iterations per test scenario. Report the median and 90th percentile (p90).
 
 ---
 
-## 5. Comparativa Técnica de Herramientas
+## 5. Technical Tool Comparison
 
-| Dimensión | Flashlight + Maestro | Android Jetpack Macrobenchmark | In-App Performance Marks |
+| Dimension | Flashlight + Maestro | Android Jetpack Macrobenchmark | In-App Performance Marks |
 | :-- | :-- | :-- | :-- |
-| **Intrusión en Código** | Nula (cero código nativo en `android/`) | Alta (requiere módulo Gradle `:benchmark`) | Media (marcadores manuales en componentes) |
-| **Resistencia a Actualizaciones Expo** | Alta (independiente de cambios de SDK) | Baja (fragilidad con AGP y Expo prebuild) | Alta |
-| **Monitoreo de Hilos Separados** | Sí (distingue `mqt_js` y UI Thread) | No directo (requiere análisis Perfetto) | No (solo mide tiempos en hilo JS) |
-| **Precisión de Fotogramas** | Basada en SurfaceFlinger / atrace | Basada en contadores de kernel Perfetto | No mide fotogramas nativos |
-| **Automatización E2E** | Declarativa en YAML con Maestro | Código Kotlin con UIAutomator | Requiere harness propio |
+| **Code Intrusion** | None (zero native code in `android/`) | High (requires `:benchmark` Gradle module) | Medium (manual markers in components) |
+| **Expo Upgrade Resistance** | High (independent of SDK changes) | Low (fragile with AGP and Expo prebuild) | High |
+| **Separate Thread Monitoring** | Yes (distinguishes `mqt_js` and UI Thread) | Not direct (requires Perfetto trace analysis) | No (only measures JS thread times) |
+| **Frame Precision** | Based on SurfaceFlinger and atrace | Based on Perfetto kernel counters | Does not measure native frames |
+| **E2E Automation** | Declarative YAML with Maestro | Kotlin code with UIAutomator | Requires custom test harness |
 
 ---
 
-## 6. Fuentes Primarias Citadas
+## 6. Cited Primary Sources
 
 - [Flashlight Source & Architecture](https://github.com/bamlab/flashlight)
 - [Flashlight Issue #349: 120 Hz Display Handling](https://github.com/bamlab/flashlight/issues/349)

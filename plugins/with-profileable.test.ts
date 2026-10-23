@@ -112,6 +112,28 @@ describe("withProfileable config plugin", () => {
       >;
       expect(application.profileable).toBeUndefined();
     });
+
+    it("safely handles manifest application when debuggable attribute is absent", () => {
+      const initialManifest = createBaseManifest();
+      expect(
+        initialManifest.manifest.application?.[0].$["android:debuggable"]
+      ).toBeUndefined();
+
+      const updatedManifest = setProfileableManifest(initialManifest, true);
+
+      const application = updatedManifest.manifest.application?.[0] as Record<
+        string,
+        unknown
+      >;
+      const appAttributes = application.$ as Record<string, string | undefined>;
+      const profileable = application.profileable as {
+        $: { "android:shell": string };
+      }[];
+
+      expect(appAttributes["android:debuggable"]).toBeUndefined();
+      expect(profileable).toBeDefined();
+      expect(profileable[0].$["android:shell"]).toBe("true");
+    });
   });
 
   describe("withProfileable plugin wrapper", () => {

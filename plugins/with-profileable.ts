@@ -14,13 +14,26 @@ interface ProfileableElement {
   };
 }
 
-interface ManifestApplicationWithProfileable
-  extends AndroidConfig.Manifest.ManifestApplication {
+interface ManifestApplicationWithProfileable extends Omit<
+  AndroidConfig.Manifest.ManifestApplication,
+  "$"
+> {
+  $?: Record<string, string | undefined>;
   profileable?: ProfileableElement[];
 }
 
 /**
- * Updates the AndroidManifest with or without the profileable tag.
+ * Updates AndroidManifest.xml with or without the profileable tag.
+ *
+ * Android 10 (API level 29) and later blocks atrace, simpleperf, and Perfetto system
+ * tracing in release builds unless `<profileable android:shell="true" />` is declared.
+ * Adding this tag allows the ADB shell user to capture low-overhead production traces
+ * and kernel CPU counters without activating debug mode overhead.
+ *
+ * In addition, `android:debuggable` must remain unset or false in production benchmarks.
+ * Setting `android:debuggable="true"` disables ART Ahead-of-Time (AOT) optimizations,
+ * forces JDWP thread initialization, alters Hermes garbage collection, and invalidates
+ * benchmark determinism.
  *
  * @param androidManifest - The parsed AndroidManifest.xml object.
  * @param isEnabled - Whether the profileable tag should be present.
@@ -33,6 +46,8 @@ export const setProfileableManifest = (
   const mainApplication = AndroidConfig.Manifest.getMainApplicationOrThrow(
     androidManifest
   ) as ManifestApplicationWithProfileable;
+
+  mainApplication.$ ??= {};
 
   if (isEnabled) {
     const currentList = mainApplication.profileable ?? [];
@@ -62,8 +77,15 @@ export const setProfileableManifest = (
 };
 
 /**
- * Expo config plugin to inject `<profileable android:shell="true" />`
- * into AndroidManifest.xml for deterministic ADB profiling.
+ * Injects `<profileable android:shell="true" />` into AndroidManifest.xml for preview builds.
+ *
+ * This configuration plugin enables non-intrusive performance profiling in production builds
+ * using ADB shell-based profilers (such as Flashlight and Perfetto). It ensures the application
+ * runs with full release optimizations while exposing kernel trace instrumentation to the host shell.
+ *
+ * @param config - The Expo project configuration object.
+ * @param options - Plugin configuration options, including explicit override for enablement.
+ * @returns The modified Expo configuration with AndroidManifest modifications applied.
  */
 export const withProfileable = (
   config: ExpoConfig,
