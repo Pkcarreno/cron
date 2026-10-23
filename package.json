@@ -11,6 +11,7 @@
     "web": "expo start --web",
     "prebuild": "expo prebuild",
     "expo:doctor": "pnpm dlx expo-doctor@latest",
+    "perf:doctor": "tsx scripts/perf/doctor.ts",
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "lint": "ultracite check",
