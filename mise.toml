@@ -1,18 +1,11 @@
 [tools]
 java = "temurin-17"
-maestro = "latest"
 node = "24.14.0"
 pnpm = "12.14.0"
+maestro = "latest"
 
 [env]
-NODE_OPTIONS = "--max-old-space-size=4096"
-CMAKE_BUILD_PARALLEL_LEVEL = "4"
-NINJA_STATUS = "[%f/%t] "
-GRADLE_OPTS = '-Dorg.gradle.jvmargs="-Xmx3072m -XX:MaxMetaspaceSize=768m -XX:+HeapDumpOnOutOfMemoryError" -Dkotlin.daemon.jvmargs="-Xmx1536m" -Dorg.gradle.workers.max=4 -Dorg.gradle.parallel=true'
-
-[tasks.android-stop]
-description = "Detiene los daemons de Gradle y Kotlin para liberar RAM inmediatamente"
-run = "pkill -f '.*GradleDaemon.*' || true && pkill -f '.*KotlinCompileDaemon.*' || true"
+TMPDIR = "{{config_root}}/.tmp"
 
 [tasks.flashlight-setup]
 description = "Install Flashlight performance profiling CLI"
