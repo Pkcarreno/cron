@@ -19,6 +19,10 @@ Operating reference for autonomous AI agents working in `cron`.
 - `pnpm lint`: Run Ultracite linter check (`oxlint`).
 - `pnpm lint:fix`: Automatically fix linting and formatting issues (`oxlint` + `oxfmt`).
 - `pnpm start`: Start the Expo Metro bundler.
+- `pnpm perf:doctor`: Verify performance profiling environment (ADB, device, refresh rate, Maestro, Flashlight).
+- `pnpm perf:build`: Compile preview APK tagged by git commit into `benchmark/outputs/cron-<commit>.apk`.
+- `pnpm perf:measure`: Execute Flashlight benchmark with device stabilization into `benchmark/results/<scenario>-<commit>.json`.
+- `pnpm perf:compare`: Diff baseline vs candidate benchmark JSONs and output delta table with budget gate warnings.
 
 ---
 
@@ -46,6 +50,19 @@ Operating reference for autonomous AI agents working in `cron`.
 - Apply `react-native-best-practices` and `vercel-react-native-skills` for list performance, thread isolation, and native rendering optimizations.
 - Apply `expo-router` for navigation, screen stacks, and layout conventions.
 - Apply `jotai` for atomic state management and MMKV persistence in `stores/`.
+
+### Performance Verification
+
+- When modifying gestures, animation worklets, sheet interactions, or timer loops:
+  1. Confirm ADB and tool prerequisites via `pnpm perf:doctor`.
+  2. Compile baseline and candidate preview binaries via `pnpm perf:build`.
+  3. Execute automated Maestro flows with hardware stabilization via `pnpm perf:measure`.
+  4. Compare performance metrics via `pnpm perf:compare <baseline.json> <candidate.json>`.
+  5. Adhere to soft budget thresholds:
+     - Frame Budget: $\le 8.33\text{ ms}$ (120 Hz) or $\le 16.67\text{ ms}$ (60 Hz).
+     - Jank Rate: $\le 2.0\%$ dropped frames.
+     - JS Thread CPU: $\le 15.0\%$ during active gestures.
+  6. Maintain `collapsable={false}` on parent containers designated with `testID` for Maestro interaction to prevent Fabric C++ view flattening. Consult ADR-0005.
 
 ---
 
