@@ -16,6 +16,7 @@ appId: com.pkcarreno.cron.preview
     start: "80%, 75%"
     end: "20%, 75%"
     duration: 800
+- waitForAnimationToEnd
 - runScript:
     file: ../scripts/sleep.js
     env:
@@ -24,6 +25,7 @@ appId: com.pkcarreno.cron.preview
     start: "20%, 75%"
     end: "80%, 75%"
     duration: 800
+- waitForAnimationToEnd
 - runScript:
     file: ../scripts/sleep.js
     env:

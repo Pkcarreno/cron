@@ -126,7 +126,11 @@ export const TimerFace: FC<Props> = ({
         )}
 
         <View style={contextInfoStyles.container}>
-          <View style={contextInfoStyles.labelWrapper}>
+          <View
+            style={contextInfoStyles.labelWrapper}
+            testID="context-label"
+            collapsable={false}
+          >
             <Text
               style={[
                 contextInfoStyles.labelText,

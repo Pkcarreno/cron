@@ -16,6 +16,8 @@ appId: com.pkcarreno.cron.preview
     id: "start-timer-button"
 - assertVisible:
     id: "timer-screen"
+# Wait for 10s preparation countdown to finish and active WORK phase to begin
+- assertVisible: "WORK"
 # Record 15 seconds of execution without touch interaction
 - runScript:
     file: ../scripts/sleep.js

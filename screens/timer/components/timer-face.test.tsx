@@ -29,4 +29,29 @@ describe("TimerFace", () => {
     expect(container).toBeTruthy();
     expect(container.props.collapsable).toBe(false);
   });
+
+  it("renders context label container with testID='context-label' and collapsable={false}", async () => {
+    const screen = await renderWithProviders(
+      <TimerFace
+        hours=""
+        minutes="05"
+        seconds="00"
+        modeAbbr="INT"
+        currentTime="12:00"
+        contextLabel="WORK"
+        contextValue="1"
+        lap={undefined}
+        delta={undefined}
+        flags={{
+          hasCheckpointsBehavior: false,
+          isPreparing: false,
+          showsMinuteDigits: true,
+        }}
+      />
+    );
+
+    const contextLabel = screen.getByTestId("context-label");
+    expect(contextLabel).toBeTruthy();
+    expect(contextLabel.props.collapsable).toBe(false);
+  });
 });

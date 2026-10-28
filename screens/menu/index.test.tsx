@@ -5,6 +5,7 @@ import React from "react";
 import { TimerMode } from "@/helpers/timer/factory";
 import { serializeTimerConfig } from "@/helpers/timer/utils/config-serializer";
 import { Menu } from "@/screens/menu";
+import { TIMER_MODES } from "@/screens/menu/schema";
 import { storage } from "@/stores/storage";
 import {
   amrapWorkoutAtom,
@@ -278,13 +279,7 @@ describe("Menu integration", () => {
     expect(pagerView).toBeTruthy();
     expect(pagerView.props.collapsable).toBe(false);
 
-    for (const mode of [
-      "FOR_TIME",
-      "AMRAP",
-      "INTERVAL",
-      "EMOM",
-      "STOP_WATCH",
-    ]) {
+    for (const mode of TIMER_MODES) {
       const tab = screen.getByTestId(`menu-tab-${mode}`);
       expect(tab).toBeTruthy();
       expect(tab.props.collapsable).toBe(false);
