@@ -1,7 +1,13 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
-import type { BuildOptions, BuildResult, CommandResult } from "./types";
+import type {
+  BuildOptions,
+  BuildResult,
+  CommandExecutor,
+  CommandResult,
+} from "./types";
 import {
   defaultExecutor,
   isDirectScriptExecution,
@@ -100,6 +106,13 @@ export const parseBuildCliArgs = (argv: string[]): BuildOptions => {
     } else if (arg === "--output" && i + 1 < argv.length) {
       i += 1;
       options.outputDirectory = argv[i]?.trim();
+    } else if (arg.startsWith("--source-artifact=")) {
+      options.sourceArtifactPath = arg
+        .slice("--source-artifact=".length)
+        .trim();
+    } else if (arg === "--source-artifact" && i + 1 < argv.length) {
+      i += 1;
+      options.sourceArtifactPath = argv[i]?.trim();
     } else {
       i = parseProfileAndTypeArgs(argv, i, options);
     }
@@ -112,12 +125,39 @@ export const parseBuildCliArgs = (argv: string[]): BuildOptions => {
 
 export const parseBuildArgs = parseBuildCliArgs;
 
-const resetNestedTmpDir = (): void => {
-  if (
-    process.env.TMPDIR &&
-    path.resolve(process.env.TMPDIR).startsWith(path.resolve(process.cwd()))
-  ) {
-    process.env.TMPDIR = "/tmp";
+/**
+ * Verifies whether candidatePath is identical to parentDir or located inside parentDir.
+ *
+ * @param parentDir - The parent directory path.
+ * @param candidatePath - The candidate directory or file path.
+ * @returns True if candidatePath is equal to or located inside parentDir.
+ */
+export const isPathInsideDirectory = (
+  parentDir: string,
+  candidatePath: string
+): boolean => {
+  const relative = path.relative(parentDir, candidatePath);
+  return (
+    relative === "" ||
+    (!relative.startsWith("..") && !path.isAbsolute(relative))
+  );
+};
+
+export const sanitizeTmpDir = (reporter?: (message: string) => void): void => {
+  const currentTmpDir = process.env.TMPDIR;
+  if (!currentTmpDir) {
+    return;
+  }
+
+  const resolvedTmpDir = path.resolve(currentTmpDir);
+  const resolvedCwd = path.resolve(process.cwd());
+
+  if (isPathInsideDirectory(resolvedCwd, resolvedTmpDir)) {
+    const fallbackTmpDir = os.tmpdir();
+    reporter?.(
+      `[perf:build] Warning: TMPDIR points inside repository (${resolvedTmpDir}). Redirecting to ${fallbackTmpDir} to prevent EAS self-nesting error.`
+    );
+    process.env.TMPDIR = fallbackTmpDir;
   }
 };
 
@@ -144,62 +184,13 @@ const resolveArtifactPaths = (
   return { targetArtifactPath, targetDirectory };
 };
 
-/**
- * Compiles a preview APK tagged by git commit and stores it in the benchmark output directory.
- *
- * @param options - Build configuration options.
- * @returns Build result containing artifact path, commit SHA, and success status.
- */
-export const runBuild = async (
-  options: BuildOptions = {}
+const executeEasBuild = async (
+  executor: CommandExecutor,
+  args: string[],
+  targetArtifactPath: string,
+  commitSha: string,
+  reporter: (message: string) => void
 ): Promise<BuildResult> => {
-  const executor = options.executor ?? defaultExecutor;
-  const reporter = options.reporter ?? console.log;
-  const profile = options.profile ?? "preview";
-
-  resetNestedTmpDir();
-
-  let commitSha = "";
-  try {
-    reporter("[perf:build] Resolving git commit short SHA...");
-    commitSha = await resolveGitCommitSha(executor, options.customCommit);
-    reporter(`[perf:build] Using commit SHA: ${commitSha}`);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    reporter(`[perf:build] Failed to resolve git commit SHA: ${message}`);
-    return {
-      artifactPath: "",
-      commit: "",
-      isSuccess: false,
-    };
-  }
-
-  const { targetArtifactPath, targetDirectory } = resolveArtifactPaths(
-    options.outputDirectory,
-    commitSha
-  );
-
-  if (!fs.existsSync(targetDirectory)) {
-    reporter(`[perf:build] Creating output directory: ${targetDirectory}`);
-    fs.mkdirSync(targetDirectory, { recursive: true });
-  }
-
-  const args: string[] = [
-    "build",
-    "--profile",
-    profile,
-    "--platform",
-    "android",
-    "--local",
-  ];
-
-  if (options.shouldClean) {
-    reporter("[perf:build] Clean build requested. Cache will be cleared.");
-    args.push("--clear-cache");
-  }
-
-  args.push("--output", targetArtifactPath);
-
   reporter(`[perf:build] Executing preview build: eas ${args.join(" ")}`);
 
   let buildResult: CommandResult;
@@ -230,22 +221,105 @@ export const runBuild = async (
     };
   }
 
-  if (options.sourceArtifactPath && fs.existsSync(options.sourceArtifactPath)) {
-    reporter(
-      `[perf:build] Copying source artifact from ${options.sourceArtifactPath} to ${targetArtifactPath}`
-    );
-    fs.copyFileSync(options.sourceArtifactPath, targetArtifactPath);
-  }
-
   reporter(
     `[perf:build] Preview APK built successfully: ${targetArtifactPath}`
   );
-
   return {
     artifactPath: targetArtifactPath,
     commit: commitSha,
     isSuccess: true,
   };
+};
+
+/**
+ * Compiles a preview APK tagged by git commit and stores it in the benchmark output directory.
+ *
+ * @param options - Build configuration options.
+ * @returns Build result containing artifact path, commit SHA, and success status.
+ */
+export const runBuild = async (
+  options: BuildOptions = {}
+): Promise<BuildResult> => {
+  const executor = options.executor ?? defaultExecutor;
+  const reporter = options.reporter ?? console.log;
+  const profile = options.profile ?? "preview";
+
+  sanitizeTmpDir(reporter);
+
+  let commitSha = "";
+  try {
+    reporter("[perf:build] Resolving git commit short SHA...");
+    commitSha = await resolveGitCommitSha(executor, options.customCommit);
+    reporter(`[perf:build] Using commit SHA: ${commitSha}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    reporter(`[perf:build] Failed to resolve git commit SHA: ${message}`);
+    return {
+      artifactPath: "",
+      commit: "",
+      isSuccess: false,
+    };
+  }
+
+  const { targetArtifactPath, targetDirectory } = resolveArtifactPaths(
+    options.outputDirectory,
+    commitSha
+  );
+
+  if (!fs.existsSync(targetDirectory)) {
+    reporter(`[perf:build] Creating output directory: ${targetDirectory}`);
+    fs.mkdirSync(targetDirectory, { recursive: true });
+  }
+
+  if (options.sourceArtifactPath) {
+    if (!fs.existsSync(options.sourceArtifactPath)) {
+      reporter(
+        `[perf:build] Source artifact not found at: ${options.sourceArtifactPath}`
+      );
+      return {
+        artifactPath: targetArtifactPath,
+        commit: commitSha,
+        isSuccess: false,
+      };
+    }
+
+    reporter(
+      `[perf:build] Copying source artifact from ${options.sourceArtifactPath} to ${targetArtifactPath}`
+    );
+    fs.copyFileSync(options.sourceArtifactPath, targetArtifactPath);
+    reporter(
+      `[perf:build] Preview APK prepared successfully: ${targetArtifactPath}`
+    );
+    return {
+      artifactPath: targetArtifactPath,
+      commit: commitSha,
+      isSuccess: true,
+    };
+  }
+
+  const args: string[] = [
+    "build",
+    "--profile",
+    profile,
+    "--platform",
+    "android",
+    "--local",
+  ];
+
+  if (options.shouldClean) {
+    reporter("[perf:build] Clean build requested. Cache will be cleared.");
+    args.push("--clear-cache");
+  }
+
+  args.push("--output", targetArtifactPath);
+
+  return executeEasBuild(
+    executor,
+    args,
+    targetArtifactPath,
+    commitSha,
+    reporter
+  );
 };
 
 if (isDirectScriptExecution(import.meta.filename)) {

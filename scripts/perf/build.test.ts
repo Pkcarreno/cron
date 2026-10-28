@@ -2,7 +2,13 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { parseBuildArgs, parseBuildCliArgs, runBuild } from "./build";
+import {
+  isPathInsideDirectory,
+  parseBuildArgs,
+  parseBuildCliArgs,
+  runBuild,
+  sanitizeTmpDir,
+} from "./build";
 import type { CommandExecutor, CommandResult } from "./types";
 import { isDirectScriptExecution, resolveGitCommitSha } from "./utils";
 
@@ -168,6 +174,19 @@ describe("Performance Build Runner (scripts/perf/build)", () => {
       });
     });
 
+    it("parses --source-artifact flag", () => {
+      expect(
+        parseBuildCliArgs(["--source-artifact", "/tmp/prebuilt.apk"])
+      ).toEqual({
+        sourceArtifactPath: "/tmp/prebuilt.apk",
+      });
+      expect(
+        parseBuildCliArgs(["--source-artifact=/tmp/prebuilt.apk"])
+      ).toEqual({
+        sourceArtifactPath: "/tmp/prebuilt.apk",
+      });
+    });
+
     it("combines multiple CLI flags into single options object", () => {
       const options = parseBuildCliArgs([
         "--commit",
@@ -185,6 +204,75 @@ describe("Performance Build Runner (scripts/perf/build)", () => {
         profile: "preview",
         shouldClean: true,
       });
+    });
+  });
+
+  describe("isPathInsideDirectory", () => {
+    it("returns true when candidate path is equal to parent directory", () => {
+      expect(isPathInsideDirectory("/home/user/cron", "/home/user/cron")).toBe(
+        true
+      );
+    });
+
+    it("returns true when candidate path is a subdirectory inside parent directory", () => {
+      expect(
+        isPathInsideDirectory("/home/user/cron", "/home/user/cron/.tmp")
+      ).toBe(true);
+      expect(
+        isPathInsideDirectory("/home/user/cron", "/home/user/cron/sub/deep/dir")
+      ).toBe(true);
+    });
+
+    it("returns false when candidate path shares prefix but is a sibling directory", () => {
+      expect(
+        isPathInsideDirectory("/home/user/cron", "/home/user/cron-tmp")
+      ).toBe(false);
+      expect(
+        isPathInsideDirectory("/home/user/cron", "/home/user/cron-other")
+      ).toBe(false);
+    });
+
+    it("returns false when candidate path is completely outside parent directory", () => {
+      expect(isPathInsideDirectory("/home/user/cron", "/tmp")).toBe(false);
+      expect(
+        isPathInsideDirectory("/home/user/cron", "/var/tmp/cron-cache")
+      ).toBe(false);
+    });
+  });
+
+  describe("sanitizeTmpDir", () => {
+    const originalTmpDir = process.env.TMPDIR;
+
+    afterEach(() => {
+      if (originalTmpDir === undefined) {
+        delete process.env.TMPDIR;
+      } else {
+        process.env.TMPDIR = originalTmpDir;
+      }
+    });
+
+    it("leaves TMPDIR untouched when pointing to an external directory", () => {
+      process.env.TMPDIR = path.resolve(process.cwd(), "..", "cron-tmp");
+      sanitizeTmpDir();
+      expect(process.env.TMPDIR).toBe(
+        path.resolve(process.cwd(), "..", "cron-tmp")
+      );
+    });
+
+    it("redirects TMPDIR to os.tmpdir when pointing inside repository", () => {
+      const messages: string[] = [];
+      process.env.TMPDIR = path.resolve(process.cwd(), ".tmp");
+      sanitizeTmpDir((msg) => messages.push(msg));
+      expect(process.env.TMPDIR).toBe(os.tmpdir());
+      expect(
+        messages.some((msg) => msg.includes("TMPDIR points inside repository"))
+      ).toBe(true);
+    });
+
+    it("handles undefined TMPDIR gracefully without modifying environment", () => {
+      delete process.env.TMPDIR;
+      sanitizeTmpDir();
+      expect(process.env.TMPDIR).toBeUndefined();
     });
   });
 
@@ -449,6 +537,25 @@ describe("Performance Build Runner (scripts/perf/build)", () => {
       expect(fs.readFileSync(result.artifactPath, "utf-8")).toBe(
         "DUMMY_APK_DATA"
       );
+    });
+
+    it("returns failure when sourceArtifactPath does not exist on disk", async () => {
+      const messages: string[] = [];
+      const executor = createMockExecutor({
+        "git rev-parse": { exitCode: 0, stdout: "fail123\n" },
+      });
+
+      const result = await runBuild({
+        executor,
+        outputDirectory: tempTestDirectory,
+        reporter: (msg) => messages.push(msg),
+        sourceArtifactPath: "/path/that/does/not/exist.apk",
+      });
+
+      expect(result.isSuccess).toBe(false);
+      expect(
+        messages.some((msg) => msg.includes("Source artifact not found"))
+      ).toBe(true);
     });
   });
 });
