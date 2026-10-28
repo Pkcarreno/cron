@@ -368,6 +368,20 @@ describe("Performance Doctor (scripts/perf/doctor)", () => {
       expect(result.message).toContain("0.9.0");
     });
 
+    it("reports ok when flashlight is available via -v flag", async () => {
+      const executor = createMockExecutor({
+        "flashlight -v": {
+          exitCode: 0,
+          stderr: "",
+          stdout: "0.18.0",
+        },
+      });
+
+      const result = await checkFlashlightInstalled(executor);
+      expect(result.isOk).toBe(true);
+      expect(result.message).toContain("0.18.0");
+    });
+
     it("reports failure with mise task remediation when flashlight is missing", async () => {
       const executor = createMockExecutor({});
 
