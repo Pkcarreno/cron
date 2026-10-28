@@ -54,7 +54,7 @@ Operating reference for autonomous AI agents working in `cron`.
 ### Performance Verification
 
 - When modifying gestures, animation worklets, sheet interactions, or timer loops:
-  1. Confirm ADB and tool prerequisites via `pnpm perf:doctor`.
+  1. Make sure that ADB and tool prerequisites are satisfied via `pnpm perf:doctor`.
   2. Compile baseline and candidate preview binaries via `pnpm perf:build`.
   3. Execute automated Maestro flows with hardware stabilization via `pnpm perf:measure`.
   4. Compare performance metrics via `pnpm perf:compare <baseline.json> <candidate.json>`.

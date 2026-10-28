@@ -9,7 +9,7 @@ import {
   parseRefreshRate,
   runDoctor,
 } from "./doctor";
-import type { CommandExecutor } from "./doctor";
+import type { CommandExecutor } from "./types";
 
 const createMockExecutor =
   (
