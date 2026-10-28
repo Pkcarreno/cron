@@ -1,15 +1,19 @@
-import { exec } from "node:child_process";
+import { execFile } from "node:child_process";
 import path from "node:path";
 import { promisify } from "node:util";
 
 import type { CommandExecutor, CommandResult } from "./types";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+
+// 10MB buffer for build and trace outputs
+const DEFAULT_MAX_BUFFER_BYTES = 10 * 1024 * 1024;
 
 /**
- * Executes a system command asynchronously and captures exit status, stdout, and stderr.
+ * Executes a system binary asynchronously without shell interpretation.
+ * Captures exit status, stdout, and stderr.
  *
- * @param command - The base executable name or path.
+ * @param command - The executable binary name or path.
  * @param args - Array of command-line arguments.
  * @returns Exit code and output streams.
  */
@@ -17,9 +21,10 @@ export const defaultExecutor: CommandExecutor = async (
   command: string,
   args: string[] = []
 ): Promise<CommandResult> => {
-  const fullCommand = [command, ...args].join(" ");
   try {
-    const { stderr, stdout } = await execAsync(fullCommand);
+    const { stderr, stdout } = await execFileAsync(command, args, {
+      maxBuffer: DEFAULT_MAX_BUFFER_BYTES,
+    });
     return {
       exitCode: 0,
       stderr: stderr.toString(),

@@ -48,10 +48,22 @@ describe("Performance Shared Utilities (scripts/perf/utils)", () => {
     it("captures non-zero exit code on command failure", async () => {
       const result = await defaultExecutor("node", [
         "-e",
-        "\"process.stderr.write('fail'); process.exit(42);\"",
+        "process.stderr.write('fail'); process.exit(42);",
       ]);
       expect(result.exitCode).toBe(42);
       expect(result.stderr).toBe("fail");
+    });
+
+    it("passes arguments literally without shell word splitting or metacharacter execution", async () => {
+      const result = await defaultExecutor("node", [
+        "-e",
+        "console.log(process.argv[1]);",
+        "literal with spaces & semicolon; echo injected",
+      ]);
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout.trim()).toBe(
+        "literal with spaces & semicolon; echo injected"
+      );
     });
   });
 
