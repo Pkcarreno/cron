@@ -12,6 +12,7 @@
     "prebuild": "expo prebuild",
     "expo:doctor": "pnpm dlx expo-doctor@latest",
     "perf:doctor": "tsx scripts/perf/doctor.ts",
+    "perf:compare": "tsx scripts/perf/compare.ts",
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "lint": "ultracite check",

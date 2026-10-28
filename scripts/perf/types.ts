@@ -144,3 +144,17 @@ export interface ComparisonReport {
   scenario: string;
   violations: BudgetViolation[];
 }
+
+export interface CompareOptions {
+  customThresholds?: Partial<BudgetThresholds>;
+  failOnBudgetViolation?: boolean;
+  reporter?: (output: string) => void;
+}
+
+export interface CompareResult {
+  error?: string;
+  exitCode: number;
+  formattedTable: string;
+  isSuccess: boolean;
+  report?: ComparisonReport;
+}
