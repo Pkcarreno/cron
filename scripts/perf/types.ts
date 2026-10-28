@@ -81,6 +81,7 @@ export interface BuildOptions {
   outputDirectory?: string;
   profile?: "preview" | "development" | "production";
   reporter?: (message: string) => void;
+  sourceArtifactPath?: string;
 }
 
 export interface BuildResult {
