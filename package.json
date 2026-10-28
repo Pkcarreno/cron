@@ -12,6 +12,7 @@
     "prebuild": "expo prebuild",
     "expo:doctor": "pnpm dlx expo-doctor@latest",
     "perf:doctor": "tsx scripts/perf/doctor.ts",
+    "perf:build": "tsx scripts/perf/build.ts",
     "perf:measure": "tsx scripts/perf/measure.ts",
     "typecheck": "tsc --noEmit",
     "test": "jest",
@@ -87,7 +88,8 @@
     ],
     "testPathIgnorePatterns": [
       "/node_modules/",
-      "/.agents/"
+      "/.agents/",
+      "/.worktrees/"
     ]
   },
   "packageManager": "pnpm@12.14.0+sha512.c18ba6d87993d3d164cb5e8948f32b2c06ee854487e06cd8d86781342fb3e5bb4634367034711e86802baa9c37bea906ce1929ad08d70884c97d801df13389a6"
