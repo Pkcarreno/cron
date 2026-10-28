@@ -25,6 +25,11 @@ jest.mock("react-native-audio-api", () =>
   jest.requireActual("react-native-audio-api/mock")
 );
 
+jest.mock("expo-battery", () => ({
+  addBatteryLevelListener: () => ({ remove: jest.fn() }),
+  useBatteryLevel: () => 1,
+}));
+
 jest.mock("@lodev09/react-native-true-sheet", () => {
   const ReactMock = require("react");
   const { View } = require("react-native");

@@ -310,7 +310,12 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = React.memo(
     );
 
     return (
-      <View style={styles.container} testID={testID} onLayout={handleLayout}>
+      <View
+        style={styles.container}
+        testID={testID ?? "thumbwheel-picker"}
+        collapsable={false}
+        onLayout={handleLayout}
+      >
         <View style={styles.centerIndicator} pointerEvents="none" />
 
         {/* Lateral edge fade masks */}

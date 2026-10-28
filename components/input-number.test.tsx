@@ -5,7 +5,7 @@ import { Text } from "react-native";
 
 import { renderWithProviders } from "@/test-utils/render-with-providers";
 
-import { InputNumber } from "./input-number";
+import { InputNumber, NumberPickerForm } from "./input-number";
 import { Sheet, SheetContent } from "./sheet";
 
 describe("InputNumber integration", () => {
@@ -93,6 +93,42 @@ describe("InputNumber integration", () => {
 
     expect(presentSpy).not.toHaveBeenCalled();
     presentSpy.mockRestore();
+  });
+
+  it("renders trigger with default testID and collapsable={false}, and supports custom testID", async () => {
+    const screen = await renderWithProviders(
+      <InputNumber value={5} suffix="min" />
+    );
+
+    const trigger = screen.getByTestId("input-number-trigger");
+    expect(trigger).toBeTruthy();
+    expect(trigger.props.collapsable).toBe(false);
+
+    const customScreen = await renderWithProviders(
+      <InputNumber value={5} suffix="min" testID="custom-number-trigger" />
+    );
+    const customTrigger = customScreen.getByTestId("custom-number-trigger");
+    expect(customTrigger).toBeTruthy();
+    expect(customTrigger.props.collapsable).toBe(false);
+  });
+
+  it("renders NumberPickerForm with testID, collapsable={false}, thumbwheel-picker testID, and save button testID", async () => {
+    const onSave = jest.fn();
+    const onChange = jest.fn();
+
+    const screen = await renderWithProviders(
+      <NumberPickerForm value={10} onChange={onChange} onSave={onSave} />
+    );
+
+    const sheetContainer = screen.getByTestId("number-picker-sheet");
+    expect(sheetContainer).toBeTruthy();
+    expect(sheetContainer.props.collapsable).toBe(false);
+
+    const thumbwheel = screen.getByTestId("thumbwheel-picker");
+    expect(thumbwheel).toBeTruthy();
+
+    const saveButton = screen.getByTestId("number-picker-save-button");
+    expect(saveButton).toBeTruthy();
   });
 });
 

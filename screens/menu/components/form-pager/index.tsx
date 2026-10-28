@@ -180,6 +180,8 @@ export const FormPager = <T extends string>({
           {options.map((option, index) => (
             <PressableWithIndex
               key={`inactive-${option.value || "undef"}`}
+              testID={`menu-tab-${option.value}`}
+              collapsable={false}
               index={index}
               onAction={handleOnPressInactiveTab}
             >
@@ -242,6 +244,7 @@ export const FormPager = <T extends string>({
 
       <AnimatedPagerView
         testID={testID ?? "form-pager-view"}
+        collapsable={false}
         ref={pagerRef}
         style={styles.pagerView}
         initialPage={safeActiveIndex}
@@ -254,7 +257,11 @@ export const FormPager = <T extends string>({
         onPageSelected={handlePageSelected}
       >
         {options.map((option) => (
-          <View key={`page-${option.value || "undef"}`} style={styles.page}>
+          <View
+            key={`page-${option.value || "undef"}`}
+            collapsable={false}
+            style={styles.page}
+          >
             {typeof option.content === "function"
               ? option.content({ bottom: footerHeight + 12 })
               : option.content}

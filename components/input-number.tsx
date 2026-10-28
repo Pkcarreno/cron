@@ -25,12 +25,14 @@ export interface InputNumberProps {
   valueSuffix?: string;
   min?: number;
   max?: number;
+  testID?: string;
 }
 
 export const InputNumber: React.FC<InputNumberProps> = ({
   value,
   editable = true,
   suffix,
+  testID,
   ...props
 }) => {
   const renderValue = useMemo(() => value.toString().padStart(2, "0"), [value]);
@@ -50,6 +52,8 @@ export const InputNumber: React.FC<InputNumberProps> = ({
         <SheetTrigger asChild>
           {(triggerProps) => (
             <Pressable
+              testID={testID ?? "input-number-trigger"}
+              collapsable={false}
               style={pressableStyles}
               disabled={!editable}
               {...triggerProps}
@@ -306,6 +310,8 @@ export const NumberPickerForm: React.FC<NumberPickerFormProps> = ({
 
   return (
     <View
+      testID="number-picker-sheet"
+      collapsable={false}
       onLayout={handleContainerLayout}
       style={[
         sheetFormStyles.root,
@@ -317,6 +323,7 @@ export const NumberPickerForm: React.FC<NumberPickerFormProps> = ({
       <View style={sheetFormStyles.content}>
         <View style={sheetFormStyles.inputWrapper}>
           <InputThumbwheel
+            testID="thumbwheel-picker"
             value={value}
             onChangeValue={onChange}
             min={min}
@@ -332,7 +339,11 @@ export const NumberPickerForm: React.FC<NumberPickerFormProps> = ({
         />
       </View>
       <View style={sheetFormStyles.footer}>
-        <Button title="Save" onPress={onSave} />
+        <Button
+          testID="number-picker-save-button"
+          title="Save"
+          onPress={onSave}
+        />
       </View>
     </View>
   );

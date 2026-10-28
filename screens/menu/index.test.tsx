@@ -5,6 +5,7 @@ import React from "react";
 import { TimerMode } from "@/helpers/timer/factory";
 import { serializeTimerConfig } from "@/helpers/timer/utils/config-serializer";
 import { Menu } from "@/screens/menu";
+import { TIMER_MODES } from "@/screens/menu/schema";
 import { storage } from "@/stores/storage";
 import {
   amrapWorkoutAtom,
@@ -37,7 +38,11 @@ describe("Menu integration", () => {
     const store = createStore();
     const screen = await renderWithProviders(<Menu />, { store });
 
-    const startButton = screen.getByRole("button", { name: "Start" });
+    const menuScreen = screen.getByTestId("menu-screen");
+    expect(menuScreen).toBeTruthy();
+    expect(menuScreen.props.collapsable).toBe(false);
+
+    const startButton = screen.getByTestId("start-timer-button");
     expect(startButton).toBeTruthy();
     expect(startButton.props.accessibilityState?.disabled).toBe(false);
 
@@ -264,5 +269,20 @@ describe("Menu integration", () => {
       }),
       pathname: "/timer",
     });
+  });
+
+  it("renders FormPager and tabs with testIDs and collapsable={false}", async () => {
+    const store = createStore();
+    const screen = await renderWithProviders(<Menu />, { store });
+
+    const pagerView = screen.getByTestId("form-pager-view");
+    expect(pagerView).toBeTruthy();
+    expect(pagerView.props.collapsable).toBe(false);
+
+    for (const mode of TIMER_MODES) {
+      const tab = screen.getByTestId(`menu-tab-${mode}`);
+      expect(tab).toBeTruthy();
+      expect(tab.props.collapsable).toBe(false);
+    }
   });
 });

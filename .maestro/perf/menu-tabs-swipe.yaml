@@ -1,0 +1,48 @@
+appId: ${APP_ID:-com.pkcarreno.cron.preview}
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "menu-screen"
+# Transition 1: FOR_TIME -> AMRAP
+- swipe:
+    start: "85%, 50%"
+    end: "15%, 50%"
+    duration: 600
+- waitForAnimationToEnd
+- runScript:
+    file: ../scripts/sleep.js
+    env:
+      durationMs: 500
+# Transition 2: AMRAP -> INTERVAL
+- swipe:
+    start: "85%, 50%"
+    end: "15%, 50%"
+    duration: 600
+- waitForAnimationToEnd
+- runScript:
+    file: ../scripts/sleep.js
+    env:
+      durationMs: 500
+# Transition 3: INTERVAL -> EMOM
+- swipe:
+    start: "85%, 50%"
+    end: "15%, 50%"
+    duration: 600
+- waitForAnimationToEnd
+- runScript:
+    file: ../scripts/sleep.js
+    env:
+      durationMs: 500
+# Transition 4: EMOM -> STOP_WATCH
+- swipe:
+    start: "85%, 50%"
+    end: "15%, 50%"
+    duration: 600
+- waitForAnimationToEnd
+- runScript:
+    file: ../scripts/sleep.js
+    env:
+      durationMs: 500
+- assertVisible:
+    id: "menu-screen"

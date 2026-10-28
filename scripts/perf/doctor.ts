@@ -155,9 +155,18 @@ export const checkCliTool = async (
   tool: "maestro" | "flashlight",
   category: CheckCategory,
   friendlyName: string,
-  remediation: string
+  remediation: string,
+  preferredFlag: "-v" | "--version" = tool === "flashlight" ? "-v" : "--version"
 ): Promise<CheckResult> => {
-  const result = await executor(tool, ["--version"]);
+  let result = await executor(tool, [preferredFlag]);
+  if (result.exitCode !== 0) {
+    const fallbackFlag = preferredFlag === "-v" ? "--version" : "-v";
+    const fallbackResult = await executor(tool, [fallbackFlag]);
+    if (fallbackResult.exitCode === 0) {
+      result = fallbackResult;
+    }
+  }
+
   if (result.exitCode === 0) {
     const version = result.stdout.trim() || "available";
     return {

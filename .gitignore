@@ -42,6 +42,7 @@ yarn-error.*
 # local temporary directory
 .tmp/*
 !.tmp/.gitkeep
+.worktrees/
 
 # local mise overrides
 mise.local.toml
