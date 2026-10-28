@@ -3,7 +3,6 @@ import os from "node:os";
 import path from "node:path";
 import { setTimeout as setTimeoutPromise } from "node:timers/promises";
 
-import { defaultExecutor } from "./doctor";
 import type {
   BenchmarkResult,
   CommandExecutor,
@@ -11,6 +10,11 @@ import type {
   FrameTimeMetrics,
   MeasureOptions,
 } from "./types";
+import {
+  defaultExecutor,
+  isDirectScriptExecution,
+  resolveGitCommitSha,
+} from "./utils";
 
 export type SleepFunction = (ms: number) => Promise<void>;
 
@@ -29,8 +33,8 @@ export interface StabilizationExecutionOptions {
   refreshRateHz?: 60 | 120;
   reporter?: (output: string) => void;
   scenarioPath: string;
+  shouldWarmup?: boolean;
   sleepFn?: SleepFunction;
-  warmup?: boolean;
 }
 
 export interface ExtendedMeasureOptions extends MeasureOptions {
@@ -63,7 +67,7 @@ export interface RawFlashlightResult {
  * Locks Android display refresh rate to fixed frequency (60 Hz or 120 Hz).
  *
  * Adaptive display refresh rates (LTPO) cause variable frame pacing and distorted
- * frame duration percentiles. Locking min and peak rates guarantees deterministic VSYNC.
+ * frame duration percentiles. Locking min and peak rates makes sure that VSYNC is deterministic.
  *
  * @param executor - Process execution adapter.
  * @param refreshRateHz - Target refresh rate in Hertz.
@@ -102,7 +106,7 @@ export const lockDisplayRefreshRate = async (
  * Executes Android Runtime (ART) ahead-of-time (AOT) speed compilation.
  *
  * JIT compilation pauses introduce irregular frame drops and CPU spikes.
- * Compiling bytecode to native machine code ensures consistent baseline execution.
+ * Compiling bytecode to native machine code makes sure that baseline execution is consistent.
  *
  * @param executor - Process execution adapter.
  * @param packageId - Android application package identifier.
@@ -235,23 +239,29 @@ export const collectGfxInfo = async (
  */
 export const parseGfxInfo = (output: string): ParsedGfxInfo => {
   const p50Match = output.match(
-    /50th\s*percentile:\s*(?<val>\d+(?:\.\d+)?)\s*ms/iu
+    /50th\s*percentile:\s*(?<metricValue>\d+(?:\.\d+)?)\s*ms/iu
   );
   const p90Match = output.match(
-    /90th\s*percentile:\s*(?<val>\d+(?:\.\d+)?)\s*ms/iu
+    /90th\s*percentile:\s*(?<metricValue>\d+(?:\.\d+)?)\s*ms/iu
   );
   const p99Match = output.match(
-    /99th\s*percentile:\s*(?<val>\d+(?:\.\d+)?)\s*ms/iu
+    /99th\s*percentile:\s*(?<metricValue>\d+(?:\.\d+)?)\s*ms/iu
   );
   const jankMatch = output.match(
-    /Janky\s*frames:\s*\d+\s*\((?<val>\d+(?:\.\d+)?)%\)/iu
+    /Janky\s*frames:\s*\d+\s*\((?<metricValue>\d+(?:\.\d+)?)%\)/iu
   );
 
-  const p50Ms = p50Match?.groups?.val ? Number(p50Match.groups.val) : 0;
-  const p90Ms = p90Match?.groups?.val ? Number(p90Match.groups.val) : 0;
-  const p99Ms = p99Match?.groups?.val ? Number(p99Match.groups.val) : 0;
-  const jankPercentage = jankMatch?.groups?.val
-    ? Number(jankMatch.groups.val)
+  const p50Ms = p50Match?.groups?.metricValue
+    ? Number(p50Match.groups.metricValue)
+    : 0;
+  const p90Ms = p90Match?.groups?.metricValue
+    ? Number(p90Match.groups.metricValue)
+    : 0;
+  const p99Ms = p99Match?.groups?.metricValue
+    ? Number(p99Match.groups.metricValue)
+    : 0;
+  const jankPercentage = jankMatch?.groups?.metricValue
+    ? Number(jankMatch.groups.metricValue)
     : 0;
 
   return {
@@ -334,22 +344,6 @@ export const resolveScenarioName = (scenarioPath: string): string => {
 };
 
 /**
- * Resolves active Git commit short hash.
- *
- * @param executor - Process execution adapter.
- * @returns Short Git commit hash or fallback string.
- */
-export const resolveGitCommit = async (
-  executor: CommandExecutor = defaultExecutor
-): Promise<string> => {
-  const result = await executor("git", ["rev-parse", "--short", "HEAD"]);
-  if (result.exitCode === 0 && result.stdout.trim()) {
-    return result.stdout.trim();
-  }
-  return "unknown";
-};
-
-/**
  * Resolves connected Android device product model.
  *
  * @param executor - Process execution adapter.
@@ -374,7 +368,7 @@ export const resolveDeviceModel = async (
 };
 
 /**
- * Orchestrates complete hardware stabilization sequence prior to measurement.
+ * Orchestrates complete hardware stabilization sequence before measurement.
  *
  * 1. Locks refresh rate to fixed frequency.
  * 2. Compiles application bytecode using ART speed profile.
@@ -393,7 +387,7 @@ export const runHardwareStabilization = async (
   const maestroBin = options.maestroBin ?? "maestro";
   const cooldownSleepMs = options.cooldownSleepMs ?? 5000;
   const sleepFn = options.sleepFn ?? defaultSleep;
-  const warmup = options.warmup ?? true;
+  const shouldWarmup = options.shouldWarmup ?? true;
 
   options.reporter?.(
     `[STABILIZE] Locking display refresh rate to ${refreshRateHz} Hz...`
@@ -408,7 +402,7 @@ export const runHardwareStabilization = async (
   options.reporter?.("[STABILIZE] Enabling airplane mode...");
   await setAirplaneMode(executor, true, options.deviceId);
 
-  if (warmup) {
+  if (shouldWarmup) {
     options.reporter?.(
       "[STABILIZE] Executing unmeasured warmup interaction pass..."
     );
@@ -509,18 +503,18 @@ export const measureBenchmark = async (
   const maestroBin = options.maestroBin ?? "maestro";
   const outputDirectory =
     options.outputDirectory ?? path.resolve(process.cwd(), "benchmark/results");
-  const warmup = options.warmup ?? true;
-  const skipStabilization = options.skipStabilization ?? false;
+  const shouldWarmup = options.shouldWarmup ?? true;
+  const shouldSkipStabilization = options.shouldSkipStabilization ?? false;
   const reporter = options.reporter ?? console.log;
 
   const scenarioName = resolveScenarioName(options.scenarioPath);
-  const commit = options.customCommit ?? (await resolveGitCommit(executor));
+  const commit = await resolveGitCommitSha(executor, options.customCommit);
   const deviceModel = await resolveDeviceModel(executor, options.deviceId);
 
   let isAirplaneModeEnabled = false;
 
   try {
-    if (!skipStabilization) {
+    if (!shouldSkipStabilization) {
       await runHardwareStabilization({
         cooldownSleepMs: options.cooldownSleepMs,
         deviceId: options.deviceId,
@@ -530,8 +524,8 @@ export const measureBenchmark = async (
         refreshRateHz,
         reporter,
         scenarioPath: options.scenarioPath,
+        shouldWarmup,
         sleepFn: options.sleepFn,
-        warmup,
       });
       isAirplaneModeEnabled = true;
     }
@@ -596,6 +590,7 @@ export const measureBenchmark = async (
         refreshRateHz,
       },
       durationMs: options.durationMs,
+      hasWarmupExecuted: Boolean(shouldWarmup && !shouldSkipStabilization),
       iterationCount,
       metrics: {
         cpu: cpuMetrics,
@@ -605,7 +600,6 @@ export const measureBenchmark = async (
       packageId,
       scenario: scenarioName,
       timestamp: new Date().toISOString(),
-      warmupExecuted: Boolean(warmup && !skipStabilization),
     };
 
     const savedPath = saveBenchmarkResult(benchmarkResult, outputDirectory);
@@ -626,64 +620,64 @@ export const measureBenchmark = async (
 
 const CLI_FLAG_HANDLERS: Record<
   string,
-  (options: ExtendedMeasureOptions, val?: string) => number
+  (options: ExtendedMeasureOptions, optionValue?: string) => number
 > = {
-  "--device": (options, val) => {
-    if (val) {
-      options.deviceId = val;
+  "--device": (options, optionValue) => {
+    if (optionValue) {
+      options.deviceId = optionValue;
     }
     return 2;
   },
-  "--duration": (options, val) => {
-    if (val) {
-      options.durationMs = Number(val);
+  "--duration": (options, optionValue) => {
+    if (optionValue) {
+      options.durationMs = Number(optionValue);
     }
     return 2;
   },
-  "--iterations": (options, val) => {
-    if (val) {
-      options.iterationCount = Number(val);
+  "--iterations": (options, optionValue) => {
+    if (optionValue) {
+      options.iterationCount = Number(optionValue);
     }
     return 2;
   },
   "--no-warmup": (options) => {
-    options.warmup = false;
+    options.shouldWarmup = false;
     return 1;
   },
-  "--output": (options, val) => {
-    if (val) {
-      options.outputDirectory = val;
+  "--output": (options, optionValue) => {
+    if (optionValue) {
+      options.outputDirectory = optionValue;
     }
     return 2;
   },
-  "--package": (options, val) => {
-    if (val) {
-      options.packageId = val;
+  "--package": (options, optionValue) => {
+    if (optionValue) {
+      options.packageId = optionValue;
     }
     return 2;
   },
-  "--refresh-rate": (options, val) => {
-    const rate = Number(val);
+  "--refresh-rate": (options, optionValue) => {
+    const rate = Number(optionValue);
     if (rate === 60 || rate === 120) {
       options.refreshRateHz = rate;
     }
     return 2;
   },
-  "--refreshRate": (options, val) => {
-    const rate = Number(val);
+  "--refreshRate": (options, optionValue) => {
+    const rate = Number(optionValue);
     if (rate === 60 || rate === 120) {
       options.refreshRateHz = rate;
     }
     return 2;
   },
-  "--scenario": (options, val) => {
-    if (val) {
-      options.scenarioPath = val;
+  "--scenario": (options, optionValue) => {
+    if (optionValue) {
+      options.scenarioPath = optionValue;
     }
     return 2;
   },
   "--skip-stabilization": (options) => {
-    options.skipStabilization = true;
+    options.shouldSkipStabilization = true;
     return 1;
   },
 };
@@ -694,7 +688,7 @@ const CLI_FLAG_HANDLERS: Record<
  * @param args - Array of command line argument strings.
  * @returns Configured measurement options.
  */
-export const parseCliArguments = (args: string[]): ExtendedMeasureOptions => {
+export const parseMeasureCliArgs = (args: string[]): ExtendedMeasureOptions => {
   const options: ExtendedMeasureOptions = {
     scenarioPath: ".maestro/perf/thumbwheel-scroll.yaml",
   };
@@ -732,17 +726,12 @@ export const parseCliArguments = (args: string[]): ExtendedMeasureOptions => {
   return options;
 };
 
-const isDirectScriptExecution = (): boolean => {
-  if (!process.argv[1]) {
-    return false;
-  }
-  return import.meta.filename === path.resolve(process.argv[1]);
-};
+export const parseCliArguments = parseMeasureCliArgs;
 
-if (isDirectScriptExecution()) {
+if (isDirectScriptExecution(import.meta.filename)) {
   void (async () => {
     try {
-      const cliOptions = parseCliArguments(process.argv.slice(2));
+      const cliOptions = parseMeasureCliArgs(process.argv.slice(2));
       const result = await measureBenchmark(cliOptions);
       console.log(
         `\nMeasurement complete for ${result.scenario} (${result.commit}):`

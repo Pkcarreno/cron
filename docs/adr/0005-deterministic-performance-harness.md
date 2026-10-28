@@ -23,11 +23,11 @@ We adopt an automated, non-intrusive Performance Measurement Harness orchestrate
 
 - **Flashlight (`/bamlab/flashlight`)**: Deploys a lightweight native profiler (`BAMPerfProfiler`) to monitor `/proc/<PID>/stat` kernel counters and SurfaceFlinger metrics via ADB without adding native SDK dependencies to the application source code.
 - **Maestro (`maestro.mobile.dev`)**: Drives deterministic, declarative interaction scenarios (`.maestro/perf/*.yaml`) via OS accessibility channels with percentage-based coordinates and fixed durations.
-- **Expo Config Plugin (`plugins/with-profileable`)**: Injects `<profileable android:shell="true" />` into `AndroidManifest.xml` during preview builds (`EXPO_PUBLIC_APP_ENV=preview`). This grants ADB profiling access without setting `android:debuggable="true"`, ensuring R8 and Hermes optimizations remain intact.
+- **Expo Config Plugin (`plugins/with-profileable`)**: Injects `<profileable android:shell="true" />` into `AndroidManifest.xml` during preview builds (`EXPO_PUBLIC_APP_ENV=preview`). This grants ADB profiling access without setting `android:debuggable="true"`. This makes sure that R8 and Hermes optimizations remain intact.
 
 ### 2. Hardware Stabilization Protocol
 
-To ensure benchmark reproducibility within a ±2% error margin, test execution enforces five stabilization gates prior to measurement:
+To make sure that benchmark runs are reproducible within a ±2% error margin, test execution enforces five stabilization gates before measurement:
 
 1. **Display Refresh Rate Lock**: ADB locks system display refresh rates to a fixed frequency (60 Hz or 120 Hz) to eliminate LTPO scaling artifacts.
 2. **ART Ahead-Of-Time (AOT) Speed Compilation**: Executes `cmd package compile -m speed -f <package>` to compile all bytecode into machine code, removing JIT compilation spikes.
@@ -49,7 +49,7 @@ The comparison runner (`pnpm perf:compare`) evaluates baseline against candidate
 ## Consequences
 
 - **Positive**:
-  - Provides autonomous agents with an automated, objective verification loop (`pnpm perf:doctor`, `pnpm perf:build`, `pnpm perf:measure`, `pnpm perf:compare`).
+  - Gives autonomous agents an automated, objective verification loop (`pnpm perf:doctor`, `pnpm perf:build`, `pnpm perf:measure`, `pnpm perf:compare`).
   - Zero intrusion into release production application bundles (`cron`).
   - Disentangles UI Thread vs. JS Thread CPU utilization for Reanimated 4 and Fabric architecture.
 - **Negative**:

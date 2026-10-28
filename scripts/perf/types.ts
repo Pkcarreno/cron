@@ -38,21 +38,21 @@ export interface BenchmarkResult {
   commit: string;
   device?: BenchmarkDeviceInfo;
   durationMs?: number;
+  hasWarmupExecuted: boolean;
   iterationCount: number;
   metrics: BenchmarkMetrics;
   packageId: string;
   scenario: string;
   timestamp: string;
-  warmupExecuted: boolean;
 }
 
 export interface HardwareStabilizationOptions {
-  airplaneMode?: boolean;
   cooldownSleepMs?: number;
   executor?: CommandExecutor;
+  isAirplaneModeEnabled?: boolean;
   packageId?: string;
   refreshRateHz?: 60 | 120;
-  runArtCompilation?: boolean;
+  shouldRunArtCompilation?: boolean;
 }
 
 export interface MeasureOptions {
@@ -69,18 +69,18 @@ export interface MeasureOptions {
   refreshRateHz?: 60 | 120;
   reporter?: (message: string) => void;
   scenarioPath: string;
-  skipStabilization?: boolean;
-  warmup?: boolean;
+  shouldSkipStabilization?: boolean;
+  shouldWarmup?: boolean;
 }
 
 export interface BuildOptions {
   buildType?: "apk" | "bundle";
-  clean?: boolean;
   customCommit?: string;
   executor?: CommandExecutor;
   outputDirectory?: string;
   profile?: "preview" | "development" | "production";
   reporter?: (message: string) => void;
+  shouldClean?: boolean;
   sourceArtifactPath?: string;
 }
 
@@ -148,8 +148,8 @@ export interface ComparisonReport {
 
 export interface CompareOptions {
   customThresholds?: Partial<BudgetThresholds>;
-  failOnBudgetViolation?: boolean;
   reporter?: (output: string) => void;
+  shouldFailOnBudgetViolation?: boolean;
 }
 
 export interface CompareResult {

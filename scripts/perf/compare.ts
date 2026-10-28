@@ -1,5 +1,4 @@
 import fs from "node:fs/promises";
-import path from "node:path";
 
 import { DEFAULT_BUDGET_THRESHOLDS } from "./types";
 import type {
@@ -11,6 +10,7 @@ import type {
   ComparisonReport,
   MetricDelta,
 } from "./types";
+import { isDirectScriptExecution } from "./utils";
 
 /* oxlint-disable no-redeclare */
 export const CompareExitCode = {
@@ -250,13 +250,21 @@ export const generateComparisonReport = (
   };
 };
 
-const formatRow = (
-  metric: string,
-  baseline: string,
-  candidate: string,
-  delta: string,
-  deltaPercent: string
-): string =>
+export interface ComparisonTableRow {
+  baseline: string;
+  candidate: string;
+  delta: string;
+  deltaPercent: string;
+  metric: string;
+}
+
+export const formatRow = ({
+  baseline,
+  candidate,
+  delta,
+  deltaPercent,
+  metric,
+}: ComparisonTableRow): string =>
   [
     metric.padEnd(20),
     baseline.padEnd(16),
@@ -286,7 +294,13 @@ export const formatComparisonReport = (report: ComparisonReport): string => {
     `Baseline:      ${report.baselineCommit}`,
     `Candidate:     ${report.candidateCommit}`,
     subDivider,
-    formatRow("Metric", "Baseline", "Candidate", "Delta", "Delta %"),
+    formatRow({
+      baseline: "Baseline",
+      candidate: "Candidate",
+      delta: "Delta",
+      deltaPercent: "Delta %",
+      metric: "Metric",
+    }),
     subDivider,
   ];
 
@@ -334,13 +348,13 @@ export const formatComparisonReport = (report: ComparisonReport): string => {
 
   for (const row of tableRows) {
     lines.push(
-      formatRow(
-        row.label,
-        formatMetricValue(row.delta.baseline, row.unit),
-        formatMetricValue(row.delta.candidate, row.unit),
-        formatDeltaValue(row.delta.delta, row.unit),
-        formatDeltaPercent(row.delta.deltaPercent)
-      )
+      formatRow({
+        baseline: formatMetricValue(row.delta.baseline, row.unit),
+        candidate: formatMetricValue(row.delta.candidate, row.unit),
+        delta: formatDeltaValue(row.delta.delta, row.unit),
+        deltaPercent: formatDeltaPercent(row.delta.deltaPercent),
+        metric: row.label,
+      })
     );
   }
 
@@ -386,7 +400,7 @@ export const loadBenchmarkResult = async (
     fileContent = await fs.readFile(filePath, "utf-8");
   } catch {
     throw new Error(
-      `Benchmark file not found at: ${filePath}. Ensure valid benchmark JSON path is supplied.`
+      `Benchmark file not found at: ${filePath}. Make sure that you supply a valid benchmark JSON path.`
     );
   }
 
@@ -427,20 +441,20 @@ export const loadBenchmarkResult = async (
 
 const parseThresholdArg = (
   arg: string,
-  valStr: string,
+  thresholdValueString: string,
   current: Partial<BudgetThresholds>
 ): Partial<BudgetThresholds> | null => {
-  const val = Number(valStr);
-  if (Number.isNaN(val)) {
+  const optionValue = Number(thresholdValueString);
+  if (Number.isNaN(optionValue)) {
     return null;
   }
 
   switch (arg) {
     case "--threshold-jank": {
-      return { ...current, jankRateMaxPercent: val };
+      return { ...current, jankRateMaxPercent: optionValue };
     }
     case "--threshold-js-cpu": {
-      return { ...current, jsThreadCpuMaxPercent: val };
+      return { ...current, jsThreadCpuMaxPercent: optionValue };
     }
     case "--threshold-frame-120": {
       return {
@@ -448,7 +462,7 @@ const parseThresholdArg = (
         frameBudgetMs: {
           ...DEFAULT_BUDGET_THRESHOLDS.frameBudgetMs,
           ...current.frameBudgetMs,
-          120: val,
+          120: optionValue,
         },
       };
     }
@@ -458,7 +472,7 @@ const parseThresholdArg = (
         frameBudgetMs: {
           ...DEFAULT_BUDGET_THRESHOLDS.frameBudgetMs,
           ...current.frameBudgetMs,
-          60: val,
+          60: optionValue,
         },
       };
     }
@@ -474,19 +488,19 @@ const parseThresholdArg = (
  * @param args - Array of CLI argument strings.
  * @returns Extracted file paths, comparison options, and help flag.
  */
-export const parseCliArgs = (
+export const parseCompareCliArgs = (
   args: string[]
 ): {
   baselinePath?: string;
   candidatePath?: string;
   options: CompareOptions;
-  showHelp: boolean;
+  shouldShowHelp: boolean;
 } => {
   const options: CompareOptions = {
     customThresholds: {},
-    failOnBudgetViolation: false,
+    shouldFailOnBudgetViolation: false,
   };
-  let showHelp = false;
+  let shouldShowHelp = false;
   const positionalArgs: string[] = [];
 
   for (let i = 0; i < args.length; i += 1) {
@@ -495,9 +509,9 @@ export const parseCliArgs = (
       continue;
     }
     if (arg === "--help" || arg === "-h") {
-      showHelp = true;
+      shouldShowHelp = true;
     } else if (arg === "--fail-on-violation") {
-      options.failOnBudgetViolation = true;
+      options.shouldFailOnBudgetViolation = true;
     } else if (arg.startsWith("--threshold-") && i + 1 < args.length) {
       i += 1;
       const updated = parseThresholdArg(
@@ -517,9 +531,11 @@ export const parseCliArgs = (
     baselinePath: positionalArgs[0],
     candidatePath: positionalArgs[1],
     options,
-    showHelp,
+    shouldShowHelp,
   };
 };
+
+export const parseCliArgs = parseCompareCliArgs;
 
 /**
  * Runs performance comparison between baseline and candidate benchmark JSON files.
@@ -575,7 +591,7 @@ export const runCompare = async (
   reporter(formattedTable);
 
   const exitCode =
-    !report.isPassingBudgets && options.failOnBudgetViolation
+    !report.isPassingBudgets && options.shouldFailOnBudgetViolation
       ? CompareExitCode.BUDGET_VIOLATION
       : CompareExitCode.SUCCESS;
 
@@ -587,26 +603,13 @@ export const runCompare = async (
   };
 };
 
-/**
- * Checks whether this module was executed directly via the CLI entry point.
- *
- * @returns True when executed directly by node/tsx process.
- */
-export const isDirectScriptExecution = (): boolean => {
-  if (!process.argv[1]) {
-    return false;
-  }
-  return import.meta.filename === path.resolve(process.argv[1]);
-};
-
-if (isDirectScriptExecution()) {
+if (isDirectScriptExecution(import.meta.filename)) {
   void (async () => {
     try {
-      const { baselinePath, candidatePath, options, showHelp } = parseCliArgs(
-        process.argv.slice(2)
-      );
+      const { baselinePath, candidatePath, options, shouldShowHelp } =
+        parseCompareCliArgs(process.argv.slice(2));
 
-      if (showHelp) {
+      if (shouldShowHelp) {
         console.log(USAGE_TEXT);
         process.exit(CompareExitCode.SUCCESS);
       }

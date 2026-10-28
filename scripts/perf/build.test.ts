@@ -2,13 +2,11 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import {
-  isDirectScriptExecution,
-  parseBuildArgs,
-  resolveCommitSha,
-  runBuild,
-} from "./build";
+import { parseBuildArgs, parseBuildCliArgs, runBuild } from "./build";
 import type { CommandExecutor, CommandResult } from "./types";
+import { isDirectScriptExecution, resolveGitCommitSha } from "./utils";
+
+const resolveCommitSha = resolveGitCommitSha;
 
 interface RecordedCall {
   args: string[];
@@ -59,7 +57,7 @@ describe("Performance Build Runner (scripts/perf/build)", () => {
     }
   });
 
-  describe("resolveCommitSha", () => {
+  describe("resolveCommitSha / resolveGitCommitSha", () => {
     it("retrieves short git commit SHA from git rev-parse", async () => {
       const calls: RecordedCall[] = [];
       const executor = createMockExecutor(
@@ -72,7 +70,7 @@ describe("Performance Build Runner (scripts/perf/build)", () => {
         calls
       );
 
-      const commit = await resolveCommitSha(executor);
+      const commit = await resolveGitCommitSha(executor);
 
       expect(commit).toBe("faeb08d");
       expect(calls).toHaveLength(1);
@@ -119,56 +117,59 @@ describe("Performance Build Runner (scripts/perf/build)", () => {
     });
   });
 
-  describe("parseBuildArgs", () => {
+  describe("parseBuildCliArgs", () => {
     it("returns default empty options for empty arguments", () => {
-      const options = parseBuildArgs([]);
+      const options = parseBuildCliArgs([]);
       expect(options).toEqual({});
     });
 
     it("parses --commit flag with space and equals separator", () => {
-      expect(parseBuildArgs(["--commit", "a1b2c3d"])).toEqual({
+      expect(parseBuildCliArgs(["--commit", "a1b2c3d"])).toEqual({
         customCommit: "a1b2c3d",
       });
-      expect(parseBuildArgs(["--commit=a1b2c3d"])).toEqual({
+      expect(parseBuildCliArgs(["--commit=a1b2c3d"])).toEqual({
         customCommit: "a1b2c3d",
       });
     });
 
     it("parses --output directory flag with space and equals separator", () => {
-      expect(parseBuildArgs(["--output", "custom/outputs"])).toEqual({
+      expect(parseBuildCliArgs(["--output", "custom/outputs"])).toEqual({
         outputDirectory: "custom/outputs",
       });
-      expect(parseBuildArgs(["--output=custom/outputs"])).toEqual({
+      expect(parseBuildCliArgs(["--output=custom/outputs"])).toEqual({
         outputDirectory: "custom/outputs",
       });
     });
 
     it("parses --clean flag", () => {
+      expect(parseBuildCliArgs(["--clean"])).toEqual({
+        shouldClean: true,
+      });
       expect(parseBuildArgs(["--clean"])).toEqual({
-        clean: true,
+        shouldClean: true,
       });
     });
 
     it("parses --profile flag", () => {
-      expect(parseBuildArgs(["--profile", "development"])).toEqual({
+      expect(parseBuildCliArgs(["--profile", "development"])).toEqual({
         profile: "development",
       });
-      expect(parseBuildArgs(["--profile=production"])).toEqual({
+      expect(parseBuildCliArgs(["--profile=production"])).toEqual({
         profile: "production",
       });
     });
 
     it("parses --build-type flag", () => {
-      expect(parseBuildArgs(["--build-type", "bundle"])).toEqual({
+      expect(parseBuildCliArgs(["--build-type", "bundle"])).toEqual({
         buildType: "bundle",
       });
-      expect(parseBuildArgs(["--type=apk"])).toEqual({
+      expect(parseBuildCliArgs(["--type=apk"])).toEqual({
         buildType: "apk",
       });
     });
 
     it("combines multiple CLI flags into single options object", () => {
-      const options = parseBuildArgs([
+      const options = parseBuildCliArgs([
         "--commit",
         "faeb08d",
         "--output",
@@ -179,10 +180,10 @@ describe("Performance Build Runner (scripts/perf/build)", () => {
       ]);
 
       expect(options).toEqual({
-        clean: true,
         customCommit: "faeb08d",
         outputDirectory: "custom/out",
         profile: "preview",
+        shouldClean: true,
       });
     });
   });
@@ -326,10 +327,10 @@ describe("Performance Build Runner (scripts/perf/build)", () => {
       );
 
       const result = await runBuild({
-        clean: true,
         executor,
         outputDirectory: outputDir,
         reporter: () => {},
+        shouldClean: true,
       });
 
       expect(result.isSuccess).toBe(true);

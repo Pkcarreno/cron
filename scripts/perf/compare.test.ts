@@ -9,12 +9,13 @@ import {
   formatDeltaPercent,
   formatDeltaValue,
   generateComparisonReport,
-  isDirectScriptExecution,
   loadBenchmarkResult,
   parseCliArgs,
+  parseCompareCliArgs,
   runCompare,
 } from "./compare";
 import type { BenchmarkResult } from "./types";
+import { isDirectScriptExecution } from "./utils";
 
 const createValidBenchmark = (
   overrides?: Partial<BenchmarkResult>
@@ -25,6 +26,7 @@ const createValidBenchmark = (
     refreshRateHz: 120,
   },
   durationMs: 10_000,
+  hasWarmupExecuted: true,
   iterationCount: 3,
   metrics: {
     cpu: {
@@ -42,7 +44,6 @@ const createValidBenchmark = (
   packageId: "com.pkcarreno.cron.preview",
   scenario: "thumbwheel-continuous-scroll",
   timestamp: "2026-10-28T12:00:00Z",
-  warmupExecuted: true,
   ...overrides,
 });
 
@@ -485,8 +486,8 @@ describe("Performance Comparison Delta Reporter (scripts/perf/compare)", () => {
 
       const reporter = jest.fn();
       const result = await runCompare(basePath, candPath, {
-        failOnBudgetViolation: true,
         reporter,
+        shouldFailOnBudgetViolation: true,
       });
 
       expect(result.exitCode).toBe(CompareExitCode.BUDGET_VIOLATION);
@@ -536,31 +537,35 @@ describe("Performance Comparison Delta Reporter (scripts/perf/compare)", () => {
     });
   });
 
-  describe("parseCliArgs", () => {
+  describe("parseCompareCliArgs", () => {
     it("parses positional paths for baseline and candidate", () => {
-      const parsed = parseCliArgs(["base.json", "cand.json"]);
+      const parsed = parseCompareCliArgs(["base.json", "cand.json"]);
       expect(parsed.baselinePath).toBe("base.json");
       expect(parsed.candidatePath).toBe("cand.json");
-      expect(parsed.options.failOnBudgetViolation).toBe(false);
-      expect(parsed.showHelp).toBe(false);
+      expect(parsed.options.shouldFailOnBudgetViolation).toBe(false);
+      expect(parsed.shouldShowHelp).toBe(false);
+
+      const aliasParsed = parseCliArgs(["base.json", "cand.json"]);
+      expect(aliasParsed.shouldShowHelp).toBe(false);
     });
 
     it("parses --fail-on-violation flag", () => {
-      const parsed = parseCliArgs([
+      const parsed = parseCompareCliArgs([
         "base.json",
         "cand.json",
         "--fail-on-violation",
       ]);
-      expect(parsed.options.failOnBudgetViolation).toBe(true);
+      expect(parsed.options.shouldFailOnBudgetViolation).toBe(true);
     });
 
     it("parses --help and -h flags", () => {
-      expect(parseCliArgs(["--help"]).showHelp).toBe(true);
-      expect(parseCliArgs(["-h"]).showHelp).toBe(true);
+      expect(parseCompareCliArgs(["--help"]).shouldShowHelp).toBe(true);
+      expect(parseCompareCliArgs(["-h"]).shouldShowHelp).toBe(true);
+      expect(parseCliArgs(["--help"]).shouldShowHelp).toBe(true);
     });
 
     it("parses custom thresholds flags", () => {
-      const parsed = parseCliArgs([
+      const parsed = parseCompareCliArgs([
         "base.json",
         "cand.json",
         "--threshold-jank",

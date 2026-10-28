@@ -7,7 +7,7 @@ import {
   parseCliArguments,
   parseCpuMetrics,
   parseGfxInfo,
-  resolveGitCommit,
+  parseMeasureCliArgs,
   resolveScenarioName,
   runArtCompilation,
   runHardwareStabilization,
@@ -15,6 +15,9 @@ import {
   setAirplaneMode,
 } from "./measure";
 import type { CommandExecutor, CommandResult } from "./types";
+import { resolveGitCommitSha } from "./utils";
+
+const resolveGitCommit = resolveGitCommitSha;
 
 const createMockExecutor =
   (
@@ -246,8 +249,10 @@ Number Slow UI thread: 4
           },
         });
 
-        const commit = await resolveGitCommit(executor);
+        const commit = await resolveGitCommitSha(executor);
         expect(commit).toBe("faeb08d");
+        const commitAlias = await resolveGitCommit(executor);
+        expect(commitAlias).toBe("faeb08d");
       });
     });
   });
@@ -265,8 +270,8 @@ Number Slow UI thread: 4
         packageId: "com.pkcarreno.cron.preview",
         refreshRateHz: 60,
         scenarioPath: ".maestro/perf/thumbwheel-scroll.yaml",
+        shouldWarmup: true,
         sleepFn,
-        warmup: true,
       });
 
       expect(commandLog).toEqual([
@@ -290,8 +295,8 @@ Number Slow UI thread: 4
         packageId: "com.pkcarreno.cron.preview",
         refreshRateHz: 120,
         scenarioPath: ".maestro/perf/thumbwheel-scroll.yaml",
+        shouldWarmup: false,
         sleepFn,
-        warmup: false,
       });
 
       expect(commandLog).not.toContain(expect.stringContaining("maestro test"));
@@ -370,15 +375,15 @@ Janky frames: 12 (1.00%)
         refreshRateHz: 60,
         reporter,
         scenarioPath: ".maestro/perf/thumbwheel-scroll.yaml",
+        shouldWarmup: true,
         sleepFn,
-        warmup: true,
       });
 
       expect(result.commit).toBe("testcommit123");
       expect(result.scenario).toBe("thumbwheel-scroll");
       expect(result.packageId).toBe("com.pkcarreno.cron.preview");
       expect(result.iterationCount).toBe(10);
-      expect(result.warmupExecuted).toBe(true);
+      expect(result.hasWarmupExecuted).toBe(true);
       expect(result.device?.refreshRateHz).toBe(60);
       expect(result.device?.model).toBe("Pixel 8 Pro");
       expect(result.metrics.frameTime.p50Ms).toBe(6);
@@ -471,10 +476,10 @@ Janky frames: 12 (1.00%)
         outputDirectory: testOutputDir,
         reporter: jest.fn(),
         scenarioPath: ".maestro/perf/thumbwheel-scroll.yaml",
-        skipStabilization: true,
+        shouldSkipStabilization: true,
       });
 
-      expect(result.warmupExecuted).toBe(false);
+      expect(result.hasWarmupExecuted).toBe(false);
       expect(commandLog).not.toContain(
         expect.stringContaining("min_refresh_rate")
       );
@@ -486,11 +491,11 @@ Janky frames: 12 (1.00%)
 
   describe("CLI Argument Parser", () => {
     it("provides defaults when no arguments are passed", () => {
-      const options = parseCliArguments([]);
+      const options = parseMeasureCliArgs([]);
 
       expect(options.scenarioPath).toBe(".maestro/perf/thumbwheel-scroll.yaml");
-      expect(options.skipStabilization).toBeUndefined();
-      expect(options.warmup).toBeUndefined();
+      expect(options.shouldSkipStabilization).toBeUndefined();
+      expect(options.shouldWarmup).toBeUndefined();
     });
 
     it("expands positional short scenario name into .maestro/perf/ path", () => {
@@ -502,7 +507,7 @@ Janky frames: 12 (1.00%)
     });
 
     it("parses comprehensive CLI flags", () => {
-      const options = parseCliArguments([
+      const options = parseMeasureCliArgs([
         "--scenario",
         ".maestro/perf/timer-workout-run.yaml",
         "--package",
@@ -528,8 +533,8 @@ Janky frames: 12 (1.00%)
       expect(options.refreshRateHz).toBe(120);
       expect(options.iterationCount).toBe(5);
       expect(options.durationMs).toBe(15_000);
-      expect(options.skipStabilization).toBe(true);
-      expect(options.warmup).toBe(false);
+      expect(options.shouldSkipStabilization).toBe(true);
+      expect(options.shouldWarmup).toBe(false);
     });
   });
 });

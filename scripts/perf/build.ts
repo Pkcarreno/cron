@@ -1,89 +1,27 @@
-import { exec } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { promisify } from "node:util";
 
-import type {
-  BuildOptions,
-  BuildResult,
-  CommandExecutor,
-  CommandResult,
-} from "./types";
-
-const execAsync = promisify(exec);
+import type { BuildOptions, BuildResult, CommandResult } from "./types";
+import {
+  defaultExecutor,
+  isDirectScriptExecution,
+  resolveGitCommitSha,
+} from "./utils";
 
 type BuildProfile = "preview" | "development" | "production";
 type BuildType = "apk" | "bundle";
 
-const isBuildProfile = (val: string): val is BuildProfile =>
-  val === "preview" || val === "development" || val === "production";
+const isBuildProfile = (
+  profileCandidate: string
+): profileCandidate is BuildProfile =>
+  profileCandidate === "preview" ||
+  profileCandidate === "development" ||
+  profileCandidate === "production";
 
-const isBuildType = (val: string): val is BuildType =>
-  val === "apk" || val === "bundle";
-
-/**
- * Executes a system command asynchronously and captures exit status, stdout, and stderr.
- *
- * @param command - The base executable name or path.
- * @param args - Array of command-line arguments.
- * @returns Exit code and output streams.
- */
-export const defaultExecutor: CommandExecutor = async (
-  command: string,
-  args: string[] = []
-): Promise<CommandResult> => {
-  const fullCommand = [command, ...args].join(" ");
-  try {
-    const { stderr, stdout } = await execAsync(fullCommand);
-    return {
-      exitCode: 0,
-      stderr: stderr.toString(),
-      stdout: stdout.toString(),
-    };
-  } catch (error: unknown) {
-    const err = error as { code?: number; stderr?: string; stdout?: string };
-    return {
-      exitCode: err.code ?? 1,
-      stderr: err.stderr?.toString() ?? String(error),
-      stdout: err.stdout?.toString() ?? "",
-    };
-  }
-};
-
-/**
- * Resolves the short git commit SHA for artifact tagging.
- *
- * If a custom commit SHA is specified, returns the custom value.
- * Otherwise, retrieves the short SHA using `git rev-parse --short HEAD`.
- *
- * @param executor - The command executor implementation.
- * @param customCommit - Optional commit SHA override.
- * @returns The resolved commit short SHA string.
- */
-export const resolveCommitSha = async (
-  executor: CommandExecutor,
-  customCommit?: string
-): Promise<string> => {
-  if (customCommit && customCommit.trim().length > 0) {
-    return customCommit.trim();
-  }
-
-  const result = await executor("git", ["rev-parse", "--short", "HEAD"]);
-  if (result.exitCode !== 0) {
-    const errorDetail =
-      result.stderr.trim() || result.stdout.trim() || "Unknown git error";
-    throw new Error(`Failed to resolve git commit SHA: ${errorDetail}`);
-  }
-
-  const sha = result.stdout.trim();
-  if (!sha) {
-    throw new Error(
-      "Failed to resolve git commit SHA: empty stdout returned by git"
-    );
-  }
-
-  return sha;
-};
+const isBuildType = (
+  buildTypeCandidate: string
+): buildTypeCandidate is BuildType =>
+  buildTypeCandidate === "apk" || buildTypeCandidate === "bundle";
 
 const parseProfileAndTypeArgs = (
   argv: string[],
@@ -93,25 +31,25 @@ const parseProfileAndTypeArgs = (
   const arg = argv[currentIndex] ?? "";
 
   if (arg.startsWith("--profile=")) {
-    const val = arg.slice("--profile=".length).trim();
-    if (isBuildProfile(val)) {
-      options.profile = val;
+    const profileCandidate = arg.slice("--profile=".length).trim();
+    if (isBuildProfile(profileCandidate)) {
+      options.profile = profileCandidate;
     }
     return currentIndex;
   }
 
   if (arg === "--profile" && currentIndex + 1 < argv.length) {
-    const nextVal = argv[currentIndex + 1]?.trim() ?? "";
-    if (isBuildProfile(nextVal)) {
-      options.profile = nextVal;
+    const profileCandidate = argv[currentIndex + 1]?.trim() ?? "";
+    if (isBuildProfile(profileCandidate)) {
+      options.profile = profileCandidate;
     }
     return currentIndex + 1;
   }
 
   if (arg.startsWith("--build-type=") || arg.startsWith("--type=")) {
-    const val = arg.split("=")[1]?.trim() ?? "";
-    if (isBuildType(val)) {
-      options.buildType = val;
+    const buildTypeCandidate = arg.split("=")[1]?.trim() ?? "";
+    if (isBuildType(buildTypeCandidate)) {
+      options.buildType = buildTypeCandidate;
     }
     return currentIndex;
   }
@@ -120,9 +58,9 @@ const parseProfileAndTypeArgs = (
     (arg === "--build-type" || arg === "--type") &&
     currentIndex + 1 < argv.length
   ) {
-    const nextVal = argv[currentIndex + 1]?.trim() ?? "";
-    if (isBuildType(nextVal)) {
-      options.buildType = nextVal;
+    const buildTypeCandidate = argv[currentIndex + 1]?.trim() ?? "";
+    if (isBuildType(buildTypeCandidate)) {
+      options.buildType = buildTypeCandidate;
     }
     return currentIndex + 1;
   }
@@ -143,7 +81,7 @@ const parseProfileAndTypeArgs = (
  * @param argv - Argument array excluding node and script paths.
  * @returns Parsed build options.
  */
-export const parseBuildArgs = (argv: string[]): BuildOptions => {
+export const parseBuildCliArgs = (argv: string[]): BuildOptions => {
   const options: BuildOptions = {};
   let i = 0;
 
@@ -151,7 +89,7 @@ export const parseBuildArgs = (argv: string[]): BuildOptions => {
     const arg = argv[i] ?? "";
 
     if (arg === "--clean") {
-      options.clean = true;
+      options.shouldClean = true;
     } else if (arg.startsWith("--commit=")) {
       options.customCommit = arg.slice("--commit=".length).trim();
     } else if (arg === "--commit" && i + 1 < argv.length) {
@@ -172,23 +110,7 @@ export const parseBuildArgs = (argv: string[]): BuildOptions => {
   return options;
 };
 
-/**
- * Determines whether the script was executed directly from the command line.
- *
- * @param scriptPath - Absolute path of this module.
- * @param processArgv - Process argument vector.
- * @returns True when executed directly; false when imported as a library.
- */
-export const isDirectScriptExecution = (
-  scriptPath?: string,
-  processArgv: string[] = process.argv
-): boolean => {
-  const targetScript = scriptPath ?? import.meta.filename;
-  if (!targetScript || !processArgv[1]) {
-    return false;
-  }
-  return path.resolve(targetScript) === path.resolve(processArgv[1]);
-};
+export const parseBuildArgs = parseBuildCliArgs;
 
 /**
  * Compiles a preview APK tagged by git commit and stores it in the benchmark output directory.
@@ -206,7 +128,7 @@ export const runBuild = async (
   let commitSha = "";
   try {
     reporter("[perf:build] Resolving git commit short SHA...");
-    commitSha = await resolveCommitSha(executor, options.customCommit);
+    commitSha = await resolveGitCommitSha(executor, options.customCommit);
     reporter(`[perf:build] Using commit SHA: ${commitSha}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -243,7 +165,7 @@ export const runBuild = async (
     "--local",
   ];
 
-  if (options.clean) {
+  if (options.shouldClean) {
     reporter("[perf:build] Clean build requested. Cache will be cleared.");
     args.push("--clear-cache");
   }
@@ -298,10 +220,10 @@ export const runBuild = async (
   };
 };
 
-if (isDirectScriptExecution()) {
+if (isDirectScriptExecution(import.meta.filename)) {
   void (async () => {
     try {
-      const parsedOptions = parseBuildArgs(process.argv.slice(2));
+      const parsedOptions = parseBuildCliArgs(process.argv.slice(2));
       const outcome = await runBuild(parsedOptions);
       process.exit(outcome.isSuccess ? 0 : 1);
     } catch (error) {
