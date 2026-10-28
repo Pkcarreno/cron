@@ -444,6 +444,71 @@ Janky frames: 12 (1.00%)
       );
     });
 
+    it("falls back to sequential Maestro iterations and native telemetry when atrace is unsupported", async () => {
+      const commandLog: string[] = [];
+      const messages: string[] = [];
+
+      const atraceFailingExecutor: CommandExecutor = (command, args = []) => {
+        const full = [command, ...args].join(" ");
+        commandLog.push(full);
+        if (full.includes("flashlight test")) {
+          return Promise.resolve({
+            exitCode: 1,
+            stderr:
+              "Error: Did not find trace folder. Unable to find Atrace output file",
+            stdout: "",
+          });
+        }
+        if (full.includes("dumpsys gfxinfo")) {
+          return Promise.resolve({
+            exitCode: 0,
+            stderr: "",
+            stdout: mockGfxInfoOutput,
+          });
+        }
+        if (full.includes("pidof")) {
+          return Promise.resolve({
+            exitCode: 0,
+            stderr: "",
+            stdout: "12345\n",
+          });
+        }
+        if (full.includes("top -b -n 1")) {
+          return Promise.resolve({
+            exitCode: 0,
+            stderr: "",
+            stdout:
+              "12345 u0 0 0 100M 50M 20M S 5.5 1.0 0:01 no.cron.preview com.pkcarreno.cron.preview\n12346 u0 0 0 100M 50M 20M S 4.0 1.0 0:01 mqt_v_js com.pkcarreno.cron.preview\n",
+          });
+        }
+        return Promise.resolve({
+          exitCode: 0,
+          stderr: "",
+          stdout: "fallback123\n",
+        });
+      };
+
+      const result = await measureBenchmark({
+        customCommit: "fallback123",
+        executor: atraceFailingExecutor,
+        iterationCount: 2,
+        outputDirectory: testOutputDir,
+        reporter: (msg) => messages.push(msg),
+        scenarioPath: ".maestro/perf/thumbwheel-scroll.yaml",
+        shouldSkipStabilization: true,
+      });
+
+      expect(result.metrics.frameTime.p50Ms).toBe(6);
+      expect(result.metrics.jankPercentage).toBe(1);
+      expect(result.metrics.cpu.uiThreadCpuPercent).toBe(5.5);
+      expect(result.metrics.cpu.jsThreadCpuPercent).toBe(4);
+      expect(
+        messages.some((msg) =>
+          msg.includes("Flashlight atrace profiler is unavailable")
+        )
+      ).toBe(true);
+    });
+
     it("skips hardware stabilization when skipStabilization is true", async () => {
       const commandLog: string[] = [];
       const executor = createMockExecutor(

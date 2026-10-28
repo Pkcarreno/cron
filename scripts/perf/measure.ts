@@ -479,6 +479,181 @@ export const saveBenchmarkResult = (
 };
 
 /**
+ * Queries current process and Hermes thread CPU utilization via Android top.
+ *
+ * @param executor - Process execution adapter.
+ * @param packageId - Android application package identifier.
+ * @param deviceId - Optional ADB target device serial number.
+ * @returns CPU utilization metrics for UI and JS threads.
+ */
+export const sampleProcessCpu = async (
+  executor: CommandExecutor,
+  packageId: string,
+  deviceId?: string
+): Promise<CpuMetrics> => {
+  const deviceArgs = deviceId ? ["-s", deviceId] : [];
+  try {
+    const pidResult = await executor("adb", [
+      ...deviceArgs,
+      "shell",
+      "pidof",
+      packageId,
+    ]);
+    const [pid] = pidResult.stdout.trim().split(/\s+/u);
+    if (!pid || pidResult.exitCode !== 0) {
+      return {
+        jsThreadCpuPercent: 0,
+        totalCpuPercent: 0,
+        uiThreadCpuPercent: 0,
+      };
+    }
+
+    const topResult = await executor("adb", [
+      ...deviceArgs,
+      "shell",
+      "top",
+      "-b",
+      "-n",
+      "1",
+      "-H",
+      "-p",
+      pid,
+    ]);
+
+    if (topResult.exitCode !== 0) {
+      return {
+        jsThreadCpuPercent: 0,
+        totalCpuPercent: 0,
+        uiThreadCpuPercent: 0,
+      };
+    }
+
+    let uiThreadCpu = 0;
+    let jsThreadCpu = 0;
+    let totalCpu = 0;
+
+    const lines = topResult.stdout.split("\n");
+    for (const line of lines) {
+      const parts = line.trim().split(/\s+/u);
+      if (parts.length >= 10 && /^\d+$/u.test(parts[0] ?? "")) {
+        const cpuStr = parts.at(8);
+        const threadName = parts.slice(10).join(" ");
+        const cpuVal = Number(cpuStr ?? "0");
+        if (!Number.isNaN(cpuVal)) {
+          totalCpu += cpuVal;
+          if (parts[0] === pid) {
+            uiThreadCpu = cpuVal;
+          }
+          if (
+            threadName.includes("mqt_") ||
+            threadName.includes("hermes") ||
+            threadName.includes("v_js")
+          ) {
+            jsThreadCpu = Math.max(jsThreadCpu, cpuVal);
+          }
+        }
+      }
+    }
+
+    return {
+      jsThreadCpuPercent: Number(jsThreadCpu.toFixed(2)),
+      totalCpuPercent: Number(totalCpu.toFixed(2)),
+      uiThreadCpuPercent: Number(uiThreadCpu.toFixed(2)),
+    };
+  } catch {
+    return { jsThreadCpuPercent: 0, totalCpuPercent: 0, uiThreadCpuPercent: 0 };
+  }
+};
+
+interface ExecutionMetricsPayload {
+  cpuMetrics: CpuMetrics;
+  gfxInfo: ParsedGfxInfo;
+}
+
+const runSequentialIterations = async (
+  executor: CommandExecutor,
+  scenarioPath: string,
+  maestroBin: string,
+  deviceId: string | undefined,
+  iterationCount: number,
+  reporter: (message: string) => void
+): Promise<void> => {
+  let i = 1;
+  while (i <= iterationCount) {
+    reporter(`[MEASURE] Iteration ${i}/${iterationCount}...`);
+    // Sequential gesture execution is required for single-screen Android UI testing
+    // eslint-disable-next-line no-await-in-loop
+    await runWarmupPass(executor, scenarioPath, maestroBin, deviceId);
+    i += 1;
+  }
+};
+
+const executeFlashlightOrFallback = async (
+  options: ExtendedMeasureOptions,
+  executor: CommandExecutor,
+  flashlightArgs: string[],
+  tempResultsFilePath: string,
+  reporter: (message: string) => void
+): Promise<ExecutionMetricsPayload> => {
+  const packageId = options.packageId ?? "com.pkcarreno.cron.preview";
+  const flashlightBin = options.flashlightBin ?? "flashlight";
+  const maestroBin = options.maestroBin ?? "maestro";
+  const iterationCount = options.iterationCount ?? 10;
+
+  reporter(
+    `[MEASURE] Running Flashlight benchmark (${iterationCount} iterations)...`
+  );
+  const executionResult = await executor(flashlightBin, flashlightArgs);
+
+  let cpuMetrics: CpuMetrics;
+
+  if (executionResult.exitCode === 0) {
+    const rawResult = loadFlashlightRawResult(
+      tempResultsFilePath,
+      executionResult.stdout
+    );
+    cpuMetrics = parseCpuMetrics(rawResult);
+  } else {
+    const isAtraceError =
+      executionResult.stderr.includes("atrace") ||
+      executionResult.stderr.includes("BAMPerfProfiler") ||
+      executionResult.stderr.includes("Did not find trace folder");
+
+    if (!isAtraceError) {
+      throw new Error(
+        `Flashlight execution failed with exit code ${executionResult.exitCode}: ${executionResult.stderr}`
+      );
+    }
+
+    reporter(
+      "[MEASURE] Flashlight atrace profiler is unavailable on this kernel."
+    );
+    reporter(
+      `[MEASURE] Executing ${iterationCount} iterations via Maestro with native telemetry...`
+    );
+    await runSequentialIterations(
+      executor,
+      options.scenarioPath,
+      maestroBin,
+      options.deviceId,
+      iterationCount,
+      reporter
+    );
+    cpuMetrics = await sampleProcessCpu(executor, packageId, options.deviceId);
+  }
+
+  reporter("[MEASURE] Collecting SurfaceFlinger graphics telemetry...");
+  const rawGfxOutput = await collectGfxInfo(
+    executor,
+    packageId,
+    options.deviceId
+  );
+  const gfxInfo = parseGfxInfo(rawGfxOutput);
+
+  return { cpuMetrics, gfxInfo };
+};
+
+/**
  * Executes performance benchmark with hardware stabilization and writes output artifact.
  *
  * Manages complete benchmarking lifecycle:
@@ -499,7 +674,6 @@ export const measureBenchmark = async (
   const packageId = options.packageId ?? "com.pkcarreno.cron.preview";
   const refreshRateHz = options.refreshRateHz ?? 60;
   const iterationCount = options.iterationCount ?? 10;
-  const flashlightBin = options.flashlightBin ?? "flashlight";
   const maestroBin = options.maestroBin ?? "maestro";
   const outputDirectory =
     options.outputDirectory ?? path.resolve(process.cwd(), "benchmark/results");
@@ -558,30 +732,13 @@ export const measureBenchmark = async (
       flashlightArgs.push("--duration", String(options.durationMs));
     }
 
-    reporter(
-      `[MEASURE] Running Flashlight benchmark (${iterationCount} iterations)...`
-    );
-    const executionResult = await executor(flashlightBin, flashlightArgs);
-
-    if (executionResult.exitCode !== 0) {
-      throw new Error(
-        `Flashlight execution failed with exit code ${executionResult.exitCode}: ${executionResult.stderr}`
-      );
-    }
-
-    reporter("[MEASURE] Collecting SurfaceFlinger graphics telemetry...");
-    const rawGfxOutput = await collectGfxInfo(
+    const { cpuMetrics, gfxInfo } = await executeFlashlightOrFallback(
+      options,
       executor,
-      packageId,
-      options.deviceId
-    );
-    const gfxInfo = parseGfxInfo(rawGfxOutput);
-
-    const rawResult = loadFlashlightRawResult(
+      flashlightArgs,
       tempResultsFilePath,
-      executionResult.stdout
+      reporter
     );
-    const cpuMetrics = parseCpuMetrics(rawResult);
 
     const benchmarkResult: BenchmarkResult = {
       commit,
