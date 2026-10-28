@@ -71,37 +71,17 @@ export const calculateMetricDelta = (
   };
 };
 
-/**
- * Formats a metric value with appropriate unit notation.
- *
- * @param value - Numerical value to format.
- * @param unit - Unit suffix (e.g. "ms" or "%").
- * @returns Clean formatted string representation.
- */
 export const formatMetricValue = (value: number, unit: string): string => {
   const formatted = value.toFixed(2);
   return unit === "%" ? `${formatted}%` : `${formatted} ${unit}`;
 };
 
-/**
- * Formats a signed delta value with positive/negative sign prefixes.
- *
- * @param value - Delta number to format.
- * @param unit - Unit suffix (e.g. "ms" or "%").
- * @returns Signed delta string.
- */
 export const formatDeltaValue = (value: number, unit: string): string => {
   const formatted = value.toFixed(2);
   const sign = value > 0 ? "+" : "";
   return unit === "%" ? `${sign}${formatted}%` : `${sign}${formatted} ${unit}`;
 };
 
-/**
- * Formats a signed percentage change string.
- *
- * @param value - Percentage delta to format.
- * @returns Signed percentage string (e.g. "+15.20%" or "-8.50%").
- */
 export const formatDeltaPercent = (value: number): string => {
   const formatted = value.toFixed(2);
   const sign = value > 0 ? "+" : "";
@@ -150,6 +130,17 @@ export const evaluateBudgetGates = (
       actual: actualP90,
       limit: frameBudgetLimit,
       message: `Frame time P90 (${actualP90.toFixed(2)} ms) exceeds ${refreshRateHz} Hz budget limit of ${formatLimit(frameBudgetLimit)} ms.`,
+      type: "FRAME_BUDGET",
+      unit: "ms",
+    });
+  }
+
+  const actualP99 = candidate.metrics.frameTime.p99Ms;
+  if (actualP99 > frameBudgetLimit) {
+    violations.push({
+      actual: actualP99,
+      limit: frameBudgetLimit,
+      message: `Frame time P99 (${actualP99.toFixed(2)} ms) exceeds ${refreshRateHz} Hz budget limit of ${formatLimit(frameBudgetLimit)} ms.`,
       type: "FRAME_BUDGET",
       unit: "ms",
     });

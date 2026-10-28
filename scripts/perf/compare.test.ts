@@ -160,7 +160,7 @@ describe("Performance Comparison Delta Reporter (scripts/perf/compare)", () => {
           frameTime: {
             p50Ms: 6,
             p90Ms: 9.1,
-            p99Ms: 11,
+            p99Ms: 8,
           },
         },
       });
@@ -175,6 +175,31 @@ describe("Performance Comparison Delta Reporter (scripts/perf/compare)", () => {
       expect(report.violations[0]?.message).toContain("8.33 ms");
     });
 
+    it("flags frame budget violation on 120 Hz display when P99 exceeds 8.33 ms", () => {
+      const baseline = createValidBenchmark();
+      const candidate = createValidBenchmark({
+        metrics: {
+          ...baseline.metrics,
+          frameTime: {
+            p50Ms: 6,
+            p90Ms: 7.5,
+            p99Ms: 11,
+          },
+        },
+      });
+
+      const report = generateComparisonReport(baseline, candidate);
+
+      expect(report.isPassingBudgets).toBe(false);
+      expect(report.violations).toHaveLength(1);
+      expect(report.violations[0]?.type).toBe("FRAME_BUDGET");
+      expect(report.violations[0]?.actual).toBe(11);
+      expect(report.violations[0]?.limit).toBe(8.33);
+      expect(report.violations[0]?.message).toContain(
+        "P99 (11.00 ms) exceeds 120 Hz budget limit of 8.33 ms"
+      );
+    });
+
     it("flags frame budget violation on 60 Hz display when P90 exceeds 16.67 ms", () => {
       const baseline = createValidBenchmark({
         device: { model: "Pixel 4", refreshRateHz: 60 },
@@ -186,7 +211,7 @@ describe("Performance Comparison Delta Reporter (scripts/perf/compare)", () => {
           frameTime: {
             p50Ms: 12,
             p90Ms: 18.2,
-            p99Ms: 22,
+            p99Ms: 16,
           },
         },
       });
@@ -254,7 +279,7 @@ describe("Performance Comparison Delta Reporter (scripts/perf/compare)", () => {
           frameTime: {
             p50Ms: 7,
             p90Ms: 10.5,
-            p99Ms: 14,
+            p99Ms: 8,
           },
           jankPercentage: 3.5,
         },

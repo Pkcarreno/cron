@@ -29,6 +29,7 @@ export interface StabilizationExecutionOptions {
   deviceId?: string;
   executor: CommandExecutor;
   maestroBin?: string;
+  onAirplaneModeEnabled?: () => void;
   packageId?: string;
   refreshRateHz?: 60 | 120;
   reporter?: (output: string) => void;
@@ -161,17 +162,14 @@ export const setAirplaneMode = async (
 };
 
 /**
- * Executes an unmeasured interaction pass before metrics collection.
- *
- * Warmup pass initializes Hermes bytecode cache, native shared libraries (.so),
- * and JSI worklet runtimes so initial load latency does not bias measurements.
+ * Executes a Maestro interaction flow against the target application.
  *
  * @param executor - Process execution adapter.
  * @param scenarioPath - Path to Maestro YAML flow file.
  * @param maestroBin - Path or name of Maestro CLI binary.
  * @param deviceId - Optional ADB target device serial number.
  */
-export const runWarmupPass = async (
+export const runMaestroFlow = async (
   executor: CommandExecutor,
   scenarioPath: string,
   maestroBin = "maestro",
@@ -180,6 +178,8 @@ export const runWarmupPass = async (
   const deviceArgs = deviceId ? ["--device", deviceId] : [];
   await executor(maestroBin, ["test", ...deviceArgs, scenarioPath]);
 };
+
+export const runWarmupPass = runMaestroFlow;
 
 /**
  * Resets SurfaceFlinger graphics metrics before starting collection pass.
@@ -332,12 +332,6 @@ export const parseCpuMetrics = (rawResult: RawFlashlightResult): CpuMetrics => {
   };
 };
 
-/**
- * Extracts normalized scenario identifier from file path.
- *
- * @param scenarioPath - Relative or absolute path to scenario file.
- * @returns Clean scenario base name without extension.
- */
 export const resolveScenarioName = (scenarioPath: string): string => {
   const baseName = path.basename(scenarioPath);
   return baseName.replace(/\.(?:ya?ml|json|ts|js)$/u, "");
@@ -401,12 +395,13 @@ export const runHardwareStabilization = async (
 
   options.reporter?.("[STABILIZE] Enabling airplane mode...");
   await setAirplaneMode(executor, true, options.deviceId);
+  options.onAirplaneModeEnabled?.();
 
   if (shouldWarmup) {
     options.reporter?.(
       "[STABILIZE] Executing unmeasured warmup interaction pass..."
     );
-    await runWarmupPass(
+    await runMaestroFlow(
       executor,
       options.scenarioPath,
       maestroBin,
@@ -478,6 +473,10 @@ export const saveBenchmarkResult = (
   return outputFilePath;
 };
 
+const CPU_COLUMN_INDEX = 8;
+const THREAD_NAME_START_INDEX = 10;
+const MIN_COLUMN_COUNT = 10;
+
 /**
  * Queries current process and Hermes thread CPU utilization via Android top.
  *
@@ -535,9 +534,9 @@ export const sampleProcessCpu = async (
     const lines = topResult.stdout.split("\n");
     for (const line of lines) {
       const parts = line.trim().split(/\s+/u);
-      if (parts.length >= 10 && /^\d+$/u.test(parts[0] ?? "")) {
-        const cpuStr = parts.at(8);
-        const threadName = parts.slice(10).join(" ");
+      if (parts.length >= MIN_COLUMN_COUNT && /^\d+$/u.test(parts[0] ?? "")) {
+        const cpuStr = parts.at(CPU_COLUMN_INDEX);
+        const threadName = parts.slice(THREAD_NAME_START_INDEX).join(" ");
         const cpuVal = Number(cpuStr ?? "0");
         if (!Number.isNaN(cpuVal)) {
           totalCpu += cpuVal;
@@ -583,7 +582,7 @@ const runSequentialIterations = async (
     reporter(`[MEASURE] Iteration ${i}/${iterationCount}...`);
     // Sequential gesture execution is required for single-screen Android UI testing
     // eslint-disable-next-line no-await-in-loop
-    await runWarmupPass(executor, scenarioPath, maestroBin, deviceId);
+    await runMaestroFlow(executor, scenarioPath, maestroBin, deviceId);
     i += 1;
   }
 };
@@ -631,15 +630,25 @@ const executeFlashlightOrFallback = async (
     reporter(
       `[MEASURE] Executing ${iterationCount} iterations via Maestro with native telemetry...`
     );
-    await runSequentialIterations(
-      executor,
-      options.scenarioPath,
-      maestroBin,
-      options.deviceId,
-      iterationCount,
-      reporter
-    );
-    cpuMetrics = await sampleProcessCpu(executor, packageId, options.deviceId);
+
+    const sampleCpuDuringIterations = async (): Promise<CpuMetrics> => {
+      const sleepFn = options.sleepFn ?? defaultSleep;
+      await sleepFn(2000);
+      return sampleProcessCpu(executor, packageId, options.deviceId);
+    };
+
+    const [, sampledCpu] = await Promise.all([
+      runSequentialIterations(
+        executor,
+        options.scenarioPath,
+        maestroBin,
+        options.deviceId,
+        iterationCount,
+        reporter
+      ),
+      sampleCpuDuringIterations(),
+    ]);
+    cpuMetrics = sampledCpu;
   }
 
   reporter("[MEASURE] Collecting SurfaceFlinger graphics telemetry...");
@@ -667,7 +676,7 @@ const executeFlashlightOrFallback = async (
  * @param options - Benchmark measurement runner configuration options.
  * @returns Fully populated benchmark result document.
  */
-export const measureBenchmark = async (
+export const runMeasure = async (
   options: ExtendedMeasureOptions
 ): Promise<BenchmarkResult> => {
   const executor = options.executor ?? defaultExecutor;
@@ -678,7 +687,8 @@ export const measureBenchmark = async (
   const outputDirectory =
     options.outputDirectory ?? path.resolve(process.cwd(), "benchmark/results");
   const shouldWarmup = options.shouldWarmup ?? true;
-  const shouldSkipStabilization = options.shouldSkipStabilization ?? false;
+  const shouldStabilize =
+    options.shouldStabilize ?? options.shouldSkipStabilization !== true;
   const reporter = options.reporter ?? console.log;
 
   const scenarioName = resolveScenarioName(options.scenarioPath);
@@ -688,12 +698,15 @@ export const measureBenchmark = async (
   let isAirplaneModeEnabled = false;
 
   try {
-    if (!shouldSkipStabilization) {
+    if (shouldStabilize) {
       await runHardwareStabilization({
         cooldownSleepMs: options.cooldownSleepMs,
         deviceId: options.deviceId,
         executor,
         maestroBin,
+        onAirplaneModeEnabled: () => {
+          isAirplaneModeEnabled = true;
+        },
         packageId,
         refreshRateHz,
         reporter,
@@ -701,7 +714,6 @@ export const measureBenchmark = async (
         shouldWarmup,
         sleepFn: options.sleepFn,
       });
-      isAirplaneModeEnabled = true;
     }
 
     reporter(`[MEASURE] Resetting SurfaceFlinger gfxinfo for ${packageId}...`);
@@ -747,7 +759,7 @@ export const measureBenchmark = async (
         refreshRateHz,
       },
       durationMs: options.durationMs,
-      hasWarmupExecuted: Boolean(shouldWarmup && !shouldSkipStabilization),
+      hasWarmupExecuted: Boolean(shouldWarmup && shouldStabilize),
       iterationCount,
       metrics: {
         cpu: cpuMetrics,
@@ -775,6 +787,8 @@ export const measureBenchmark = async (
   }
 };
 
+export const measureBenchmark = runMeasure;
+
 const CLI_FLAG_HANDLERS: Record<
   string,
   (options: ExtendedMeasureOptions, optionValue?: string) => number
@@ -796,6 +810,10 @@ const CLI_FLAG_HANDLERS: Record<
       options.iterationCount = Number(optionValue);
     }
     return 2;
+  },
+  "--no-stabilization": (options) => {
+    options.shouldStabilize = false;
+    return 1;
   },
   "--no-warmup": (options) => {
     options.shouldWarmup = false;
@@ -820,13 +838,6 @@ const CLI_FLAG_HANDLERS: Record<
     }
     return 2;
   },
-  "--refreshRate": (options, optionValue) => {
-    const rate = Number(optionValue);
-    if (rate === 60 || rate === 120) {
-      options.refreshRateHz = rate;
-    }
-    return 2;
-  },
   "--scenario": (options, optionValue) => {
     if (optionValue) {
       options.scenarioPath = optionValue;
@@ -834,7 +845,7 @@ const CLI_FLAG_HANDLERS: Record<
     return 2;
   },
   "--skip-stabilization": (options) => {
-    options.shouldSkipStabilization = true;
+    options.shouldStabilize = false;
     return 1;
   },
 };
@@ -889,7 +900,7 @@ if (isDirectScriptExecution(import.meta.filename)) {
   void (async () => {
     try {
       const cliOptions = parseMeasureCliArgs(process.argv.slice(2));
-      const result = await measureBenchmark(cliOptions);
+      const result = await runMeasure(cliOptions);
       console.log(
         `\nMeasurement complete for ${result.scenario} (${result.commit}):`
       );

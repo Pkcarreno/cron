@@ -46,15 +46,6 @@ export interface BenchmarkResult {
   timestamp: string;
 }
 
-export interface HardwareStabilizationOptions {
-  cooldownSleepMs?: number;
-  executor?: CommandExecutor;
-  isAirplaneModeEnabled?: boolean;
-  packageId?: string;
-  refreshRateHz?: 60 | 120;
-  shouldRunArtCompilation?: boolean;
-}
-
 export interface MeasureOptions {
   cooldownSleepMs?: number;
   customCommit?: string;
@@ -69,7 +60,9 @@ export interface MeasureOptions {
   refreshRateHz?: 60 | 120;
   reporter?: (message: string) => void;
   scenarioPath: string;
+  /** @deprecated Use `shouldStabilize` instead. */
   shouldSkipStabilization?: boolean;
+  shouldStabilize?: boolean;
   shouldWarmup?: boolean;
 }
 

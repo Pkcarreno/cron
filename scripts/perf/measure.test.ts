@@ -11,6 +11,8 @@ import {
   resolveScenarioName,
   runArtCompilation,
   runHardwareStabilization,
+  runMaestroFlow,
+  runMeasure,
   runWarmupPass,
   setAirplaneMode,
 } from "./measure";
@@ -113,11 +115,11 @@ describe("Performance Measurement Runner (scripts/perf/measure)", () => {
       );
     });
 
-    it("runWarmupPass executes unmeasured Maestro test run", async () => {
+    it("runMaestroFlow executes unmeasured Maestro test run and runWarmupPass aliases it", async () => {
       const commandLog: string[] = [];
       const executor = createMockExecutor({}, commandLog);
 
-      await runWarmupPass(
+      await runMaestroFlow(
         executor,
         ".maestro/perf/thumbwheel-scroll.yaml",
         "maestro",
@@ -127,6 +129,7 @@ describe("Performance Measurement Runner (scripts/perf/measure)", () => {
       expect(commandLog).toContain(
         "maestro test --device emulator-5554 .maestro/perf/thumbwheel-scroll.yaml"
       );
+      expect(runWarmupPass).toBe(runMaestroFlow);
     });
   });
 
@@ -444,6 +447,36 @@ Janky frames: 12 (1.00%)
       );
     });
 
+    it("restores airplane mode when warmup pass throws error during stabilization", async () => {
+      const commandLog: string[] = [];
+      const failingWarmupExecutor: CommandExecutor = (command, args = []) => {
+        const full = [command, ...args].join(" ");
+        commandLog.push(full);
+        if (full.includes("maestro test")) {
+          return Promise.reject(new Error("Maestro connection refused"));
+        }
+        return Promise.resolve({ exitCode: 0, stderr: "", stdout: "" });
+      };
+
+      await expect(
+        runMeasure({
+          customCommit: "testcommit",
+          deviceId: "emulator-5554",
+          executor: failingWarmupExecutor,
+          outputDirectory: testOutputDir,
+          reporter: jest.fn(),
+          scenarioPath: ".maestro/perf/thumbwheel-scroll.yaml",
+          shouldStabilize: true,
+          shouldWarmup: true,
+          sleepFn: () => Promise.resolve(),
+        })
+      ).rejects.toThrow("Maestro connection refused");
+
+      expect(commandLog).toContain(
+        "adb -s emulator-5554 shell cmd connectivity airplane-mode disable"
+      );
+    });
+
     it("falls back to sequential Maestro iterations and native telemetry when atrace is unsupported", async () => {
       const commandLog: string[] = [];
       const messages: string[] = [];
@@ -496,6 +529,7 @@ Janky frames: 12 (1.00%)
         reporter: (msg) => messages.push(msg),
         scenarioPath: ".maestro/perf/thumbwheel-scroll.yaml",
         shouldSkipStabilization: true,
+        sleepFn: () => Promise.resolve(),
       });
 
       expect(result.metrics.frameTime.p50Ms).toBe(6);
@@ -509,7 +543,7 @@ Janky frames: 12 (1.00%)
       ).toBe(true);
     });
 
-    it("skips hardware stabilization when skipStabilization is true", async () => {
+    it("skips hardware stabilization when shouldStabilize is false", async () => {
       const commandLog: string[] = [];
       const executor = createMockExecutor(
         {
@@ -535,13 +569,13 @@ Janky frames: 12 (1.00%)
         return executor(command, args);
       };
 
-      const result = await measureBenchmark({
+      const result = await runMeasure({
         customCommit: "skipcommit",
         executor: customExecutor,
         outputDirectory: testOutputDir,
         reporter: jest.fn(),
         scenarioPath: ".maestro/perf/thumbwheel-scroll.yaml",
-        shouldSkipStabilization: true,
+        shouldStabilize: false,
       });
 
       expect(result.hasWarmupExecuted).toBe(false);
@@ -559,7 +593,7 @@ Janky frames: 12 (1.00%)
       const options = parseMeasureCliArgs([]);
 
       expect(options.scenarioPath).toBe(".maestro/perf/thumbwheel-scroll.yaml");
-      expect(options.shouldSkipStabilization).toBeUndefined();
+      expect(options.shouldStabilize).toBeUndefined();
       expect(options.shouldWarmup).toBeUndefined();
     });
 
@@ -598,8 +632,13 @@ Janky frames: 12 (1.00%)
       expect(options.refreshRateHz).toBe(120);
       expect(options.iterationCount).toBe(5);
       expect(options.durationMs).toBe(15_000);
-      expect(options.shouldSkipStabilization).toBe(true);
+      expect(options.shouldStabilize).toBe(false);
       expect(options.shouldWarmup).toBe(false);
+    });
+
+    it("parses --no-stabilization flag", () => {
+      const options = parseMeasureCliArgs(["--no-stabilization"]);
+      expect(options.shouldStabilize).toBe(false);
     });
   });
 });
