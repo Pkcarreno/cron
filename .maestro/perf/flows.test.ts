@@ -76,7 +76,9 @@ describe("Maestro Performance Benchmark Flows", () => {
         const content = fs.readFileSync(flowPath, "utf-8");
         const documents = parseAllDocuments(content);
         const header = documents[0]?.toJSON() as { appId?: string };
-        expect(header?.appId).toBe("com.pkcarreno.cron.preview");
+        expect(header?.appId).toMatch(
+          /\$\{APP_ID:-com\.pkcarreno\.cron\.preview\}|com\.pkcarreno\.cron\.preview/u
+        );
       }
     );
   });
