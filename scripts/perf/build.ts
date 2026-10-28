@@ -112,6 +112,38 @@ export const parseBuildCliArgs = (argv: string[]): BuildOptions => {
 
 export const parseBuildArgs = parseBuildCliArgs;
 
+const resetNestedTmpDir = (): void => {
+  if (
+    process.env.TMPDIR &&
+    path.resolve(process.env.TMPDIR).startsWith(path.resolve(process.cwd()))
+  ) {
+    process.env.TMPDIR = "/tmp";
+  }
+};
+
+interface ArtifactPaths {
+  targetArtifactPath: string;
+  targetDirectory: string;
+}
+
+const resolveArtifactPaths = (
+  outputDirectory: string | undefined,
+  commitSha: string
+): ArtifactPaths => {
+  const defaultOutputDir = path.resolve(process.cwd(), "benchmark", "outputs");
+  const rawOutputDir = outputDirectory
+    ? path.resolve(process.cwd(), outputDirectory)
+    : defaultOutputDir;
+
+  const isApkPath = rawOutputDir.endsWith(".apk");
+  const targetDirectory = isApkPath ? path.dirname(rawOutputDir) : rawOutputDir;
+  const targetArtifactPath = isApkPath
+    ? rawOutputDir
+    : path.join(targetDirectory, `cron-${commitSha}.apk`);
+
+  return { targetArtifactPath, targetDirectory };
+};
+
 /**
  * Compiles a preview APK tagged by git commit and stores it in the benchmark output directory.
  *
@@ -124,6 +156,8 @@ export const runBuild = async (
   const executor = options.executor ?? defaultExecutor;
   const reporter = options.reporter ?? console.log;
   const profile = options.profile ?? "preview";
+
+  resetNestedTmpDir();
 
   let commitSha = "";
   try {
@@ -140,16 +174,10 @@ export const runBuild = async (
     };
   }
 
-  const defaultOutputDir = path.resolve(process.cwd(), "benchmark", "outputs");
-  const rawOutputDir = options.outputDirectory
-    ? path.resolve(process.cwd(), options.outputDirectory)
-    : defaultOutputDir;
-
-  const isApkPath = rawOutputDir.endsWith(".apk");
-  const targetDirectory = isApkPath ? path.dirname(rawOutputDir) : rawOutputDir;
-  const targetArtifactPath = isApkPath
-    ? rawOutputDir
-    : path.join(targetDirectory, `cron-${commitSha}.apk`);
+  const { targetArtifactPath, targetDirectory } = resolveArtifactPaths(
+    options.outputDirectory,
+    commitSha
+  );
 
   if (!fs.existsSync(targetDirectory)) {
     reporter(`[perf:build] Creating output directory: ${targetDirectory}`);
