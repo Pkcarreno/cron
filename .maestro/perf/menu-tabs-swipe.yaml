@@ -1,0 +1,74 @@
+appId: com.pkcarreno.cron.preview
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "menu-screen"
+# Swipe across the 5 workout modes (FOR_TIME -> AMRAP -> INTERVAL -> EMOM -> STOP_WATCH)
+- swipe:
+    start: "85%, 50%"
+    end: "15%, 50%"
+    duration: 600
+- runScript:
+    file: ../scripts/sleep.js
+    env:
+      durationMs: 500
+- swipe:
+    start: "85%, 50%"
+    end: "15%, 50%"
+    duration: 600
+- runScript:
+    file: ../scripts/sleep.js
+    env:
+      durationMs: 500
+- swipe:
+    start: "85%, 50%"
+    end: "15%, 50%"
+    duration: 600
+- runScript:
+    file: ../scripts/sleep.js
+    env:
+      durationMs: 500
+- swipe:
+    start: "85%, 50%"
+    end: "15%, 50%"
+    duration: 600
+- runScript:
+    file: ../scripts/sleep.js
+    env:
+      durationMs: 500
+# Reverse navigation back to initial tab
+- swipe:
+    start: "15%, 50%"
+    end: "85%, 50%"
+    duration: 600
+- runScript:
+    file: ../scripts/sleep.js
+    env:
+      durationMs: 500
+- swipe:
+    start: "15%, 50%"
+    end: "85%, 50%"
+    duration: 600
+- runScript:
+    file: ../scripts/sleep.js
+    env:
+      durationMs: 500
+- swipe:
+    start: "15%, 50%"
+    end: "85%, 50%"
+    duration: 600
+- runScript:
+    file: ../scripts/sleep.js
+    env:
+      durationMs: 500
+- swipe:
+    start: "15%, 50%"
+    end: "85%, 50%"
+    duration: 600
+- runScript:
+    file: ../scripts/sleep.js
+    env:
+      durationMs: 500
+- assertVisible:
+    id: "menu-screen"

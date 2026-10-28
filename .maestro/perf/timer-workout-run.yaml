@@ -1,0 +1,23 @@
+appId: com.pkcarreno.cron.preview
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: "menu-screen"
+# Select INTERVAL mode directly
+- tapOn:
+    id: "menu-tab-INTERVAL"
+- runScript:
+    file: ../scripts/sleep.js
+    env:
+      durationMs: 500
+# Start workout
+- tapOn:
+    id: "start-timer-button"
+- assertVisible:
+    id: "timer-screen"
+# Record 15 seconds of execution without touch interaction
+- runScript:
+    file: ../scripts/sleep.js
+    env:
+      durationMs: 15000
