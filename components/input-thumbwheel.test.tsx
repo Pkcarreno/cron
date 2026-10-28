@@ -27,6 +27,7 @@ describe("InputThumbwheel", () => {
 
     const container = screen.getByTestId("thumbwheel-test");
     expect(container).toBeTruthy();
+    expect(container.props.collapsable).toBe(false);
 
     await act(() => {
       fireEvent(container, "layout", {
@@ -74,5 +75,15 @@ describe("InputThumbwheel", () => {
     });
 
     expect(screen.getByText("25")).toBeTruthy();
+  });
+
+  it("defaults testID to thumbwheel-picker and sets collapsable to false", async () => {
+    const screen = await renderWithProviders(
+      <InputThumbwheel value={10} min={0} max={60} step={1} />
+    );
+
+    const container = screen.getByTestId("thumbwheel-picker");
+    expect(container).toBeTruthy();
+    expect(container.props.collapsable).toBe(false);
   });
 });

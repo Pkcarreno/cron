@@ -74,7 +74,7 @@ export const TimerFace: FC<Props> = ({
   useKeepAwake();
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID="timer-screen" collapsable={false}>
       <View
         style={[
           statusBarStyles.container,

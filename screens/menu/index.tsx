@@ -24,7 +24,11 @@ export const Menu = () => {
   );
 
   return (
-    <View style={[styles.container, { paddingTop: inset.top }]}>
+    <View
+      testID="menu-screen"
+      collapsable={false}
+      style={[styles.container, { paddingTop: inset.top }]}
+    >
       <View style={styles.header}>
         <Text weight="700" color="white" size={48}>
           Cron
@@ -46,6 +50,7 @@ export const Menu = () => {
             </Link>
 
             <Button
+              testID="start-timer-button"
               disabled={!isValid}
               style={styles.fullSpace}
               title="Start"
