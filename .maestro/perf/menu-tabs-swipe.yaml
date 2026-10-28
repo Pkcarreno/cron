@@ -1,4 +1,4 @@
-appId: ${APP_ID:-com.pkcarreno.cron.preview}
+appId: com.pkcarreno.cron.preview
 ---
 - launchApp:
     clearState: true

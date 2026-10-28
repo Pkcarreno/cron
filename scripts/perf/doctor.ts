@@ -1,19 +1,5 @@
-import { exec } from "node:child_process";
-import path from "node:path";
-import { promisify } from "node:util";
-
-const execAsync = promisify(exec);
-
-export interface CommandResult {
-  exitCode: number;
-  stderr: string;
-  stdout: string;
-}
-
-export type CommandExecutor = (
-  command: string,
-  args?: string[]
-) => Promise<CommandResult>;
+import type { CommandExecutor } from "./types";
+import { defaultExecutor, isDirectScriptExecution } from "./utils";
 
 export type CheckCategory =
   | "ADB CLI"
@@ -71,38 +57,6 @@ interface ParsedDeviceEntry {
   id: string;
   status: "device" | "offline" | "unauthorized";
 }
-
-/**
- * Spawns an external CLI process and captures exit status and standard output streams.
- *
- * This executor encapsulates process execution for diagnostic checks, allowing
- * consumers to inject mock implementations in automated test suites without spawning real processes.
- *
- * @param command - The base binary name or path.
- * @param args - Command line arguments passed to the binary.
- * @returns Process exit code along with captured stdout and stderr streams.
- */
-export const defaultExecutor: CommandExecutor = async (
-  command: string,
-  args: string[] = []
-): Promise<CommandResult> => {
-  const fullCommand = [command, ...args].join(" ");
-  try {
-    const { stderr, stdout } = await execAsync(fullCommand);
-    return {
-      exitCode: 0,
-      stderr: stderr.toString(),
-      stdout: stdout.toString(),
-    };
-  } catch (error: unknown) {
-    const err = error as { code?: number; stderr?: string; stdout?: string };
-    return {
-      exitCode: err.code ?? 1,
-      stderr: err.stderr?.toString() ?? "",
-      stdout: err.stdout?.toString() ?? "",
-    };
-  }
-};
 
 /**
  * Verifies that the Android Debug Bridge (ADB) CLI binary exists in the host PATH.
@@ -629,14 +583,7 @@ export const runDoctor = async (
   };
 };
 
-const isDirectScriptExecution = (): boolean => {
-  if (!process.argv[1]) {
-    return false;
-  }
-  return import.meta.filename === path.resolve(process.argv[1]);
-};
-
-if (isDirectScriptExecution()) {
+if (isDirectScriptExecution(import.meta.filename)) {
   void (async () => {
     try {
       const outcome = await runDoctor();

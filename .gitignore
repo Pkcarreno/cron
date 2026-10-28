@@ -38,8 +38,10 @@ yarn-error.*
 
 # local tooling cache
 .atl/
+.codegraph/
 
 # local temporary directory
+.tmp/
 .tmp/*
 !.tmp/.gitkeep
 .worktrees/
