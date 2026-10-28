@@ -41,3 +41,15 @@ Canonical vocabulary for the `cron` high-intensity interval training (HIIT) time
   - `RoundStrategy`: Computes current round and intra-round countdown for fixed round durations.
   - `IntervalStrategy`: Alternates between `WORK` and `REST` phases based on interval durations.
   - `StopwatchStrategy`: Accumulates unbounded elapsed time.
+
+---
+
+## 5. Performance & Benchmarking
+
+- **Performance Harness**: Automated test coordinator (Maestro + Flashlight) executing reproducible user interaction scenarios against production-configured APKs without developer runtime overhead.
+- **Performance Baseline**: Immutable reference benchmark capture (metrics artifact) against which candidate branches and pull requests are compared.
+- **Frame Budget**: Target execution window per frame required to preserve hardware refresh cadence (8.33 ms for 120 Hz displays; 16.67 ms for 60 Hz displays).
+- **Jank Rate**: Percentage of rendered frames that exceed the target frame budget or skip Choreographer / CADisplayLink ticks.
+- **Thread Affinity**: Runtime isolation of execution between the Hermes JavaScript thread and the native UI / Render / Worklet thread, verifying zero non-essential work leaks to JS during active gestures.
+- **Profileable Build**: Production binary containing `<profileable android:shell="true" />` that permits non-invasive kernel and hardware tracing through ADB without disabling AOT or compiler optimizations.
+- **ART Speed Compilation**: Ahead-Of-Time dex-to-native machine code optimization pass (`cmd package compile -m speed`) executed before benchmarking to eliminate Android JIT compilation jitter.

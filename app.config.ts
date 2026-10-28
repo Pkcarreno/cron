@@ -356,6 +356,7 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
         resizeMode: "contain",
       },
     ],
+    "./plugins/with-profileable",
   ],
   scheme: Env.EXPO_PUBLIC_SCHEME,
   slug: "cron",

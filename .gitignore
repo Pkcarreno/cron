@@ -39,6 +39,14 @@ yarn-error.*
 # local tooling cache
 .atl/
 
+# local temporary directory
+.tmp/*
+!.tmp/.gitkeep
+
+# local mise overrides
+mise.local.toml
+mise.*.local.toml
+
 # typescript
 *.tsbuildinfo
 
@@ -49,6 +57,7 @@ yarn-error.*
 # output
 *.apk
 *.aab
+benchmark/
 
 # pnpm skills symlinks
 .agents/skills/pnpm-*
