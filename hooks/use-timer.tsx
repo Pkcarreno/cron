@@ -18,6 +18,7 @@ import {
   getModeAbbreviation,
 } from "@/helpers/timer/utils/formatter";
 import type { AudioFeedbackService } from "@/services/audio/audio-feedback-service";
+import type { FeedbackServiceInterface } from "@/services/audio/feedback-service";
 import { preparationTimeMsAtom } from "@/stores/settings";
 
 export enum TimerStatus {
@@ -44,6 +45,10 @@ export interface TimerEventHandlers {
   onRoundChange?: (round: number) => void;
   onBeep?: (second: number) => void;
   onCheckpoint?: (checkpoint: UICheckpoint) => void;
+  feedbackService?: FeedbackServiceInterface;
+  /**
+   * @deprecated Use `feedbackService` instead.
+   */
   audioService?: AudioFeedbackService;
 }
 
@@ -61,15 +66,15 @@ const getTimerFlags = (config: TimerConfig, phase: TimerPhase): TimerFlags => {
 
 export const useTimerInstance = (
   config: TimerConfig,
-  audioService?: AudioFeedbackService
+  service?: FeedbackServiceInterface | AudioFeedbackService
 ): React.RefObject<TimerController | null> => {
   const [preparationTimeMs] = useAtom(preparationTimeMsAtom);
   const controllerRef = useRef<TimerController | null>(null);
   const prevConfigKeyRef = useRef<string>("");
   const prevPrepTimeRef = useRef<number>(preparationTimeMs);
-  const prevAudioServiceRef = useRef<AudioFeedbackService | undefined>(
-    audioService
-  );
+  const prevServiceRef = useRef<
+    FeedbackServiceInterface | AudioFeedbackService | undefined
+  >(service);
 
   const configKey = JSON.stringify(config);
 
@@ -77,7 +82,7 @@ export const useTimerInstance = (
     !controllerRef.current ||
     prevConfigKeyRef.current !== configKey ||
     prevPrepTimeRef.current !== preparationTimeMs ||
-    prevAudioServiceRef.current !== audioService
+    prevServiceRef.current !== service
   ) {
     if (controllerRef.current) {
       controllerRef.current.dispose();
@@ -97,7 +102,7 @@ export const useTimerInstance = (
     );
     prevConfigKeyRef.current = configKey;
     prevPrepTimeRef.current = preparationTimeMs;
-    prevAudioServiceRef.current = audioService;
+    prevServiceRef.current = service;
   }
 
   useEffect(
@@ -119,7 +124,8 @@ export const useTimerController = (
   setStatus: React.Dispatch<React.SetStateAction<TimerStatus>>,
   handlers?: TimerEventHandlers
 ) => {
-  const controllerRef = useTimerInstance(config, handlers?.audioService);
+  const activeService = handlers?.feedbackService ?? handlers?.audioService;
+  const controllerRef = useTimerInstance(config, activeService);
   const controller = controllerRef.current;
 
   const startedAtRef = useRef<Date | null>(null);
@@ -132,6 +138,17 @@ export const useTimerController = (
   useEffect(() => {
     handlersRef.current = handlers;
   }, [handlers]);
+
+  useEffect(() => {
+    if (!controller || !handlers?.feedbackService) {
+      return;
+    }
+
+    const detach = handlers.feedbackService.attach(controller);
+    return () => {
+      detach();
+    };
+  }, [controller, handlers?.feedbackService]);
 
   useEffect(() => {
     const handleAppState = (nextState: AppStateStatus) => {
@@ -155,34 +172,50 @@ export const useTimerController = (
     controller.on(TimerEventType.UI_TICK, setTimerState);
     controller.on(TimerEventType.BEEP, (second: number) => {
       handlersRef.current?.onBeep?.(second);
-      void handlersRef.current?.audioService?.playCountdownBeep(second);
+      if (!handlersRef.current?.feedbackService) {
+        void handlersRef.current?.audioService?.playCountdownBeep(second);
+      }
     });
     controller.on(TimerEventType.GO, () => {
       startedAtRef.current = new Date();
       handlersRef.current?.onGo?.();
-      void handlersRef.current?.audioService?.playGoCue();
+      if (!handlersRef.current?.feedbackService) {
+        void handlersRef.current?.audioService?.playGoCue();
+      }
     });
     controller.on(TimerEventType.PHASE_CHANGE, (newPhase: TimerPhase) => {
       handlersRef.current?.onPhaseChange?.(newPhase);
-      void handlersRef.current?.audioService?.playPhaseTransitionCue(newPhase);
+      if (!handlersRef.current?.feedbackService) {
+        void handlersRef.current?.audioService?.playPhaseTransitionCue(
+          newPhase
+        );
+      }
     });
     controller.on(TimerEventType.ROUND_CHANGE, (newRound: number) => {
       handlersRef.current?.onRoundChange?.(newRound);
-      void handlersRef.current?.audioService?.playRoundChangeCue?.(newRound);
+      if (!handlersRef.current?.feedbackService) {
+        void handlersRef.current?.audioService?.playRoundChangeCue?.(newRound);
+      }
     });
     controller.on(TimerEventType.FINISH, (summary: SessionSummary) => {
       setStatus(TimerStatus.FINISHED);
       endedAtRef.current = new Date();
       handlersRef.current?.onFinish?.(summary);
-      void handlersRef.current?.audioService?.playFinishCue(
-        summary.fullyCompleted
-      );
+      if (!handlersRef.current?.feedbackService) {
+        void handlersRef.current?.audioService?.playFinishCue(
+          summary.fullyCompleted
+        );
+      }
     });
     controller.on(TimerEventType.PAUSE, () => {
-      handlersRef.current?.audioService?.stopAudio();
+      if (!handlersRef.current?.feedbackService) {
+        handlersRef.current?.audioService?.stopAudio();
+      }
     });
     controller.on(TimerEventType.RESET, () => {
-      handlersRef.current?.audioService?.stopAudio();
+      if (!handlersRef.current?.feedbackService) {
+        handlersRef.current?.audioService?.stopAudio();
+      }
     });
     controller.on(
       TimerEventType.CHECKPOINT,

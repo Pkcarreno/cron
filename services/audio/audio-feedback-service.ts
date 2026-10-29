@@ -3,6 +3,8 @@ import type { TimerPhase } from "@/helpers/timer/strategy";
 /**
  * High-level semantic audio feedback interface for workout timer cues.
  * Decouples audio playback from UI components and timer business logic.
+ *
+ * @deprecated Use `FeedbackServiceInterface` from `@/services/audio/feedback-service` instead.
  */
 export interface AudioFeedbackService {
   /**

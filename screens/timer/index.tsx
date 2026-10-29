@@ -11,9 +11,7 @@ import { deserializeTimerConfig } from "@/helpers/timer/utils/config-serializer"
 import type { TimerRouteParams } from "@/helpers/timer/utils/config-serializer";
 import { useGetCurrentTime } from "@/hooks/use-get-current-time";
 import { TimerStatus, useTimer } from "@/hooks/use-timer";
-import { WebAudioOscillatorService } from "@/services/audio/web-audio-oscillator-service";
-import { isSoundEnabledAtom } from "@/stores/settings";
-import { store } from "@/stores/storage";
+import { FeedbackService } from "@/services/audio/feedback-service";
 
 import { SummaryFace } from "./components/summary-face";
 import { TimerFace } from "./components/timer-face";
@@ -24,13 +22,7 @@ export const Timer = () => {
   const rawConfigParams = useLocalSearchParams<TimerRouteParams>();
   const timerInput = deserializeTimerConfig(rawConfigParams);
 
-  const audioService = useMemo(
-    () =>
-      new WebAudioOscillatorService({
-        isSoundEnabled: () => store.get(isSoundEnabledAtom),
-      }),
-    []
-  );
+  const feedbackService = useMemo(() => new FeedbackService(), []);
 
   const {
     hours,
@@ -49,7 +41,7 @@ export const Timer = () => {
     getSummary,
     handleEndSession,
   } = useTimer(timerInput, {
-    audioService,
+    feedbackService,
   });
   const currentTime = useGetCurrentTime();
 
@@ -64,13 +56,20 @@ export const Timer = () => {
   }, [handleEndSession, router, status]);
 
   useEffect(() => {
+    void feedbackService.prepare();
+
+    return () => {
+      feedbackService.dispose();
+    };
+  }, [feedbackService]);
+
+  useEffect(() => {
     start();
 
     return () => {
       reset();
-      audioService.stopAudio();
     };
-  }, [start, reset, audioService]);
+  }, [start, reset]);
 
   const timerContextLabelState = useMemo<ContextFormatType>(() => {
     if (phase === TimerPhase.PREPARATION) {

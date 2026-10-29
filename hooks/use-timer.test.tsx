@@ -10,6 +10,7 @@ import type { TimerConfig } from "@/helpers/timer/factory";
 import { TimerMode } from "@/helpers/timer/factory";
 import { TimerPhase } from "@/helpers/timer/strategy";
 import type { AudioFeedbackService } from "@/services/audio/audio-feedback-service";
+import type { FeedbackServiceInterface } from "@/services/audio/feedback-service";
 import { preparationTimeMsAtom } from "@/stores/settings";
 import { renderHookWithProviders } from "@/test-utils/render-with-providers";
 
@@ -294,6 +295,47 @@ describe("useTimer integration", () => {
       });
 
       expect(mockAudioService.playFinishCue).toHaveBeenCalledWith(true);
+    });
+
+    it("attaches FeedbackService observer and coordinates cues through lifecycle", async () => {
+      const store = createStore();
+      store.set(preparationTimeMsAtom, 3000);
+
+      const detachMock = jest.fn();
+      const mockFeedbackService: FeedbackServiceInterface = {
+        attach: jest.fn(() => detachMock),
+        detach: jest.fn(),
+        dispose: jest.fn(),
+        prepare: jest.fn(() => Promise.resolve()),
+        stop: jest.fn(),
+        trigger: jest.fn(),
+      };
+
+      const config: TimerConfig = {
+        durationMs: 5000,
+        mode: TimerMode.AMRAP,
+      };
+
+      const { result, unmount } = await renderHookWithProviders(
+        () =>
+          useTimer(config, {
+            feedbackService: mockFeedbackService,
+          }),
+        { store }
+      );
+
+      expect(mockFeedbackService.attach).toHaveBeenCalledTimes(1);
+
+      await act(() => {
+        result.current.start();
+      });
+
+      // Unmount hook: observer should detach cleanly
+      await act(() => {
+        unmount();
+      });
+
+      expect(detachMock).toHaveBeenCalled();
     });
   });
 
