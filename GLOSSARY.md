@@ -61,3 +61,13 @@ Canonical vocabulary for the `cron` high-intensity interval training (HIIT) time
 - **Passive Pager View**: Architecture pattern where native `PagerView` (`ViewPager2` / `UIPageViewController`) streams continuous scroll offsets directly to Reanimated shared values on the UI runtime without driving React component state during motion, committing the active mode only upon gesture completion (`onPageSelected`).
 - **Segment Scrubbing**: Direct manipulation gesture on the top tab track where dragging the finger moves the selection indicator continuously, emitting tactile selection ticks as it crosses tab detents, and snapping magnetically to the nearest mode upon release.
 - **Floating Action Dock**: Decoupled, floating bottom capsule containing screen-level call-to-action controls (such as the workout "Start" button and settings gear) suspended over an ethereal gradient mask, allowing workout forms to scroll continuously edge-to-edge underneath.
+
+---
+
+## 7. Audio & Feedback Architecture (`services/audio/`)
+
+- **Feedback Cue** (`FeedbackCue`): Semantic signal emitted during workout progression (`COUNTDOWN`, `GO`, `REST`, `ROUND_CHANGE`, `FINISH`), abstracting concrete transducers (audio and haptics) from timing logic.
+- **Feedback Service** (`FeedbackService`): High-level sensory coordinator that listens to timer lifecycle events and orchestrates low-latency sound cues and haptic impacts.
+- **AudioBufferSourceNode**: Native Web Audio source node that reproduces in-memory, pre-decoded Float32 PCM audio buffers with sub-millisecond precision scheduled on hardware audio clocks (`audioContext.currentTime`), eliminating JavaScript timer jitter.
+- **Audio Prewarm** (`AudioPrewarm`): Eager awakening and context resumption of the native audio graph and DAC pipeline before active intervals commence, eliminating cold-start latency and truncated first beeps.
+- **Audio Ducking** (`AudioDucking`): System audio session configuration (`duckOthers`, `mixWithOthers`, `playback`) that temporarily attenuates external media (e.g. Spotify, Apple Music) while cues play, and forces audio routing to speakers even when the physical silent switch is engaged.
