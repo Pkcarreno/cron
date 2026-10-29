@@ -144,7 +144,7 @@ export const isPathInsideDirectory = (
 };
 
 export const sanitizeTmpDir = (reporter?: (message: string) => void): void => {
-  const currentTmpDir = process.env.TMP_DIR ?? process.env.TMPDIR;
+  const currentTmpDir = process.env.TMPDIR;
   if (!currentTmpDir) {
     return;
   }
@@ -158,13 +158,6 @@ export const sanitizeTmpDir = (reporter?: (message: string) => void): void => {
       `[perf:build] Warning: TMPDIR points inside repository (${resolvedTmpDir}). Redirecting to ${fallbackTmpDir} to prevent EAS self-nesting error.`
     );
     process.env.TMPDIR = fallbackTmpDir;
-    process.env.TMP_DIR = fallbackTmpDir;
-  } else {
-    if (!fs.existsSync(resolvedTmpDir)) {
-      fs.mkdirSync(resolvedTmpDir, { recursive: true });
-    }
-    process.env.TMPDIR = resolvedTmpDir;
-    process.env.TMP_DIR = resolvedTmpDir;
   }
 };
 

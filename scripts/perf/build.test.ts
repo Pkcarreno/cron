@@ -242,7 +242,6 @@ describe("Performance Build Runner (scripts/perf/build)", () => {
 
   describe("sanitizeTmpDir", () => {
     const originalTmpDir = process.env.TMPDIR;
-    const originalTmp_Dir = process.env.TMP_DIR;
 
     afterEach(() => {
       if (originalTmpDir === undefined) {
@@ -250,23 +249,10 @@ describe("Performance Build Runner (scripts/perf/build)", () => {
       } else {
         process.env.TMPDIR = originalTmpDir;
       }
-      if (originalTmp_Dir === undefined) {
-        delete process.env.TMP_DIR;
-      } else {
-        process.env.TMP_DIR = originalTmp_Dir;
-      }
     });
 
     it("leaves TMPDIR untouched when pointing to an external directory", () => {
       process.env.TMPDIR = path.resolve(process.cwd(), "..", "cron-tmp");
-      sanitizeTmpDir();
-      expect(process.env.TMPDIR).toBe(
-        path.resolve(process.cwd(), "..", "cron-tmp")
-      );
-    });
-
-    it("respects TMP_DIR when set to an external directory", () => {
-      process.env.TMP_DIR = path.resolve(process.cwd(), "..", "cron-tmp");
       sanitizeTmpDir();
       expect(process.env.TMPDIR).toBe(
         path.resolve(process.cwd(), "..", "cron-tmp")
@@ -285,7 +271,6 @@ describe("Performance Build Runner (scripts/perf/build)", () => {
 
     it("handles undefined TMPDIR gracefully without modifying environment", () => {
       delete process.env.TMPDIR;
-      delete process.env.TMP_DIR;
       sanitizeTmpDir();
       expect(process.env.TMPDIR).toBeUndefined();
     });
