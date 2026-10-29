@@ -793,6 +793,12 @@ const CLI_FLAG_HANDLERS: Record<
   string,
   (options: ExtendedMeasureOptions, optionValue?: string) => number
 > = {
+  "--commit": (options, optionValue) => {
+    if (optionValue) {
+      options.customCommit = optionValue;
+    }
+    return 2;
+  },
   "--device": (options, optionValue) => {
     if (optionValue) {
       options.deviceId = optionValue;
