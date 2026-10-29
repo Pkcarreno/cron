@@ -9,7 +9,6 @@ import type {
 import type { TimerConfig } from "@/helpers/timer/factory";
 import { TimerMode } from "@/helpers/timer/factory";
 import { TimerPhase } from "@/helpers/timer/strategy";
-import type { AudioFeedbackService } from "@/services/audio/audio-feedback-service";
 import type { FeedbackServiceInterface } from "@/services/audio/feedback-service";
 import { preparationTimeMsAtom } from "@/stores/settings";
 import { renderHookWithProviders } from "@/test-utils/render-with-providers";
@@ -248,53 +247,6 @@ describe("useTimer integration", () => {
       });
       expect(onRoundChange).toHaveBeenCalledWith(2);
       expect(onPhaseChange).toHaveBeenCalledWith(TimerPhase.WORK);
-    });
-
-    it("dispatches audio cues through injected AudioFeedbackService", async () => {
-      const store = createStore();
-      store.set(preparationTimeMsAtom, 3000);
-
-      const mockAudioService: AudioFeedbackService = {
-        playCountdownBeep: jest.fn(() => Promise.resolve()),
-        playFinishCue: jest.fn(() => Promise.resolve()),
-        playGoCue: jest.fn(() => Promise.resolve()),
-        playLapCue: jest.fn(() => Promise.resolve()),
-        playPhaseTransitionCue: jest.fn(() => Promise.resolve()),
-        playRoundChangeCue: jest.fn(() => Promise.resolve()),
-        stopAudio: jest.fn(),
-      };
-
-      const config: TimerConfig = {
-        durationMs: 5000,
-        mode: TimerMode.AMRAP,
-      };
-
-      const { result } = await renderHookWithProviders(
-        () =>
-          useTimer(config, {
-            audioService: mockAudioService,
-          }),
-        { store }
-      );
-
-      await act(() => {
-        result.current.start();
-      });
-
-      // Advance through 3s preparation: countdown beeps and go cue
-      await act(() => {
-        jest.advanceTimersByTime(3000);
-      });
-
-      expect(mockAudioService.playCountdownBeep).toHaveBeenCalled();
-      expect(mockAudioService.playGoCue).toHaveBeenCalledTimes(1);
-
-      // Advance through 5s workout to finish
-      await act(() => {
-        jest.advanceTimersByTime(5000);
-      });
-
-      expect(mockAudioService.playFinishCue).toHaveBeenCalledWith(true);
     });
 
     it("attaches FeedbackService observer and coordinates cues through lifecycle", async () => {

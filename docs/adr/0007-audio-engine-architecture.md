@@ -54,7 +54,7 @@ We replace real-time synthetic oscillators with an in-memory **AudioBufferSource
 ### 6. Legacy Service Deprecation & Removal
 
 - Deprecated and removed legacy oscillator services (`WebAudioOscillatorService`, `NullAudioFeedbackService`, and `helpers/playback-service.ts`) without dead code leftovers.
-- Preserved `AudioFeedbackService` interface with `@deprecated` annotation for backwards compatibility.
+- Removed legacy `AudioFeedbackService` interface and `audioService` props in favor of direct `FeedbackService` observer attachment.
 
 ## Consequences
 
