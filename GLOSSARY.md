@@ -51,5 +51,13 @@ Canonical vocabulary for the `cron` high-intensity interval training (HIIT) time
 - **Frame Budget**: Target execution window per frame required to preserve hardware refresh cadence (8.33 ms for 120 Hz displays; 16.67 ms for 60 Hz displays).
 - **Jank Rate**: Percentage of rendered frames that exceed the target frame budget or skip Choreographer / CADisplayLink ticks.
 - **Thread Affinity**: Runtime isolation of execution between the Hermes JavaScript thread and the native UI / Render / Worklet thread, verifying zero non-essential work leaks to JS during active gestures.
-- **Profileable Build**: Production binary containing `<profileable android:shell="true" />` that permits non-invasive kernel and hardware tracing through ADB without disabling AOT or compiler optimizations.
+- **Profileable Build**: Production binary containing `<profileable android:shell=\"true\" />` that permits non-invasive kernel and hardware tracing through ADB without disabling AOT or compiler optimizations.
 - **ART Speed Compilation**: Ahead-Of-Time dex-to-native machine code optimization pass (`cmd package compile -m speed`) executed before benchmarking to eliminate Android JIT compilation jitter.
+
+---
+
+## 6. UI Navigation & Gestures (`screens/menu/`)
+
+- **Passive Pager View**: Architecture pattern where native `PagerView` (`ViewPager2` / `UIPageViewController`) streams continuous scroll offsets directly to Reanimated shared values on the UI runtime without driving React component state during motion, committing the active mode only upon gesture completion (`onPageSelected`).
+- **Segment Scrubbing**: Direct manipulation gesture on the top tab track where dragging the finger moves the selection indicator continuously, emitting tactile selection ticks as it crosses tab detents, and snapping magnetically to the nearest mode upon release.
+- **Floating Action Dock**: Decoupled, floating bottom capsule containing screen-level call-to-action controls (such as the workout "Start" button and settings gear) suspended over an ethereal gradient mask, allowing workout forms to scroll continuously edge-to-edge underneath.
