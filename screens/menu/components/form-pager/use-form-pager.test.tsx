@@ -18,6 +18,34 @@ const MOCK_OPTIONS: FormTabOption<TimerMode>[] = [
   { content: null, label: "STOP WATCH", value: TimerMode.STOP_WATCH },
 ];
 
+interface ControlledHookProps {
+  value: TimerMode;
+}
+
+const setupControlledPagerHook = async (
+  initialValue: TimerMode = TimerMode.FOR_TIME,
+  onValueChange = jest.fn()
+) => {
+  const mockSetPage = jest.fn();
+  const hookResult = await renderHook(
+    ({ value }: ControlledHookProps) =>
+      useFormPager(MOCK_OPTIONS, value, onValueChange),
+    {
+      initialProps: { value: initialValue },
+    }
+  );
+
+  (hookResult.result.current.pagerRef as any).current = {
+    setPage: mockSetPage,
+  } as unknown as PagerView;
+
+  return {
+    ...hookResult,
+    mockSetPage,
+    onValueChange,
+  };
+};
+
 describe("useFormPager", () => {
   let triggerAndroidHapticSpy: jest.SpyInstance;
 
@@ -114,25 +142,8 @@ describe("useFormPager", () => {
 
   describe("Echo Loop Elimination", () => {
     it("does not command pagerRef.setPage when onPageSelected causes parent to re-render with new value", async () => {
-      const mockSetPage = jest.fn();
-      const onValueChange = jest.fn();
-
-      interface HookProps {
-        value: TimerMode;
-      }
-
-      const { rerender, result } = await renderHook(
-        ({ value }: HookProps) =>
-          useFormPager(MOCK_OPTIONS, value, onValueChange),
-        {
-          initialProps: { value: TimerMode.FOR_TIME },
-        }
-      );
-
-      // Attach mock pagerRef
-      (result.current.pagerRef as any).current = {
-        setPage: mockSetPage,
-      } as unknown as PagerView;
+      const { mockSetPage, onValueChange, rerender, result } =
+        await setupControlledPagerHook(TimerMode.FOR_TIME);
 
       // 1. User finishes swipe gesture to EMOM (index 3)
       await act(() => {
@@ -154,24 +165,9 @@ describe("useFormPager", () => {
     });
 
     it("commands pagerRef.setPage when value changes externally", async () => {
-      const mockSetPage = jest.fn();
-      const onValueChange = jest.fn();
-
-      interface HookProps {
-        value: TimerMode;
-      }
-
-      const { rerender, result } = await renderHook(
-        ({ value }: HookProps) =>
-          useFormPager(MOCK_OPTIONS, value, onValueChange),
-        {
-          initialProps: { value: TimerMode.FOR_TIME },
-        }
+      const { mockSetPage, rerender, result } = await setupControlledPagerHook(
+        TimerMode.FOR_TIME
       );
-
-      (result.current.pagerRef as any).current = {
-        setPage: mockSetPage,
-      } as unknown as PagerView;
 
       // External state change to STOP_WATCH (index 4)
       await act(async () => {
@@ -184,7 +180,7 @@ describe("useFormPager", () => {
   });
 
   describe("Programmatic Multi-Page Jumps & Haptic Muting", () => {
-    it("locks programmatic transition, mutes intermediate haptics, and ignores fighting scroll offsets", async () => {
+    it("locks programmatic transition, ignores repeated taps, tracks scroll smoothly, and confirms on landing", async () => {
       const mockSetPage = jest.fn();
       const onValueChange = jest.fn();
 
@@ -201,19 +197,24 @@ describe("useFormPager", () => {
         result.current.handleTabPress(4);
       });
 
+      expect(mockSetPage).toHaveBeenCalledTimes(1);
       expect(mockSetPage).toHaveBeenCalledWith(4);
       expect(result.current.isProgrammaticTransition.value).toBe(true);
 
-      // Intermediate scroll event from native momentum while animating
+      // Rapid consecutive tap while in-flight is suppressed
+      await act(() => {
+        result.current.handleTabPress(2);
+      });
+      expect(mockSetPage).toHaveBeenCalledTimes(1);
+
+      // Intermediate scroll events from native momentum stream smoothly to scrollPosition
       await act(() => {
         result.current.scrollHandler({
           offset: 0.5,
           position: 1,
         });
       });
-
-      // Because programmatic transition is locked, scrollPosition does not fight back
-      expect(result.current.scrollPosition.value).not.toBe(1.5);
+      expect(result.current.scrollPosition.value).toBe(1.5);
 
       // Landing on target page
       await act(() => {
@@ -222,13 +223,19 @@ describe("useFormPager", () => {
         } as unknown as PagerViewOnPageSelectedEvent);
       });
 
-      // Programmatic transition lock is released
+      // Programmatic transition lock is released and target index committed
       expect(result.current.isProgrammaticTransition.value).toBe(false);
       expect(result.current.scrollPosition.value).toBe(4);
       expect(result.current.currentIndexRef.current).toBe(4);
 
-      // Intermediate and duplicate landing haptics are muted
-      expect(triggerAndroidHapticSpy).not.toHaveBeenCalled();
+      // Landing emits tactile tick and onValueChange commit
+      expect(triggerAndroidHapticSpy).toHaveBeenCalledWith(
+        Haptics.AndroidHaptics.Segment_Tick,
+        expect.objectContaining({
+          mode: Haptics.ImpactFeedbackStyle.Soft,
+          type: hapticsModule.triggerType.Impact,
+        })
+      );
       expect(onValueChange).toHaveBeenCalledWith(TimerMode.STOP_WATCH);
     });
   });

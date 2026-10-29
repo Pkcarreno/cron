@@ -5,17 +5,32 @@ import type {
   PagerViewOnPageSelectedEvent,
 } from "react-native-pager-view";
 import type PagerView from "react-native-pager-view";
-import {
-  ReduceMotion,
-  useEvent,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+import { useEvent, useSharedValue } from "react-native-reanimated";
 
 import { triggerAndroidHaptic, triggerType } from "@/helpers/haptics";
 
 import type { FormTabOption } from "./types";
 
+/**
+ * Passive pager synchronization hook for FormPager and SegmentedTabBar.
+ *
+ * Coordinates unidirectional scroll offset streaming from native `PagerView`
+ * (`ViewPager2` / `UIPageViewController`) to Reanimated `scrollPosition` on the
+ * UI runtime without triggering React component re-renders during active gestures.
+ *
+ * Architectural Invariants:
+ * 1. Echo Loop Elimination: Synchronizes external prop changes imperatively while
+ *    preventing re-entrant `setPage` commands upon `onPageSelected` commit.
+ * 2. Pure 1:1 Indicator Interpolation: Derives pill translation linearly from
+ *    `onPageScroll` without synthetic secondary spring loops.
+ * 3. Programmatic Transition Lock: Suppresses concurrent `setPage` commands during
+ *    active animated transitions.
+ *
+ * @param options - Available form tab options.
+ * @param value - Optional controlled active mode identifier.
+ * @param onValueChange - Callback invoked strictly upon gesture completion.
+ * @returns Controlled refs, handlers, and shared values for PagerView and SegmentedTabBar.
+ */
 export const useFormPager = <T extends string>(
   options: FormTabOption<T>[],
   value?: T,
@@ -34,7 +49,8 @@ export const useFormPager = <T extends string>(
   const isProgrammaticTransition = useSharedValue(false);
   const scrollPosition = useSharedValue(safeActiveIndex);
 
-  // Synchronize pager imperatively when external propIndex updates
+  // Synchronize pager imperatively when external propIndex updates, guarding
+  // against re-entrant command loops while programmatic transitions are in-flight.
   useEffect(() => {
     if (
       propIndex >= 0 &&
@@ -43,52 +59,33 @@ export const useFormPager = <T extends string>(
     ) {
       isProgrammaticTransition.value = true;
       currentIndexRef.current = propIndex;
-      scrollPosition.value = withSpring(propIndex, {
-        dampingRatio: 1,
-        duration: 250,
-        reduceMotion: ReduceMotion.System,
-      });
       pagerRef.current?.setPage(propIndex);
     }
-  }, [
-    propIndex,
-    pagerRef,
-    currentIndexRef,
-    isProgrammaticTransition,
-    scrollPosition,
-  ]);
+  }, [propIndex, pagerRef, currentIndexRef, isProgrammaticTransition]);
 
   const scrollHandler = useEvent(
     (event: PagerViewOnPageScrollEventData) => {
       "worklet";
-      if (!isProgrammaticTransition.value) {
-        scrollPosition.value = event.position + event.offset;
-      }
+      scrollPosition.value = event.position + event.offset;
     },
     ["onPageScroll"]
   );
 
   const handlePageSelected = useCallback(
-    (e: PagerViewOnPageSelectedEvent) => {
-      const newIndex = e.nativeEvent.position;
-      const wasProgrammatic = isProgrammaticTransition.value;
-
-      if (wasProgrammatic) {
-        isProgrammaticTransition.value = false;
-        scrollPosition.value = newIndex;
-      }
+    (event: PagerViewOnPageSelectedEvent) => {
+      const newIndex = event.nativeEvent.position;
+      isProgrammaticTransition.value = false;
+      scrollPosition.value = newIndex;
 
       if (newIndex !== currentIndexRef.current) {
         currentIndexRef.current = newIndex;
         if (value === undefined) {
           setInternalIndex(newIndex);
         }
-        if (!wasProgrammatic) {
-          triggerAndroidHaptic(AndroidHaptics.Segment_Tick, {
-            mode: ImpactFeedbackStyle.Soft,
-            type: triggerType.Impact,
-          });
-        }
+        triggerAndroidHaptic(AndroidHaptics.Segment_Tick, {
+          mode: ImpactFeedbackStyle.Soft,
+          type: triggerType.Impact,
+        });
         const option = options[newIndex];
         if (option) {
           onValueChange?.(option.value);
@@ -107,7 +104,7 @@ export const useFormPager = <T extends string>(
 
   const handleTabPress = useCallback(
     (index: number) => {
-      if (index === currentIndexRef.current) {
+      if (index === currentIndexRef.current || isProgrammaticTransition.value) {
         return;
       }
       isProgrammaticTransition.value = true;
