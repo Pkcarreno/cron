@@ -613,6 +613,8 @@ Janky frames: 12 (1.00%)
         "com.pkcarreno.cron.custom",
         "--device",
         "device-serial-99",
+        "--commit",
+        "abc1234",
         "--output",
         "custom/results",
         "--refresh-rate",
@@ -628,6 +630,7 @@ Janky frames: 12 (1.00%)
       expect(options.scenarioPath).toBe(".maestro/perf/timer-workout-run.yaml");
       expect(options.packageId).toBe("com.pkcarreno.cron.custom");
       expect(options.deviceId).toBe("device-serial-99");
+      expect(options.customCommit).toBe("abc1234");
       expect(options.outputDirectory).toBe("custom/results");
       expect(options.refreshRateHz).toBe(120);
       expect(options.iterationCount).toBe(5);

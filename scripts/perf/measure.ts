@@ -64,6 +64,9 @@ export interface RawFlashlightResult {
   iterations?: RawFlashlightIteration[];
 }
 
+const resolveTmpDir = (): string =>
+  process.env.TMP_DIR || process.env.TMPDIR || os.tmpdir();
+
 /**
  * Locks Android display refresh rate to fixed frequency (60 Hz or 120 Hz).
  *
@@ -720,7 +723,7 @@ export const runMeasure = async (
     await resetGfxInfo(executor, packageId, options.deviceId);
 
     const tempResultsFilePath = path.join(
-      os.tmpdir(),
+      resolveTmpDir(),
       `flashlight-measure-${Date.now()}-${Math.random().toString(36).slice(2)}.json`
     );
 
@@ -793,6 +796,12 @@ const CLI_FLAG_HANDLERS: Record<
   string,
   (options: ExtendedMeasureOptions, optionValue?: string) => number
 > = {
+  "--commit": (options, optionValue) => {
+    if (optionValue) {
+      options.customCommit = optionValue;
+    }
+    return 2;
+  },
   "--device": (options, optionValue) => {
     if (optionValue) {
       options.deviceId = optionValue;
