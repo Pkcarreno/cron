@@ -1,39 +1,12 @@
-import { CaretDownIcon } from "phosphor-react-native";
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import type { NativeSyntheticEvent } from "react-native";
 import { StyleSheet, View } from "react-native";
 import type { PagerViewOnPageScrollEventData } from "react-native-pager-view";
 import PagerView from "react-native-pager-view";
-import Animated, {
-  Extrapolation,
-  createAnimatedComponent,
-  interpolate,
-  useAnimatedStyle,
-  withTiming,
-} from "react-native-reanimated";
+import { createAnimatedComponent } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/dropdown-menu";
-import { Text } from "@/components/text";
-import { colors } from "@/helpers/colors";
-
-import { AnimatedTabWrapper } from "./components/animated-tab";
-import {
-  DropdownMenuItemWithIndex,
-  PressableWithIndex,
-  ViewWithIndexOnLayout,
-} from "./components/utils";
-import {
-  ICON_SPACE,
-  sharedStyles,
-  TAB_FONT_SIZE,
-  TAB_ICON_SIZE,
-} from "./shared";
+import { SegmentedTabBar } from "./segmented-tab-bar";
 import type { FormTabOption } from "./types";
 import { useFormPager } from "./use-form-pager";
 
@@ -60,19 +33,8 @@ export const FormPager = <T extends string>({
     pagerRef,
     scrollPosition,
     safeActiveIndex,
-    tabWidths,
-    tabHeight,
-    allWidthsMeasured,
-    safeInputRange,
-    safeTranslations,
-    safePillWidths,
     scrollHandler,
     handlePageSelected,
-    handleMeasureOnLayout,
-    handleOnPressInactiveTab,
-    isDropdownOpen,
-    handleOnPressDropdownMenuItem,
-    handleOnDropdownStateChange,
   } = useFormPager(options, value, onValueChange);
 
   const propIndex = useMemo(() => {
@@ -90,144 +52,21 @@ export const FormPager = <T extends string>({
     }
   }, [propIndex, pagerRef, currentIndexRef]);
 
-  const textRowAnimatedStyle = useAnimatedStyle(() => {
-    if (!allWidthsMeasured) {
-      return { transform: [{ translateX: 0 }] };
-    }
-    const translateX = interpolate(
-      scrollPosition.value,
-      safeInputRange,
-      safeTranslations,
-      Extrapolation.CLAMP
-    );
-    return { transform: [{ translateX }] };
-  }, [allWidthsMeasured, safeInputRange, safeTranslations]);
-
-  const activeZoneAnimatedStyle = useAnimatedStyle(() => {
-    if (!allWidthsMeasured) {
-      return { width: 0 };
-    }
-    const width = interpolate(
-      scrollPosition.value,
-      safeInputRange,
-      safePillWidths,
-      Extrapolation.CLAMP
-    );
-    return { width: width + ICON_SPACE };
-  }, [allWidthsMeasured, safeInputRange, safePillWidths]);
-
-  const tabBarContainerHeightStyles = useMemo(
-    () => ({
-      height: tabHeight > 0 ? tabHeight : 26,
-    }),
-    [tabHeight]
+  const handleTabPress = useCallback(
+    (index: number) => {
+      pagerRef.current?.setPage(index);
+    },
+    [pagerRef]
   );
-  const tabBarContainerOpacityStyles = useMemo(
-    () => ({
-      opacity: allWidthsMeasured ? 1 : 0,
-    }),
-    [allWidthsMeasured]
-  );
-
-  const chevronAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        rotate: withTiming(isDropdownOpen.value ? "180deg" : "0deg", {
-          duration: 150,
-        }),
-      },
-    ],
-  }));
 
   return (
     <View style={styles.container}>
-      <View style={hiddenMeasureStyles.container}>
-        {options.map((option, index) => (
-          <ViewWithIndexOnLayout
-            key={`measure-${option.value || "undef"}`}
-            index={index}
-            onLayout={handleMeasureOnLayout}
-            style={sharedStyles.pillLayout}
-          >
-            <Text size={TAB_FONT_SIZE} color="black" weight="500">
-              {option.label}
-            </Text>
-          </ViewWithIndexOnLayout>
-        ))}
-      </View>
-
-      <View
-        style={[
-          tabBarStyles.container,
-          tabBarContainerHeightStyles,
-          tabBarContainerOpacityStyles,
-        ]}
-      >
-        <Animated.View style={[tabBarStyles.movingTrack, textRowAnimatedStyle]}>
-          {options.map((option, index) => (
-            <PressableWithIndex
-              key={`inactive-${option.value || "undef"}`}
-              testID={`menu-tab-${option.value}`}
-              collapsable={false}
-              index={index}
-              onAction={handleOnPressInactiveTab}
-            >
-              <AnimatedTabWrapper
-                index={index}
-                scrollPosition={scrollPosition}
-                baseWidth={tabWidths[index]}
-              >
-                <Text weight="200" size={TAB_FONT_SIZE}>
-                  {option.label}
-                </Text>
-              </AnimatedTabWrapper>
-            </PressableWithIndex>
-          ))}
-        </Animated.View>
-
-        <Animated.View
-          style={[tabBarStyles.activeZone, activeZoneAnimatedStyle]}
-        >
-          <DropdownMenu onOpenChange={handleOnDropdownStateChange}>
-            <DropdownMenuTrigger>
-              <Animated.View
-                style={[tabBarStyles.textRow, textRowAnimatedStyle]}
-              >
-                {options.map((option, index) => (
-                  <AnimatedTabWrapper
-                    key={`active-${option.value || "undef"}`}
-                    index={index}
-                    scrollPosition={scrollPosition}
-                    baseWidth={tabWidths[index]}
-                  >
-                    <Text size={TAB_FONT_SIZE} weight="500" color="black">
-                      {option.label}
-                    </Text>
-                  </AnimatedTabWrapper>
-                ))}
-              </Animated.View>
-              <Animated.View
-                style={[tabBarStyles.dropdownIcon, chevronAnimatedStyle]}
-              >
-                <CaretDownIcon color={colors.black} size={TAB_ICON_SIZE} />
-              </Animated.View>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent sideOffset={8}>
-              {options.map((option, index) => (
-                <DropdownMenuItemWithIndex
-                  key={option.value}
-                  index={index}
-                  disabled={safeActiveIndex === index}
-                  onAction={handleOnPressDropdownMenuItem}
-                >
-                  <DropdownMenuLabel>{option.label}</DropdownMenuLabel>
-                </DropdownMenuItemWithIndex>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </Animated.View>
-      </View>
+      <SegmentedTabBar
+        options={options}
+        selectedIndex={safeActiveIndex}
+        scrollPosition={scrollPosition}
+        onTabPress={handleTabPress}
+      />
 
       <AnimatedPagerView
         testID={testID ?? "form-pager-view"}
@@ -272,48 +111,5 @@ const styles = StyleSheet.create({
   },
   pagerView: {
     flex: 1,
-  },
-});
-
-const hiddenMeasureStyles = StyleSheet.create({
-  container: {
-    flexDirection: "row",
-    opacity: 0,
-    pointerEvents: "none",
-    position: "absolute",
-  },
-});
-
-const tabBarStyles = StyleSheet.create({
-  activeZone: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    height: "100%",
-    left: 0,
-    overflow: "hidden",
-    position: "absolute",
-    zIndex: 2,
-  },
-  container: {
-    marginHorizontal: 20,
-    position: "relative",
-  },
-  dropdownIcon: {
-    height: "100%",
-    justifyContent: "center",
-    position: "absolute",
-    right: 12,
-  },
-  movingTrack: {
-    backgroundColor: colors.neutral[700],
-    borderRadius: 12,
-    flexDirection: "row",
-    height: "100%",
-    left: 0,
-    position: "absolute",
-  },
-  textRow: {
-    flexDirection: "row",
-    height: "100%",
   },
 });
