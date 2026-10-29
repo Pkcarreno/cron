@@ -25,9 +25,18 @@ jest.mock("react-native-reanimated", () => {
   };
 });
 
-jest.mock("react-native-audio-api", () =>
-  jest.requireActual("react-native-audio-api/mock")
-);
+jest.mock("react-native-audio-api", () => {
+  const actual = jest.requireActual("react-native-audio-api/mock");
+  return {
+    ...actual,
+    AudioManager: {
+      ...actual.AudioManager,
+      observeAudioInterruptions: jest.fn(),
+      setAudioSessionActivity: jest.fn(() => Promise.resolve()),
+      setAudioSessionOptions: jest.fn(),
+    },
+  };
+});
 
 jest.mock("expo-battery", () => ({
   addBatteryLevelListener: () => ({ remove: jest.fn() }),

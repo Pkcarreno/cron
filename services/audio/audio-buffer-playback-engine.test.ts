@@ -1,0 +1,466 @@
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+} from "@jest/globals";
+import type {
+  AudioBuffer,
+  AudioBufferSourceNode,
+} from "react-native-audio-api";
+import { AudioManager } from "react-native-audio-api";
+
+import { TimerPhase } from "@/helpers/timer/strategy";
+import {
+  AudioBufferPlaybackEngine,
+  CANONICAL_SOUNDS,
+  WORKOUT_AUDIO_SESSION_OPTIONS,
+} from "@/services/audio/audio-buffer-playback-engine";
+import type { CanonicalSoundName } from "@/services/audio/audio-buffer-playback-engine";
+
+describe("AudioBufferPlaybackEngine", () => {
+  let mockSourceNode: {
+    buffer: AudioBuffer | null;
+    connect: jest.Mock;
+    disconnect: jest.Mock;
+    onended: ((event: Event) => void) | null;
+    start: jest.Mock;
+    stop: jest.Mock;
+  };
+
+  let mockAudioContext: {
+    close: jest.Mock<() => Promise<void>>;
+    createBufferSource: jest.Mock<() => typeof mockSourceNode>;
+    currentTime: number;
+    decodeAudioData: jest.Mock<(source: unknown) => Promise<AudioBuffer>>;
+    destination: object;
+    resume: jest.Mock<() => Promise<void>>;
+    sampleRate: number;
+    state: string;
+    suspend: jest.Mock<() => Promise<void>>;
+  };
+
+  let mockBuffers: Record<CanonicalSoundName, AudioBuffer>;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    mockSourceNode = {
+      buffer: null,
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      onended: null,
+      start: jest.fn(),
+      stop: jest.fn(),
+    };
+
+    mockBuffers = {
+      countdown_beep: {
+        duration: 0.12,
+        length: 5292,
+        numberOfChannels: 1,
+        sampleRate: 44_100,
+      } as unknown as AudioBuffer,
+      finish: {
+        duration: 1.5,
+        length: 66_150,
+        numberOfChannels: 1,
+        sampleRate: 44_100,
+      } as unknown as AudioBuffer,
+      go: {
+        duration: 0.7,
+        length: 30_870,
+        numberOfChannels: 1,
+        sampleRate: 44_100,
+      } as unknown as AudioBuffer,
+      rest: {
+        duration: 0.35,
+        length: 15_435,
+        numberOfChannels: 1,
+        sampleRate: 44_100,
+      } as unknown as AudioBuffer,
+      round_change: {
+        duration: 0.14,
+        length: 6174,
+        numberOfChannels: 1,
+        sampleRate: 44_100,
+      } as unknown as AudioBuffer,
+    };
+
+    mockAudioContext = {
+      close: jest.fn(() => {
+        mockAudioContext.state = "closed";
+        return Promise.resolve();
+      }),
+      createBufferSource: jest.fn(() => mockSourceNode),
+      currentTime: 12.345,
+      decodeAudioData: jest.fn((source: unknown) => {
+        const soundKey = source as CanonicalSoundName;
+        return Promise.resolve(mockBuffers[soundKey] ?? mockBuffers.go);
+      }),
+      destination: {},
+      resume: jest.fn(() => {
+        mockAudioContext.state = "running";
+        return Promise.resolve();
+      }),
+      sampleRate: 44_100,
+      state: "running",
+      suspend: jest.fn(() => {
+        mockAudioContext.state = "suspended";
+        return Promise.resolve();
+      }),
+    };
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  describe("Audio Session Configuration", () => {
+    it("configures audio session with playback category, ducking, and android interruption observation", () => {
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+      });
+
+      engine.configureAudioSession();
+
+      expect(AudioManager.setAudioSessionOptions).toHaveBeenCalledTimes(1);
+      expect(AudioManager.setAudioSessionOptions).toHaveBeenCalledWith(
+        WORKOUT_AUDIO_SESSION_OPTIONS
+      );
+      expect(AudioManager.setAudioSessionOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          iosCategory: "playback",
+          iosMode: "default",
+          iosOptions: expect.arrayContaining([
+            "duckOthers",
+            "mixWithOthers",
+            "defaultToSpeaker",
+          ]),
+        })
+      );
+      expect(AudioManager.observeAudioInterruptions).toHaveBeenCalledWith(true);
+    });
+
+    it("safely handles error if audio manager throws during configuration", () => {
+      const mockWarn = jest.spyOn(console, "warn").mockImplementation(() => {});
+      const errorThrowingManager = {
+        ...AudioManager,
+        setAudioSessionOptions: jest.fn(() => {
+          throw new Error("AVAudioSession error");
+        }),
+      } as unknown as typeof AudioManager;
+
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+        audioManager: errorThrowingManager,
+      });
+
+      expect(() => {
+        engine.configureAudioSession();
+      }).not.toThrow();
+
+      mockWarn.mockRestore();
+    });
+  });
+
+  describe("Sound Buffer Preloading & Lifecycle", () => {
+    it("loads and decodes all 5 canonical wav assets into native AudioBuffer memory", async () => {
+      const mockAssets: Record<CanonicalSoundName, string> = {
+        countdown_beep: "countdown_beep",
+        finish: "finish",
+        go: "go",
+        rest: "rest",
+        round_change: "round_change",
+      };
+
+      const engine = new AudioBufferPlaybackEngine({
+        assets: mockAssets,
+        audioContextFactory: () => mockAudioContext as never,
+      });
+
+      expect(engine.isEngineReady()).toBe(false);
+
+      await engine.prepare();
+
+      expect(engine.isEngineReady()).toBe(true);
+      expect(mockAudioContext.decodeAudioData).toHaveBeenCalledTimes(5);
+
+      for (const soundName of Object.values(CANONICAL_SOUNDS)) {
+        expect(engine.getSoundBuffer(soundName)).toBe(mockBuffers[soundName]);
+      }
+    });
+
+    it("resumes suspended audio context during prepare", async () => {
+      mockAudioContext.state = "suspended";
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+      });
+
+      await engine.prepare();
+
+      expect(mockAudioContext.resume).toHaveBeenCalledTimes(1);
+    });
+
+    it("is idempotent when prepare is called multiple times concurrently or sequentially", async () => {
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+      });
+
+      const p1 = engine.prepare();
+      const p2 = engine.prepare();
+      await Promise.all([p1, p2]);
+      await engine.prepare();
+
+      // Audio assets decoded only once (5 files)
+      expect(mockAudioContext.decodeAudioData).toHaveBeenCalledTimes(5);
+    });
+
+    it("resets state and allows retry if asset decoding fails during prepare", async () => {
+      const mockError = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      mockAudioContext.decodeAudioData.mockRejectedValueOnce(
+        new Error("Corrupt WAV header")
+      );
+
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+      });
+
+      await expect(engine.prepare()).rejects.toThrow("Corrupt WAV header");
+      expect(engine.isEngineReady()).toBe(false);
+
+      // Subsequent attempt succeeds if decode succeeds
+      mockAudioContext.decodeAudioData.mockImplementation((source: unknown) =>
+        Promise.resolve(
+          mockBuffers[source as CanonicalSoundName] ?? mockBuffers.go
+        )
+      );
+
+      await expect(engine.prepare()).resolves.toBeUndefined();
+      expect(engine.isEngineReady()).toBe(true);
+
+      mockError.mockRestore();
+    });
+  });
+
+  describe("Playback Scheduling & Hardware Timing", () => {
+    it("dispatches AudioBufferSourceNode on audioContext.currentTime without JS timer delays", async () => {
+      const mockAssets: Record<CanonicalSoundName, string> = {
+        countdown_beep: "countdown_beep",
+        finish: "finish",
+        go: "go",
+        rest: "rest",
+        round_change: "round_change",
+      };
+
+      const engine = new AudioBufferPlaybackEngine({
+        assets: mockAssets,
+        audioContextFactory: () => mockAudioContext as never,
+      });
+
+      await engine.prepare();
+
+      const source = engine.playSound("go");
+
+      expect(mockAudioContext.createBufferSource).toHaveBeenCalledTimes(1);
+      expect(mockSourceNode.buffer).toBe(mockBuffers.go);
+      expect(mockSourceNode.connect).toHaveBeenCalledWith(
+        mockAudioContext.destination
+      );
+      expect(mockSourceNode.start).toHaveBeenCalledWith(12.345);
+      expect(source).toBe(mockSourceNode as unknown as AudioBufferSourceNode);
+    });
+
+    it("supports custom hardware scheduling timestamp when provided", async () => {
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+      });
+
+      await engine.prepare();
+
+      const futureTime = 15.5;
+      engine.playSound("countdown_beep", futureTime);
+
+      expect(mockSourceNode.start).toHaveBeenCalledWith(futureTime);
+    });
+
+    it("schedules a sequence of sounds on audioContext timeline without setTimeout", async () => {
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+      });
+
+      await engine.prepare();
+
+      const nodes = engine.scheduleSequence([
+        { delaySeconds: 0, sound: "countdown_beep" },
+        { delaySeconds: 0.15, sound: "countdown_beep" },
+      ]);
+
+      expect(nodes).toHaveLength(2);
+      expect(mockSourceNode.start).toHaveBeenNthCalledWith(1, 12.345);
+      expect(mockSourceNode.start).toHaveBeenNthCalledWith(2, 12.345 + 0.15);
+    });
+
+    it("does not play sounds if sound is disabled", async () => {
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+        isSoundEnabled: () => false,
+      });
+
+      await engine.prepare();
+
+      const source = engine.playSound("go");
+
+      expect(source).toBeNull();
+      expect(mockAudioContext.createBufferSource).not.toHaveBeenCalled();
+    });
+
+    it("warns and returns null if playing a sound before engine buffer is loaded", () => {
+      const mockWarn = jest.spyOn(console, "warn").mockImplementation(() => {});
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+      });
+
+      const source = engine.playSound("go");
+
+      expect(source).toBeNull();
+      expect(mockWarn).toHaveBeenCalledWith(
+        expect.stringContaining('Cannot play "go"')
+      );
+      mockWarn.mockRestore();
+    });
+
+    it("stops all active sources when stopAudio is called", async () => {
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+      });
+
+      await engine.prepare();
+
+      engine.playSound("go");
+      engine.stopAudio();
+
+      expect(mockSourceNode.stop).toHaveBeenCalledTimes(1);
+      expect(mockSourceNode.disconnect).toHaveBeenCalledTimes(1);
+    });
+
+    it("safely handles error if stopping a node throws during stopAudio", async () => {
+      const mockError = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      mockSourceNode.stop.mockImplementation(() => {
+        throw new Error("Node already stopped");
+      });
+
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+      });
+
+      await engine.prepare();
+
+      engine.playSound("go");
+      expect(() => {
+        engine.stopAudio();
+      }).not.toThrow();
+
+      mockError.mockRestore();
+    });
+  });
+
+  describe("Semantic AudioFeedbackService Interface", () => {
+    let engine: AudioBufferPlaybackEngine;
+
+    beforeEach(async () => {
+      const mockAssets: Record<CanonicalSoundName, string> = {
+        countdown_beep: "countdown_beep",
+        finish: "finish",
+        go: "go",
+        rest: "rest",
+        round_change: "round_change",
+      };
+
+      engine = new AudioBufferPlaybackEngine({
+        assets: mockAssets,
+        audioContextFactory: () => mockAudioContext as never,
+      });
+      await engine.prepare();
+    });
+
+    it("plays countdown beep cue", async () => {
+      await engine.playCountdownBeep(3);
+      expect(mockSourceNode.buffer).toBe(mockBuffers.countdown_beep);
+      expect(mockSourceNode.start).toHaveBeenCalledWith(12.345);
+    });
+
+    it("plays go cue", async () => {
+      await engine.playGoCue();
+      expect(mockSourceNode.buffer).toBe(mockBuffers.go);
+      expect(mockSourceNode.start).toHaveBeenCalledWith(12.345);
+    });
+
+    it("plays finish cue when fully completed", async () => {
+      await engine.playFinishCue(true);
+      expect(mockSourceNode.buffer).toBe(mockBuffers.finish);
+      expect(mockSourceNode.start).toHaveBeenCalledWith(12.345);
+    });
+
+    it("does not play finish cue when not fully completed", async () => {
+      await engine.playFinishCue(false);
+      expect(mockAudioContext.createBufferSource).not.toHaveBeenCalled();
+    });
+
+    it("plays phase transition cue according to target phase", async () => {
+      // REST phase
+      await engine.playPhaseTransitionCue(TimerPhase.REST);
+      expect(mockSourceNode.buffer).toBe(mockBuffers.rest);
+
+      // WORK phase
+      await engine.playPhaseTransitionCue(TimerPhase.WORK);
+      expect(mockSourceNode.buffer).toBe(mockBuffers.go);
+    });
+
+    it("plays round change cue", async () => {
+      await engine.playRoundChangeCue?.(2);
+      expect(mockSourceNode.buffer).toBe(mockBuffers.round_change);
+    });
+
+    it("plays lap cue", async () => {
+      await engine.playLapCue();
+      expect(mockSourceNode.buffer).toBe(mockBuffers.round_change);
+    });
+  });
+
+  describe("Disposal and Context Management", () => {
+    it("disposes audio context, stops audio, and resets buffers", async () => {
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+      });
+
+      await engine.prepare();
+      expect(engine.isEngineReady()).toBe(true);
+
+      await engine.dispose();
+
+      expect(mockAudioContext.close).toHaveBeenCalledTimes(1);
+      expect(engine.isEngineReady()).toBe(false);
+      expect(engine.getSoundBuffer("go")).toBeUndefined();
+    });
+
+    it("supports suspend and resume methods", async () => {
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+      });
+
+      await engine.prepare();
+      await engine.suspend();
+      expect(mockAudioContext.suspend).toHaveBeenCalledTimes(1);
+
+      await engine.resume();
+      expect(mockAudioContext.resume).toHaveBeenCalled();
+    });
+  });
+});

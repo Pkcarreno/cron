@@ -1,0 +1,55 @@
+# ADR 0007: Low-Latency Audio Buffer Playback Engine with Ducking and Hardware Scheduling
+
+- **Status**: Accepted
+- **Date**: October 2026
+- **Context**: React Native 0.88.0, Expo SDK 58 (`58.0.16`), New Architecture (Fabric & TurboModules), React 19 (`19.3.0`), `react-native-audio-api` (`0.13.6`), CoreAudio (iOS), AAudio/Oboe (Android)
+
+## Context
+
+Athletes utilizing `cron` in loud gym environments (CrossFit boxes, track workouts, HIIT training) rely on clear acoustic cues for pacing and interval transitions. The initial audio implementation (`WebAudioOscillatorService`) synthesized basic waveforms via `OscillatorNode` connected directly to `audioContext.destination`, with cadence coordinated via JavaScript `setTimeout` promises.
+
+This architecture presented three fundamental points of failure:
+
+1. **Timing Drift & Rhythmic Jitter**: JavaScript `setTimeout` and Promise delays run on the Hermes event loop, competing with React re-renders, layout recalculations, and Garbage Collection pauses. In benchmark testing, interval silences drifted by 20–150 ms, making countdown cadences feel arrhythmic.
+2. **Spectral Splatter & Timbral Inconsistency**: Abrupt oscillator starts/stops without amplitude envelopes caused DC step discontinuities, resulting in harsh, random clicks and pops that altered the perceived pitch and timbre on every trigger.
+3. **Ducking & Silent Switch Non-Compliance**: Without explicit system audio session configuration (`AudioManager`), timer sounds were silenced when the device's physical mute switch was enabled and could not duck external audio players (e.g., Spotify or Apple Music).
+
+## Decision
+
+We replace real-time synthetic oscillators with an in-memory **AudioBufferSourceNode Playback Engine** (`AudioBufferPlaybackEngine`) leveraging `react-native-audio-api`:
+
+### 1. Pre-Decoded Float32 In-Memory PCM Buffers
+
+- The engine pre-loads and decodes the 5 canonical 16-bit Mono PCM WAV assets (`countdown_beep`, `go`, `rest`, `round_change`, `finish`) into native uncompressed `AudioBuffer` memory during `prepare()`.
+- Once decoded into native RAM, cue dispatch requires zero decoding overhead or disk I/O during timer ticks.
+
+### 2. Hardware Audio Clock Scheduling
+
+- Sound playback is dispatched strictly on `audioContext.currentTime` via `AudioBufferSourceNode.start(when)`.
+- Eliminates all JavaScript `setTimeout` delays from multi-tone sequences (such as finish fanfares and countdowns). All sequence steps are scheduled directly onto the hardware audio timeline.
+
+### 3. Audio Session & Ducking Configuration
+
+- System audio session is configured via `AudioManager.setAudioSessionOptions` with:
+  - `iosCategory: "playback"`: Ensures cues play aloud through the loudspeaker even when the device's physical mute/silent switch is turned on.
+  - `iosMode: "default"`: Maintains standard full-fidelity routing without falling back to low-sample-rate telephony/HFP profiles.
+  - `iosOptions: ["duckOthers", "mixWithOthers", "defaultToSpeaker"]`: Ducks external background music (Spotify, Apple Music) while cues play, without cutting or pausing the athlete's workout soundtrack.
+- Native Android audio focus observation is activated via `AudioManager.observeAudioInterruptions(true)`.
+
+### 4. Lifecycle & Energy Management
+
+- `prepare()` provides idempotent, eager initialization and context warm-up before interval countdowns begin.
+- `suspend()` pauses DAC hardware time progression when the timer is idle, conserving battery.
+- `stopAudio()` immediately halts and disconnects active buffer sources upon pause, reset, or finish.
+
+## Consequences
+
+### Positive
+
+- **Deterministic Cadence**: Microsecond hardware audio clock accuracy on iOS and Android. Zero timing jitter from Hermes event loop load.
+- **Gym-Grade Audibility**: Mastered canonical WAV assets at 2.4 kHz – 3.2 kHz pierce loud ambient noise and cut through background music via automatic ducking.
+- **Silent Mode Compliance**: Cues reliably fire through speakers even if the athlete forgot to flip off the phone's silent switch.
+
+### Negative / Trade-offs
+
+- **Memory Footprint**: ~150 KB of uncompressed PCM Float32 audio data held in native memory when the audio engine is prepared.
