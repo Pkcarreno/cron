@@ -11,8 +11,6 @@ import finishAsset from "@/assets/audio/default/finish.wav";
 import goAsset from "@/assets/audio/default/go.wav";
 import restAsset from "@/assets/audio/default/rest.wav";
 import roundChangeAsset from "@/assets/audio/default/round_change.wav";
-import { TimerPhase } from "@/helpers/timer/strategy";
-import type { AudioFeedbackService } from "@/services/audio/audio-feedback-service";
 
 export const CANONICAL_SOUNDS = {
   COUNTDOWN_BEEP: "countdown_beep",
@@ -58,7 +56,7 @@ export interface AudioBufferPlaybackEngineOptions {
  * Dispatches playback directly on the audioContext.currentTime hardware clock
  * to prevent timing drift from the JavaScript event loop.
  */
-export class AudioBufferPlaybackEngine implements AudioFeedbackService {
+export class AudioBufferPlaybackEngine {
   private audioContext: AudioContext | null = null;
   private readonly audioContextFactory?: () => AudioContext;
   private readonly audioManager: typeof AudioManager;
@@ -259,43 +257,5 @@ export class AudioBufferPlaybackEngine implements AudioFeedbackService {
       }
       this.audioContext = null;
     }
-  }
-
-  // --- AudioFeedbackService Semantic Interface ---
-
-  public playCountdownBeep(_secondRemaining?: number): Promise<void> {
-    this.playSound("countdown_beep");
-    return Promise.resolve();
-  }
-
-  public playGoCue(): Promise<void> {
-    this.playSound("go");
-    return Promise.resolve();
-  }
-
-  public playFinishCue(isFullyCompleted = true): Promise<void> {
-    if (!isFullyCompleted) {
-      return Promise.resolve();
-    }
-    this.playSound("finish");
-    return Promise.resolve();
-  }
-
-  public playPhaseTransitionCue(phase?: TimerPhase): Promise<void> {
-    if (phase === TimerPhase.REST) {
-      this.playSound("rest");
-    } else if (phase === TimerPhase.WORK) {
-      this.playSound("go");
-    }
-    return Promise.resolve();
-  }
-
-  public playLapCue(): Promise<void> {
-    this.playSound("round_change");
-    return Promise.resolve();
-  }
-
-  public playRoundChangeCue?(_round?: number): Promise<void> {
-    return this.playLapCue();
   }
 }

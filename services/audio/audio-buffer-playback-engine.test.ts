@@ -12,7 +12,6 @@ import type {
 } from "react-native-audio-api";
 import { AudioManager } from "react-native-audio-api";
 
-import { TimerPhase } from "@/helpers/timer/strategy";
 import {
   AudioBufferPlaybackEngine,
   CANONICAL_SOUNDS,
@@ -357,67 +356,6 @@ describe("AudioBufferPlaybackEngine", () => {
       }).not.toThrow();
 
       mockError.mockRestore();
-    });
-  });
-
-  describe("Semantic AudioFeedbackService Interface", () => {
-    let engine: AudioBufferPlaybackEngine;
-
-    beforeEach(async () => {
-      const mockAssets: Record<CanonicalSoundName, string> = {
-        countdown_beep: "countdown_beep",
-        finish: "finish",
-        go: "go",
-        rest: "rest",
-        round_change: "round_change",
-      };
-
-      engine = new AudioBufferPlaybackEngine({
-        assets: mockAssets,
-        audioContextFactory: () => mockAudioContext as never,
-      });
-      await engine.prepare();
-    });
-
-    it("plays countdown beep cue", async () => {
-      await engine.playCountdownBeep(3);
-      expect(mockSourceNode.buffer).toBe(mockBuffers.countdown_beep);
-      expect(mockSourceNode.start).toHaveBeenCalledWith(12.345);
-    });
-
-    it("plays go cue", async () => {
-      await engine.playGoCue();
-      expect(mockSourceNode.buffer).toBe(mockBuffers.go);
-      expect(mockSourceNode.start).toHaveBeenCalledWith(12.345);
-    });
-
-    it("plays finish cue when fully completed", async () => {
-      await engine.playFinishCue(true);
-      expect(mockSourceNode.buffer).toBe(mockBuffers.finish);
-      expect(mockSourceNode.start).toHaveBeenCalledWith(12.345);
-    });
-
-    it("does not play finish cue when not fully completed", async () => {
-      await engine.playFinishCue(false);
-      expect(mockAudioContext.createBufferSource).not.toHaveBeenCalled();
-    });
-
-    it("plays phase transition cue according to target phase", async () => {
-      await engine.playPhaseTransitionCue(TimerPhase.REST);
-      expect(mockSourceNode.buffer).toBe(mockBuffers.rest);
-
-      await engine.playPhaseTransitionCue(TimerPhase.WORK);
-      expect(mockSourceNode.buffer).toBe(mockBuffers.go);
-    });
-
-    it("plays round change cue and delegates to lap cue", async () => {
-      await engine.playRoundChangeCue?.(2);
-      expect(mockSourceNode.buffer).toBe(mockBuffers.round_change);
-    });
-
-    it("plays lap cue", async () => {
-      await engine.playLapCue();
-      expect(mockSourceNode.buffer).toBe(mockBuffers.round_change);
     });
   });
 

@@ -38,7 +38,8 @@ We replace real-time synthetic oscillators with an in-memory **AudioBufferSource
 
 ### 4. Lifecycle & Energy Management
 
-- `prepare()` provides idempotent, eager initialization and context warm-up before interval countdowns begin.
+- `prepare()` provides idempotent, eager initialization and context warm-up before interval countdowns begin. The workout timer screen (`screens/timer/index.tsx`) calls `prepare()` on mount to warm the DAC, decode sound buffers, and configure the system audio session before countdown ticks start.
+- `dispose()` releases native audio graph resources, detaches controller observers, and terminates store subscriptions when the athlete finishes or leaves the timer screen.
 - `suspend()` pauses DAC hardware time progression when the timer is idle, conserving battery.
 - `stopAudio()` immediately halts and disconnects active buffer sources upon pause, reset, or finish.
 
@@ -46,8 +47,14 @@ We replace real-time synthetic oscillators with an in-memory **AudioBufferSource
 
 - `FeedbackService` implements the Observer pattern, attaching to `TimerController` lifecycle events (`BEEP`, `GO`, `FINISH`, `PHASE_CHANGE`, `ROUND_CHANGE`) and mapping them to semantic `FeedbackCue` triggers (`COUNTDOWN`, `GO`, `REST`, `ROUND_CHANGE`, `FINISH`).
 - `TimerController` is completely freed of all transducer logic, becoming a pure interval time accumulator.
+- The hook layer (`hooks/use-timer.tsx`) attaches `FeedbackService` directly to the active `TimerController` instance, replacing imperative callback routing with declarative observer dispatch.
 - Transducer dispatch executes synchronously without unawaited blocking promises: native audio buffer sources schedule on `currentTime` while `expo-haptics` impacts trigger concurrently in fire-and-forget fashion.
 - User preference toggles (`isSoundEnabledAtom` and `hasHapticEnabledAtom`) are observed reactively via Jotai store subscriptions, keeping boolean flags synchronized in memory for zero-overhead evaluation during critical ticks.
+
+### 6. Legacy Service Deprecation & Removal
+
+- Deprecated and removed legacy oscillator services (`WebAudioOscillatorService`, `NullAudioFeedbackService`, and `helpers/playback-service.ts`) without dead code leftovers.
+- Removed legacy `AudioFeedbackService` interface and `audioService` props in favor of direct `FeedbackService` observer attachment.
 
 ## Consequences
 
