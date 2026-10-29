@@ -8,7 +8,6 @@ import { CANONICAL_SOUNDS } from "@/services/audio/audio-buffer-playback-engine"
 import {
   FeedbackCue,
   FeedbackService,
-  UnifiedFeedbackService,
 } from "@/services/audio/feedback-service";
 import { hasHapticEnabledAtom, isSoundEnabledAtom } from "@/stores/settings";
 
@@ -60,7 +59,7 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
     });
 
     it("implements prepare, trigger, stop, and dispose contract", async () => {
-      const service = new UnifiedFeedbackService({
+      const service = new FeedbackService({
         audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
         store: testStore,
       });
@@ -76,23 +75,14 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
       service.stop();
       expect(mockAudioEngine.stopAudio).toHaveBeenCalledTimes(1);
 
-      await service.dispose();
+      service.dispose();
       expect(mockAudioEngine.dispose).toHaveBeenCalledTimes(1);
-    });
-
-    it("allows instantiation via FeedbackService alias", () => {
-      const service = new FeedbackService({
-        audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
-        store: testStore,
-      });
-
-      expect(service).toBeInstanceOf(UnifiedFeedbackService);
     });
   });
 
   describe("Transducer Dispatch & Audio-Haptic Coordination", () => {
     it("triggers COUNTDOWN with countdown_beep audio and Light impact haptic", () => {
-      const service = new UnifiedFeedbackService({
+      const service = new FeedbackService({
         audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
         store: testStore,
       });
@@ -108,7 +98,7 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
     });
 
     it("triggers GO with go audio and Heavy impact haptic", () => {
-      const service = new UnifiedFeedbackService({
+      const service = new FeedbackService({
         audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
         store: testStore,
       });
@@ -124,7 +114,7 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
     });
 
     it("triggers REST with rest audio and Medium impact haptic", () => {
-      const service = new UnifiedFeedbackService({
+      const service = new FeedbackService({
         audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
         store: testStore,
       });
@@ -140,7 +130,7 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
     });
 
     it("triggers ROUND_CHANGE with round_change audio and Light impact haptic", () => {
-      const service = new UnifiedFeedbackService({
+      const service = new FeedbackService({
         audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
         store: testStore,
       });
@@ -156,7 +146,7 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
     });
 
     it("triggers FINISH with finish audio and Success notification haptic", () => {
-      const service = new UnifiedFeedbackService({
+      const service = new FeedbackService({
         audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
         store: testStore,
       });
@@ -172,7 +162,7 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
     });
 
     it("dispatches triggers synchronously without returning a promise", () => {
-      const service = new UnifiedFeedbackService({
+      const service = new FeedbackService({
         audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
         store: testStore,
       });
@@ -186,7 +176,7 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
         Promise.reject(new Error("Haptic hardware error"))
       );
 
-      const service = new UnifiedFeedbackService({
+      const service = new FeedbackService({
         audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
         store: testStore,
       });
@@ -202,7 +192,7 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
       const strategy = new IntervalStrategy(2000, 1000, 1);
       const controller = new TimerController(strategy, 3000);
 
-      const service = new UnifiedFeedbackService({
+      const service = new FeedbackService({
         audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
         store: testStore,
       });
@@ -227,7 +217,7 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
       const strategy = new IntervalStrategy(2000, 1000, 1);
       const controller = new TimerController(strategy, 1000);
 
-      const service = new UnifiedFeedbackService({
+      const service = new FeedbackService({
         audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
         store: testStore,
       });
@@ -249,11 +239,11 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
       jest.useRealTimers();
     });
 
-    it("translates PHASE_CHANGE(REST) to REST cue and PHASE_CHANGE(WORK) to GO cue", () => {
+    it("translates PHASE_CHANGE(REST) to REST cue and avoids dual collision on round change", () => {
       const strategy = new IntervalStrategy(2000, 1000, 2);
       const controller = new TimerController(strategy, 0);
 
-      const service = new UnifiedFeedbackService({
+      const service = new FeedbackService({
         audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
         store: testStore,
       });
@@ -271,12 +261,15 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
         Haptics.ImpactFeedbackStyle.Medium
       );
 
-      // Rest phase 1 completes (1000ms) -> Work phase 2
+      // Rest phase 1 completes (1000ms) -> Work phase 2 (Round 2)
+      // Should play round_change without simultaneously firing go cue
+      mockAudioEngine.playSound.mockClear();
       jest.advanceTimersByTime(1000);
+
       expect(mockAudioEngine.playSound).toHaveBeenCalledWith(
         CANONICAL_SOUNDS.ROUND_CHANGE
       );
-      expect(mockAudioEngine.playSound).toHaveBeenCalledWith(
+      expect(mockAudioEngine.playSound).not.toHaveBeenCalledWith(
         CANONICAL_SOUNDS.GO
       );
 
@@ -288,7 +281,7 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
       const strategy = new IntervalStrategy(1000, 500, 1);
       const controller = new TimerController(strategy, 0);
 
-      const service = new UnifiedFeedbackService({
+      const service = new FeedbackService({
         audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
         store: testStore,
       });
@@ -314,7 +307,7 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
       const strategy = new IntervalStrategy(2000, 1000, 1);
       const controller = new TimerController(strategy, 0);
 
-      const service = new UnifiedFeedbackService({
+      const service = new FeedbackService({
         audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
         store: testStore,
       });
@@ -334,7 +327,7 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
       const strategy = new IntervalStrategy(2000, 1000, 1);
       const controller = new TimerController(strategy, 3000);
 
-      const service = new UnifiedFeedbackService({
+      const service = new FeedbackService({
         audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
         store: testStore,
       });
@@ -359,7 +352,7 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
       testStore.set(isSoundEnabledAtom, false);
       testStore.set(hasHapticEnabledAtom, true);
 
-      const service = new UnifiedFeedbackService({
+      const service = new FeedbackService({
         audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
         store: testStore,
       });
@@ -376,7 +369,7 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
       testStore.set(isSoundEnabledAtom, true);
       testStore.set(hasHapticEnabledAtom, false);
 
-      const service = new UnifiedFeedbackService({
+      const service = new FeedbackService({
         audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
         store: testStore,
       });
@@ -394,7 +387,7 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
       testStore.set(isSoundEnabledAtom, false);
       testStore.set(hasHapticEnabledAtom, false);
 
-      const service = new UnifiedFeedbackService({
+      const service = new FeedbackService({
         audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
         store: testStore,
       });
@@ -406,7 +399,7 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
     });
 
     it("dynamically reacts to store updates in real-time without recreating service", () => {
-      const service = new UnifiedFeedbackService({
+      const service = new FeedbackService({
         audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
         store: testStore,
       });
@@ -440,15 +433,29 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
       expect(impactAsyncSpy).toHaveBeenCalledTimes(2);
     });
 
-    it("unsubscribes from store on dispose", async () => {
-      const service = new UnifiedFeedbackService({
+    it("preserves explicit constructor overrides without clobbering on store changes", () => {
+      const customService = new FeedbackService({
+        audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
+        isSoundEnabled: false,
+        store: testStore,
+      });
+
+      // Even if store is toggled to true, injected override is preserved
+      testStore.set(isSoundEnabledAtom, true);
+
+      customService.trigger(FeedbackCue.GO);
+      expect(mockAudioEngine.playSound).not.toHaveBeenCalled();
+    });
+
+    it("unsubscribes from store on dispose", () => {
+      const service = new FeedbackService({
         audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
         store: testStore,
       });
 
-      await service.dispose();
+      service.dispose();
 
-      // Mutating store after dispose should not cause issues or update disposed state
+      // Mutating store after dispose should not cause issues
       expect(() => {
         testStore.set(isSoundEnabledAtom, false);
         testStore.set(hasHapticEnabledAtom, false);

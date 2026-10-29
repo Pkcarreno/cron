@@ -34,14 +34,46 @@ export const CUE_TO_SOUND_MAP: Record<FeedbackCue, CanonicalSoundName> = {
   [FeedbackCue.FINISH]: CANONICAL_SOUNDS.FINISH,
 };
 
+export type HapticCueAction =
+  | { style: Haptics.ImpactFeedbackStyle; type: "impact" }
+  | { style: Haptics.NotificationFeedbackType; type: "notification" };
+
+/**
+ * Declarative table mapping semantic FeedbackCue to coordinated haptic impacts.
+ */
+export const CUE_TO_HAPTIC_MAP: Record<FeedbackCue, HapticCueAction> = {
+  [FeedbackCue.COUNTDOWN]: {
+    style: Haptics.ImpactFeedbackStyle.Light,
+    type: "impact",
+  },
+  [FeedbackCue.GO]: {
+    style: Haptics.ImpactFeedbackStyle.Heavy,
+    type: "impact",
+  },
+  [FeedbackCue.REST]: {
+    style: Haptics.ImpactFeedbackStyle.Medium,
+    type: "impact",
+  },
+  [FeedbackCue.ROUND_CHANGE]: {
+    style: Haptics.ImpactFeedbackStyle.Light,
+    type: "impact",
+  },
+  [FeedbackCue.FINISH]: {
+    style: Haptics.NotificationFeedbackType.Success,
+    type: "notification",
+  },
+};
+
 /**
  * Contract for the unified feedback service.
  */
 export interface FeedbackServiceInterface {
+  attach: (controller: TimerController) => () => void;
+  detach: () => void;
+  dispose: () => void;
   prepare: () => Promise<void>;
-  trigger: (cue: FeedbackCue) => void;
   stop: () => void;
-  dispose: () => void | Promise<void>;
+  trigger: (cue: FeedbackCue) => void;
 }
 
 export interface FeedbackServiceOptions {
@@ -123,13 +155,17 @@ export class FeedbackService implements FeedbackServiceInterface {
     );
 
     if (this.store && typeof this.store.sub === "function") {
-      this.unsubscribeSound = this.store.sub(isSoundEnabledAtom, () => {
-        this.isSoundEnabled = this.store?.get(isSoundEnabledAtom) ?? true;
-      });
+      if (options?.isSoundEnabled === undefined) {
+        this.unsubscribeSound = this.store.sub(isSoundEnabledAtom, () => {
+          this.isSoundEnabled = this.store?.get(isSoundEnabledAtom) ?? true;
+        });
+      }
 
-      this.unsubscribeHaptic = this.store.sub(hasHapticEnabledAtom, () => {
-        this.hasHapticEnabled = this.store?.get(hasHapticEnabledAtom) ?? true;
-      });
+      if (options?.hasHapticEnabled === undefined) {
+        this.unsubscribeHaptic = this.store.sub(hasHapticEnabledAtom, () => {
+          this.hasHapticEnabled = this.store?.get(hasHapticEnabledAtom) ?? true;
+        });
+      }
     }
 
     if (options?.controller) {
@@ -154,6 +190,8 @@ export class FeedbackService implements FeedbackServiceInterface {
     this.detach();
     this.attachedController = controller;
 
+    let isRoundChanging = false;
+
     const unsubs: (() => void)[] = [
       controller.on(TimerEventType.BEEP, () => {
         this.trigger(FeedbackCue.COUNTDOWN);
@@ -164,15 +202,19 @@ export class FeedbackService implements FeedbackServiceInterface {
       controller.on(TimerEventType.FINISH, () => {
         this.trigger(FeedbackCue.FINISH);
       }),
+      controller.on(TimerEventType.ROUND_CHANGE, () => {
+        isRoundChanging = true;
+        this.trigger(FeedbackCue.ROUND_CHANGE);
+        queueMicrotask(() => {
+          isRoundChanging = false;
+        });
+      }),
       controller.on(TimerEventType.PHASE_CHANGE, (newPhase: TimerPhase) => {
         if (newPhase === TimerPhase.REST) {
           this.trigger(FeedbackCue.REST);
-        } else if (newPhase === TimerPhase.WORK) {
+        } else if (newPhase === TimerPhase.WORK && !isRoundChanging) {
           this.trigger(FeedbackCue.GO);
         }
-      }),
-      controller.on(TimerEventType.ROUND_CHANGE, () => {
-        this.trigger(FeedbackCue.ROUND_CHANGE);
       }),
       controller.on(TimerEventType.PAUSE, () => {
         this.stop();
@@ -226,35 +268,16 @@ export class FeedbackService implements FeedbackServiceInterface {
   }
 
   private dispatchHaptic(cue: FeedbackCue): void {
+    const config = CUE_TO_HAPTIC_MAP[cue];
+    if (!config) {
+      return;
+    }
+
     const fireHapticAsync = async () => {
       try {
-        switch (cue) {
-          case FeedbackCue.COUNTDOWN: {
-            await this.haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            break;
-          }
-          case FeedbackCue.GO: {
-            await this.haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-            break;
-          }
-          case FeedbackCue.REST: {
-            await this.haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            break;
-          }
-          case FeedbackCue.ROUND_CHANGE: {
-            await this.haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            break;
-          }
-          case FeedbackCue.FINISH: {
-            await this.haptics.notificationAsync(
-              Haptics.NotificationFeedbackType.Success
-            );
-            break;
-          }
-          default: {
-            break;
-          }
-        }
+        await (config.type === "impact"
+          ? this.haptics.impactAsync(config.style)
+          : this.haptics.notificationAsync(config.style));
       } catch (error) {
         console.warn("[FeedbackService] Haptic impact error:", error);
       }
@@ -273,17 +296,12 @@ export class FeedbackService implements FeedbackServiceInterface {
   /**
    * Releases hardware audio resources, detaches listeners, and unsubscribes store listeners.
    */
-  public async dispose(): Promise<void> {
+  public dispose(): void {
     this.detach();
     this.unsubscribeSound?.();
     this.unsubscribeHaptic?.();
     this.unsubscribeSound = undefined;
     this.unsubscribeHaptic = undefined;
-    await this.audioEngine.dispose();
+    void this.audioEngine.dispose();
   }
 }
-
-/**
- * Concrete UnifiedFeedbackService class alias for backwards and explicit naming compatibility.
- */
-export const UnifiedFeedbackService = FeedbackService;
