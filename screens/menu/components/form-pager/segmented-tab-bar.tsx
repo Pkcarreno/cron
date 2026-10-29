@@ -333,20 +333,22 @@ export const SegmentedTabBar = <T extends string>({
 
   return (
     <View style={[styles.outerContainer, style]}>
-      {/* Gray bar goes edge-to-edge across the screen */}
+      {/* Tab bar clipping viewport across the screen with transparent background */}
       <View
         accessible={true}
         role="tablist"
         accessibilityRole="tablist"
-        style={styles.edgeToEdgeTrackContainer}
+        style={styles.viewportContainer}
         testID={testID ?? "segmented-tab-bar"}
       >
         <GestureDetector gesture={composedGesture}>
           <View style={styles.interactiveContainer}>
-            {/* Background moving track containing inactive tabs */}
+            {/* Background moving track with rounded corners containing inactive tabs */}
             <Animated.View
+              testID="segmented-tab-bar-track"
               style={[
                 styles.movingTrack,
+                styles.trackBackground,
                 { width: totalWidth },
                 trackAnimatedStyle,
               ]}
@@ -447,13 +449,6 @@ export const SegmentedTabBar = <T extends string>({
 };
 
 const styles = StyleSheet.create({
-  edgeToEdgeTrackContainer: {
-    backgroundColor: colors.neutral[700],
-    height: TAB_CONTAINER_HEIGHT,
-    overflow: "hidden",
-    position: "relative",
-    width: "100%",
-  },
   indicatorPill: {
     backgroundColor: colors.white,
     borderRadius: 12,
@@ -501,5 +496,16 @@ const styles = StyleSheet.create({
   },
   touchTargetsRow: {
     zIndex: 3,
+  },
+  trackBackground: {
+    backgroundColor: colors.neutral[700],
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  viewportContainer: {
+    height: TAB_CONTAINER_HEIGHT,
+    overflow: "hidden",
+    position: "relative",
+    width: "100%",
   },
 });

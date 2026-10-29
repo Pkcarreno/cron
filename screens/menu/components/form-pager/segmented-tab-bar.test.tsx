@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent } from "@testing-library/react-native";
 import * as Haptics from "expo-haptics";
 import React from "react";
 
+import { colors } from "@/helpers/colors";
 import { TimerMode } from "@/helpers/timer/factory";
 import { renderWithProviders } from "@/test-utils/render-with-providers";
 
@@ -88,6 +89,29 @@ describe("SegmentedTabBar", () => {
       expect(flattenedStyle.position).toBe("absolute");
       expect(flattenedStyle.backgroundColor).toBe("#ffffff");
       expect(flattenedStyle.borderRadius).toBe(12);
+    });
+
+    it("applies rounded gray background to the moving track, keeping viewport transparent", async () => {
+      const screen = await renderWithProviders(
+        <SegmentedTabBar options={MOCK_OPTIONS} selectedIndex={0} />
+      );
+
+      const track = screen.getByTestId("segmented-tab-bar-track");
+      expect(track).toBeTruthy();
+
+      const flattenedTrackStyle = Array.isArray(track.props.style)
+        ? Object.assign({}, ...track.props.style)
+        : track.props.style;
+
+      expect(flattenedTrackStyle.backgroundColor).toBe(colors.neutral[700]);
+      expect(flattenedTrackStyle.borderRadius).toBe(12);
+
+      const viewport = screen.getByTestId("segmented-tab-bar");
+      const flattenedViewportStyle = Array.isArray(viewport.props.style)
+        ? Object.assign({}, ...viewport.props.style)
+        : viewport.props.style;
+
+      expect(flattenedViewportStyle.backgroundColor).toBeUndefined();
     });
   });
 
