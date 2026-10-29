@@ -42,6 +42,13 @@ We replace real-time synthetic oscillators with an in-memory **AudioBufferSource
 - `suspend()` pauses DAC hardware time progression when the timer is idle, conserving battery.
 - `stopAudio()` immediately halts and disconnects active buffer sources upon pause, reset, or finish.
 
+### 5. Unified Observer Feedback Service & Audio-Haptic Coordination
+
+- `FeedbackService` implements the Observer pattern, attaching to `TimerController` lifecycle events (`BEEP`, `GO`, `FINISH`, `PHASE_CHANGE`, `ROUND_CHANGE`) and mapping them to semantic `FeedbackCue` triggers (`COUNTDOWN`, `GO`, `REST`, `ROUND_CHANGE`, `FINISH`).
+- `TimerController` is completely freed of all transducer logic, becoming a pure interval time accumulator.
+- Transducer dispatch executes synchronously without unawaited blocking promises: native audio buffer sources schedule on `currentTime` while `expo-haptics` impacts trigger concurrently in fire-and-forget fashion.
+- User preference toggles (`isSoundEnabledAtom` and `hasHapticEnabledAtom`) are observed reactively via Jotai store subscriptions, keeping boolean flags synchronized in memory for zero-overhead evaluation during critical ticks.
+
 ## Consequences
 
 ### Positive

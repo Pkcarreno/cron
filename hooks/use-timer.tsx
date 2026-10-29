@@ -18,7 +18,6 @@ import {
   getModeAbbreviation,
 } from "@/helpers/timer/utils/formatter";
 import type { AudioFeedbackService } from "@/services/audio/audio-feedback-service";
-import { NullAudioFeedbackService } from "@/services/audio/null-audio-feedback-service";
 import { preparationTimeMsAtom } from "@/stores/settings";
 
 export enum TimerStatus {
@@ -85,7 +84,6 @@ export const useTimerInstance = (
     }
 
     const options: TimerControllerOptions = {
-      audioService: audioService ?? new NullAudioFeedbackService(),
       uiTickResolutionMs:
         config.mode === TimerMode.STOP_WATCH && "uiTickResolutionMs" in config
           ? config.uiTickResolutionMs
@@ -157,21 +155,34 @@ export const useTimerController = (
     controller.on(TimerEventType.UI_TICK, setTimerState);
     controller.on(TimerEventType.BEEP, (second: number) => {
       handlersRef.current?.onBeep?.(second);
+      void handlersRef.current?.audioService?.playCountdownBeep(second);
     });
     controller.on(TimerEventType.GO, () => {
       startedAtRef.current = new Date();
       handlersRef.current?.onGo?.();
+      void handlersRef.current?.audioService?.playGoCue();
     });
     controller.on(TimerEventType.PHASE_CHANGE, (newPhase: TimerPhase) => {
       handlersRef.current?.onPhaseChange?.(newPhase);
+      void handlersRef.current?.audioService?.playPhaseTransitionCue(newPhase);
     });
     controller.on(TimerEventType.ROUND_CHANGE, (newRound: number) => {
       handlersRef.current?.onRoundChange?.(newRound);
+      void handlersRef.current?.audioService?.playRoundChangeCue?.(newRound);
     });
     controller.on(TimerEventType.FINISH, (summary: SessionSummary) => {
       setStatus(TimerStatus.FINISHED);
       endedAtRef.current = new Date();
       handlersRef.current?.onFinish?.(summary);
+      void handlersRef.current?.audioService?.playFinishCue(
+        summary.fullyCompleted
+      );
+    });
+    controller.on(TimerEventType.PAUSE, () => {
+      handlersRef.current?.audioService?.stopAudio();
+    });
+    controller.on(TimerEventType.RESET, () => {
+      handlersRef.current?.audioService?.stopAudio();
     });
     controller.on(
       TimerEventType.CHECKPOINT,

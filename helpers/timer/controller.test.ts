@@ -565,109 +565,85 @@ describe("timerController", () => {
     });
   });
 
-  describe("audio feedback integration", () => {
-    it("dispatches countdown beeps, go cue, phase transitions, and completion cues", () => {
-      const mockAudioService = {
-        playCountdownBeep: jest.fn((_second?: number) => Promise.resolve()),
-        playFinishCue: jest.fn((_isCompleted?: boolean) => Promise.resolve()),
-        playGoCue: jest.fn(() => Promise.resolve()),
-        playLapCue: jest.fn(() => Promise.resolve()),
-        playPhaseTransitionCue: jest.fn((_phase?: TimerPhase) =>
-          Promise.resolve()
-        ),
-        playRoundChangeCue: jest.fn((_round?: number) => Promise.resolve()),
-        stopAudio: jest.fn(),
-      };
+  describe("pure lifecycle event emission (decoupled from audio)", () => {
+    it("emits countdown beeps, go, phase transitions, and completion events", () => {
+      const onBeep = jest.fn();
+      const onGo = jest.fn();
+      const onPhaseChange = jest.fn();
+      const onRoundChange = jest.fn();
+      const onFinish = jest.fn();
 
       const strategy = new IntervalStrategy(2000, 1000, 2);
       const preparationMs = 3000;
-      const controller = new TimerController(strategy, preparationMs, {
-        audioService: mockAudioService,
-      });
+      const controller = new TimerController(strategy, preparationMs);
+
+      controller.on(TimerEventType.BEEP, onBeep);
+      controller.on(TimerEventType.GO, onGo);
+      controller.on(TimerEventType.PHASE_CHANGE, onPhaseChange);
+      controller.on(TimerEventType.ROUND_CHANGE, onRoundChange);
+      controller.on(TimerEventType.FINISH, onFinish);
 
       controller.start();
 
       // Preparation countdown: 3s, 2s, 1s
       jest.advanceTimersByTime(1000);
-      expect(mockAudioService.playCountdownBeep).toHaveBeenCalledWith(2);
+      expect(onBeep).toHaveBeenCalledWith(2);
 
       jest.advanceTimersByTime(1000);
-      expect(mockAudioService.playCountdownBeep).toHaveBeenCalledWith(1);
+      expect(onBeep).toHaveBeenCalledWith(1);
 
-      // Transition to WORK (Go cue)
+      // Transition to WORK (Go)
       jest.advanceTimersByTime(1000);
-      expect(mockAudioService.playGoCue).toHaveBeenCalledTimes(1);
+      expect(onGo).toHaveBeenCalledTimes(1);
 
       // Work phase 1 -> Rest phase 1
       jest.advanceTimersByTime(2000);
-      expect(mockAudioService.playPhaseTransitionCue).toHaveBeenCalledWith(
-        TimerPhase.REST
-      );
+      expect(onPhaseChange).toHaveBeenCalledWith(TimerPhase.REST);
 
       // Rest phase 1 -> Work phase 2 (Round 2)
       jest.advanceTimersByTime(1000);
-      expect(mockAudioService.playRoundChangeCue).toHaveBeenCalledWith(2);
-      expect(mockAudioService.playPhaseTransitionCue).toHaveBeenCalledWith(
-        TimerPhase.WORK
-      );
+      expect(onRoundChange).toHaveBeenCalledWith(2);
+      expect(onPhaseChange).toHaveBeenCalledWith(TimerPhase.WORK);
 
       // Work phase 2 -> Rest phase 2 -> Finish
       jest.advanceTimersByTime(3000);
-      expect(mockAudioService.playFinishCue).toHaveBeenCalledWith(true);
+      expect(onFinish).toHaveBeenCalledWith(
+        expect.objectContaining({ fullyCompleted: true })
+      );
     });
 
-    it("dispatches lap cues on recordCheckpoint", () => {
-      const mockAudioService = {
-        playCountdownBeep: jest.fn((_second?: number) => Promise.resolve()),
-        playFinishCue: jest.fn((_isCompleted?: boolean) => Promise.resolve()),
-        playGoCue: jest.fn(() => Promise.resolve()),
-        playLapCue: jest.fn(() => Promise.resolve()),
-        playPhaseTransitionCue: jest.fn((_phase?: TimerPhase) =>
-          Promise.resolve()
-        ),
-        playRoundChangeCue: jest.fn((_round?: number) => Promise.resolve()),
-        stopAudio: jest.fn(),
-      };
-
+    it("emits checkpoint events on recordCheckpoint without audio dependency", () => {
+      const onCheckpoint = jest.fn();
       const strategy = new StopwatchStrategy();
-      const controller = new TimerController(strategy, 0, {
-        audioService: mockAudioService,
-      });
+      const controller = new TimerController(strategy, 0);
+
+      controller.on(TimerEventType.CHECKPOINT, onCheckpoint);
 
       controller.start();
       jest.advanceTimersByTime(1000);
       controller.recordCheckpoint();
 
-      expect(mockAudioService.playLapCue).toHaveBeenCalledTimes(1);
+      expect(onCheckpoint).toHaveBeenCalledTimes(1);
+      expect(onCheckpoint).toHaveBeenCalledWith(
+        expect.objectContaining({ lap: 1 })
+      );
     });
 
-    it("halts audio on pause, reset, and dispose", () => {
-      const mockAudioService = {
-        playCountdownBeep: jest.fn((_second?: number) => Promise.resolve()),
-        playFinishCue: jest.fn((_isCompleted?: boolean) => Promise.resolve()),
-        playGoCue: jest.fn(() => Promise.resolve()),
-        playLapCue: jest.fn(() => Promise.resolve()),
-        playPhaseTransitionCue: jest.fn((_phase?: TimerPhase) =>
-          Promise.resolve()
-        ),
-        playRoundChangeCue: jest.fn((_round?: number) => Promise.resolve()),
-        stopAudio: jest.fn(),
-      };
-
+    it("emits pause and reset lifecycle events purely", () => {
+      const onPause = jest.fn();
+      const onReset = jest.fn();
       const strategy = new UpStrategy(10_000);
-      const controller = new TimerController(strategy, 0, {
-        audioService: mockAudioService,
-      });
+      const controller = new TimerController(strategy, 0);
+
+      controller.on(TimerEventType.PAUSE, onPause);
+      controller.on(TimerEventType.RESET, onReset);
 
       controller.start();
       controller.pause();
-      expect(mockAudioService.stopAudio).toHaveBeenCalledTimes(1);
+      expect(onPause).toHaveBeenCalledTimes(1);
 
       controller.reset();
-      expect(mockAudioService.stopAudio).toHaveBeenCalledTimes(2);
-
-      controller.dispose();
-      expect(mockAudioService.stopAudio).toHaveBeenCalledTimes(3);
+      expect(onReset).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -720,20 +696,7 @@ describe("timerController", () => {
 
     it("triggers completion when workout finishes while in background", () => {
       const strategy = new DownStrategy(5000);
-      const mockAudioService = {
-        playCountdownBeep: jest.fn((_second?: number) => Promise.resolve()),
-        playFinishCue: jest.fn((_isCompleted?: boolean) => Promise.resolve()),
-        playGoCue: jest.fn(() => Promise.resolve()),
-        playLapCue: jest.fn(() => Promise.resolve()),
-        playPhaseTransitionCue: jest.fn((_phase?: TimerPhase) =>
-          Promise.resolve()
-        ),
-        playRoundChangeCue: jest.fn((_round?: number) => Promise.resolve()),
-        stopAudio: jest.fn(),
-      };
-      const controller = new TimerController(strategy, 0, {
-        audioService: mockAudioService,
-      });
+      const controller = new TimerController(strategy, 0);
 
       const finishSpy = jest.fn();
       controller.on(TimerEventType.FINISH, finishSpy);
@@ -756,7 +719,6 @@ describe("timerController", () => {
           fullyCompleted: true,
         })
       );
-      expect(mockAudioService.playFinishCue).toHaveBeenCalledWith(true);
     });
   });
 });
