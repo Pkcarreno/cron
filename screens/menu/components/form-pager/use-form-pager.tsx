@@ -9,11 +9,6 @@ import { useEvent, useSharedValue } from "react-native-reanimated";
 
 import { triggerAndroidHaptic, triggerType } from "@/helpers/haptics";
 
-import type {
-  DropdownMenuItemWithIndexOnActionType,
-  PressableWithIndexOnActionType,
-  ViewWithIndexOnLayoutType,
-} from "./components/utils";
 import type { FormTabOption } from "./types";
 
 const usePagerState = <T extends string>(
@@ -41,87 +36,6 @@ const usePagerState = <T extends string>(
   };
 };
 
-const useTabMeasurements = (optionsLength: number) => {
-  const [tabWidths, setTabWidths] = useState<number[]>(
-    Array.from({ length: optionsLength }, () => 0)
-  );
-  const [tabHeight, setTabHeight] = useState(0);
-  const allWidthsMeasured = tabWidths.every((w) => w > 0);
-
-  const handleMeasureOnLayout = useCallback(
-    ({ event, index }: ViewWithIndexOnLayoutType) => {
-      const { width, height } = event.nativeEvent.layout;
-      setTabWidths((prev) => {
-        const next = [...prev];
-        next[index] = width;
-        return next;
-      });
-      setTabHeight((prev) => Math.max(prev, height));
-    },
-    []
-  );
-
-  return { allWidthsMeasured, handleMeasureOnLayout, tabHeight, tabWidths };
-};
-
-const usePagerMath = (optionsLength: number, tabWidths: number[]) => {
-  const translations = useMemo(() => {
-    const trans = [0];
-    for (let i = 1; i < tabWidths.length; i += 1) {
-      trans.push(trans[i - 1] - tabWidths[i - 1]);
-    }
-    return trans;
-  }, [tabWidths]);
-
-  const safeInputRange = useMemo(
-    () =>
-      optionsLength > 1
-        ? Array.from({ length: optionsLength }, (_, i) => i)
-        : [0, 1],
-    [optionsLength]
-  );
-  const safeTranslations = useMemo(
-    () =>
-      optionsLength > 1
-        ? translations
-        : [translations[0] || 0, translations[0] || 0],
-    [translations, optionsLength]
-  );
-  const safePillWidths = useMemo(
-    () =>
-      optionsLength > 1 ? tabWidths : [tabWidths[0] || 0, tabWidths[0] || 0],
-    [tabWidths, optionsLength]
-  );
-
-  return { safeInputRange, safePillWidths, safeTranslations };
-};
-
-const useDropdownChevronManager = (
-  pagerRef: React.RefObject<PagerView | null>
-) => {
-  const isDropdownOpen = useSharedValue(false);
-
-  const handleOnDropdownStateChange = useCallback(
-    (open: boolean) => {
-      isDropdownOpen.value = open;
-    },
-    [isDropdownOpen]
-  );
-
-  const handleOnPressDropdownMenuItem = useCallback(
-    ({ index }: DropdownMenuItemWithIndexOnActionType) => {
-      pagerRef.current?.setPage(index);
-    },
-    [pagerRef]
-  );
-
-  return {
-    handleOnDropdownStateChange,
-    handleOnPressDropdownMenuItem,
-    isDropdownOpen,
-  };
-};
-
 export const useFormPager = <T extends string>(
   options: FormTabOption<T>[],
   value?: T,
@@ -134,17 +48,6 @@ export const useFormPager = <T extends string>(
     safeActiveIndex,
     currentIndexRef,
   } = usePagerState(options, value);
-  const { tabWidths, tabHeight, allWidthsMeasured, handleMeasureOnLayout } =
-    useTabMeasurements(options.length);
-  const { safeInputRange, safeTranslations, safePillWidths } = usePagerMath(
-    options.length,
-    tabWidths
-  );
-  const {
-    isDropdownOpen,
-    handleOnDropdownStateChange,
-    handleOnPressDropdownMenuItem,
-  } = useDropdownChevronManager(pagerRef);
 
   const scrollPosition = useSharedValue(safeActiveIndex);
 
@@ -180,27 +83,17 @@ export const useFormPager = <T extends string>(
   );
 
   const handleOnPressInactiveTab = useCallback(
-    ({ index }: PressableWithIndexOnActionType) =>
-      pagerRef.current?.setPage(index),
+    (index: number) => pagerRef.current?.setPage(index),
     [pagerRef]
   );
 
   return {
-    allWidthsMeasured,
-    handleMeasureOnLayout,
-    handleOnDropdownStateChange,
-    handleOnPressDropdownMenuItem,
+    currentIndexRef,
     handleOnPressInactiveTab,
     handlePageSelected,
-    isDropdownOpen,
     pagerRef,
     safeActiveIndex,
-    safeInputRange,
-    safePillWidths,
-    safeTranslations,
     scrollHandler,
     scrollPosition,
-    tabHeight,
-    tabWidths,
   };
 };
