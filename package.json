@@ -15,6 +15,7 @@
     "perf:build": "tsx scripts/perf/build.ts",
     "perf:measure": "tsx scripts/perf/measure.ts",
     "perf:compare": "tsx scripts/perf/compare.ts",
+    "generate:audio": "tsx scripts/audio/generate-sound-pack.ts",
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "lint": "ultracite check",

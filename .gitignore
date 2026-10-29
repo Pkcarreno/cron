@@ -64,3 +64,4 @@ benchmark/
 
 # pnpm skills symlinks
 .agents/skills/pnpm-*
+.gemini/
