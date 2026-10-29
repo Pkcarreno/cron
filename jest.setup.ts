@@ -17,9 +17,13 @@ jest.mock("react-native-worklets", () =>
   jest.requireActual("react-native-worklets/src/mock")
 );
 
-jest.mock("react-native-reanimated", () =>
-  jest.requireActual("react-native-reanimated/mock")
-);
+jest.mock("react-native-reanimated", () => {
+  const ReanimatedMock = jest.requireActual("react-native-reanimated/mock");
+  return {
+    ...ReanimatedMock,
+    useEvent: (handler: (event: any) => void) => (event: any) => handler(event),
+  };
+});
 
 jest.mock("react-native-audio-api", () =>
   jest.requireActual("react-native-audio-api/mock")
@@ -112,3 +116,22 @@ jest.mock("@tanstack/devtools-event-client", () => ({
     stopConnectLoop() {}
   },
 }));
+
+jest.mock("react-native-pager-view", () => {
+  const ReactMock = require("react");
+  const { View } = require("react-native");
+
+  class PagerView extends ReactMock.Component {
+    setPage = jest.fn();
+    setPageWithoutAnimation = jest.fn();
+    setScrollEnabled = jest.fn();
+    render() {
+      return ReactMock.createElement(View, this.props, this.props.children);
+    }
+  }
+
+  return {
+    __esModule: true,
+    default: PagerView,
+  };
+});
