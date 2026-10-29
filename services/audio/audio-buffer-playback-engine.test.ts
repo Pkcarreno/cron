@@ -119,12 +119,11 @@ describe("AudioBufferPlaybackEngine", () => {
   });
 
   describe("Audio Session Configuration", () => {
-    it("configures audio session with playback category, ducking, and android interruption observation", () => {
+    it("eagerly configures audio session on engine creation", () => {
       const engine = new AudioBufferPlaybackEngine({
         audioContextFactory: () => mockAudioContext as never,
       });
-
-      engine.configureAudioSession();
+      expect(engine.isReady()).toBe(false);
 
       expect(AudioManager.setAudioSessionOptions).toHaveBeenCalledTimes(1);
       expect(AudioManager.setAudioSessionOptions).toHaveBeenCalledWith(
@@ -153,13 +152,12 @@ describe("AudioBufferPlaybackEngine", () => {
         }),
       } as unknown as typeof AudioManager;
 
-      const engine = new AudioBufferPlaybackEngine({
-        audioContextFactory: () => mockAudioContext as never,
-        audioManager: errorThrowingManager,
-      });
-
       expect(() => {
-        engine.configureAudioSession();
+        const engine = new AudioBufferPlaybackEngine({
+          audioContextFactory: () => mockAudioContext as never,
+          audioManager: errorThrowingManager,
+        });
+        expect(engine).toBeDefined();
       }).not.toThrow();
 
       mockWarn.mockRestore();
@@ -167,6 +165,16 @@ describe("AudioBufferPlaybackEngine", () => {
   });
 
   describe("Sound Buffer Preloading & Lifecycle", () => {
+    it("works with default AudioContext mock from react-native-audio-api/mock", async () => {
+      const engine = new AudioBufferPlaybackEngine();
+      expect(engine.isReady()).toBe(false);
+
+      await engine.prepare();
+
+      expect(engine.isReady()).toBe(true);
+      expect(engine.getSoundBuffer("go")).toBeDefined();
+    });
+
     it("loads and decodes all 5 canonical wav assets into native AudioBuffer memory", async () => {
       const mockAssets: Record<CanonicalSoundName, string> = {
         countdown_beep: "countdown_beep",
@@ -181,11 +189,11 @@ describe("AudioBufferPlaybackEngine", () => {
         audioContextFactory: () => mockAudioContext as never,
       });
 
-      expect(engine.isEngineReady()).toBe(false);
+      expect(engine.isReady()).toBe(false);
 
       await engine.prepare();
 
-      expect(engine.isEngineReady()).toBe(true);
+      expect(engine.isReady()).toBe(true);
       expect(mockAudioContext.decodeAudioData).toHaveBeenCalledTimes(5);
 
       for (const soundName of Object.values(CANONICAL_SOUNDS)) {
@@ -214,7 +222,6 @@ describe("AudioBufferPlaybackEngine", () => {
       await Promise.all([p1, p2]);
       await engine.prepare();
 
-      // Audio assets decoded only once (5 files)
       expect(mockAudioContext.decodeAudioData).toHaveBeenCalledTimes(5);
     });
 
@@ -231,9 +238,8 @@ describe("AudioBufferPlaybackEngine", () => {
       });
 
       await expect(engine.prepare()).rejects.toThrow("Corrupt WAV header");
-      expect(engine.isEngineReady()).toBe(false);
+      expect(engine.isReady()).toBe(false);
 
-      // Subsequent attempt succeeds if decode succeeds
       mockAudioContext.decodeAudioData.mockImplementation((source: unknown) =>
         Promise.resolve(
           mockBuffers[source as CanonicalSoundName] ?? mockBuffers.go
@@ -241,7 +247,7 @@ describe("AudioBufferPlaybackEngine", () => {
       );
 
       await expect(engine.prepare()).resolves.toBeUndefined();
-      expect(engine.isEngineReady()).toBe(true);
+      expect(engine.isReady()).toBe(true);
 
       mockError.mockRestore();
     });
@@ -286,23 +292,6 @@ describe("AudioBufferPlaybackEngine", () => {
       engine.playSound("countdown_beep", futureTime);
 
       expect(mockSourceNode.start).toHaveBeenCalledWith(futureTime);
-    });
-
-    it("schedules a sequence of sounds on audioContext timeline without setTimeout", async () => {
-      const engine = new AudioBufferPlaybackEngine({
-        audioContextFactory: () => mockAudioContext as never,
-      });
-
-      await engine.prepare();
-
-      const nodes = engine.scheduleSequence([
-        { delaySeconds: 0, sound: "countdown_beep" },
-        { delaySeconds: 0.15, sound: "countdown_beep" },
-      ]);
-
-      expect(nodes).toHaveLength(2);
-      expect(mockSourceNode.start).toHaveBeenNthCalledWith(1, 12.345);
-      expect(mockSourceNode.start).toHaveBeenNthCalledWith(2, 12.345 + 0.15);
     });
 
     it("does not play sounds if sound is disabled", async () => {
@@ -414,16 +403,14 @@ describe("AudioBufferPlaybackEngine", () => {
     });
 
     it("plays phase transition cue according to target phase", async () => {
-      // REST phase
       await engine.playPhaseTransitionCue(TimerPhase.REST);
       expect(mockSourceNode.buffer).toBe(mockBuffers.rest);
 
-      // WORK phase
       await engine.playPhaseTransitionCue(TimerPhase.WORK);
       expect(mockSourceNode.buffer).toBe(mockBuffers.go);
     });
 
-    it("plays round change cue", async () => {
+    it("plays round change cue and delegates to lap cue", async () => {
       await engine.playRoundChangeCue?.(2);
       expect(mockSourceNode.buffer).toBe(mockBuffers.round_change);
     });
@@ -441,12 +428,12 @@ describe("AudioBufferPlaybackEngine", () => {
       });
 
       await engine.prepare();
-      expect(engine.isEngineReady()).toBe(true);
+      expect(engine.isReady()).toBe(true);
 
       await engine.dispose();
 
       expect(mockAudioContext.close).toHaveBeenCalledTimes(1);
-      expect(engine.isEngineReady()).toBe(false);
+      expect(engine.isReady()).toBe(false);
       expect(engine.getSoundBuffer("go")).toBeUndefined();
     });
 

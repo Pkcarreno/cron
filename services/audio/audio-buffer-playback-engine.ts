@@ -1,6 +1,7 @@
 import type {
   AudioBuffer,
   AudioBufferSourceNode,
+  DecodeDataInput,
   SessionOptions,
 } from "react-native-audio-api";
 import { AudioContext, AudioManager } from "react-native-audio-api";
@@ -13,9 +14,6 @@ import roundChangeAsset from "@/assets/audio/default/round_change.wav";
 import { TimerPhase } from "@/helpers/timer/strategy";
 import type { AudioFeedbackService } from "@/services/audio/audio-feedback-service";
 
-/**
- * Enumeration of the 5 canonical HIIT timer sounds.
- */
 export const CANONICAL_SOUNDS = {
   COUNTDOWN_BEEP: "countdown_beep",
   FINISH: "finish",
@@ -27,9 +25,6 @@ export const CANONICAL_SOUNDS = {
 export type CanonicalSoundName =
   (typeof CANONICAL_SOUNDS)[keyof typeof CANONICAL_SOUNDS];
 
-/**
- * Map of default canonical audio asset resources.
- */
 export const CANONICAL_AUDIO_ASSETS: Record<CanonicalSoundName, number> = {
   countdown_beep: countdownBeepAsset,
   finish: finishAsset,
@@ -39,8 +34,8 @@ export const CANONICAL_AUDIO_ASSETS: Record<CanonicalSoundName, number> = {
 };
 
 /**
- * High-priority audio session options ensuring cues pierce silent switches
- * and duck external audio players (e.g. Spotify, Apple Music).
+ * Audio session options for workout timers.
+ * Keeps cues audible when the silent switch is active and lowers background music volume.
  */
 export const WORKOUT_AUDIO_SESSION_OPTIONS: SessionOptions = {
   iosCategory: "playback",
@@ -49,58 +44,32 @@ export const WORKOUT_AUDIO_SESSION_OPTIONS: SessionOptions = {
 };
 
 export interface AudioBufferPlaybackEngineOptions {
-  /**
-   * Optional custom factory for AudioContext, primarily used in testing.
-   */
   audioContextFactory?: () => AudioContext;
-
-  /**
-   * Optional custom AudioManager reference for dependency injection and testing.
-   */
   audioManager?: typeof AudioManager;
-
-  /**
-   * Optional custom asset map overriding canonical sound assets.
-   */
-  assets?: Record<CanonicalSoundName, unknown>;
-
-  /**
-   * Predicate determining if sound output is currently enabled in settings.
-   */
+  assets?: Record<CanonicalSoundName, DecodeDataInput>;
   isSoundEnabled?: () => boolean;
-
-  /**
-   * Custom audio session configuration options.
-   */
   sessionOptions?: SessionOptions;
 }
 
-export interface ScheduledSequenceStep {
-  sound: CanonicalSoundName;
-  delaySeconds: number;
-}
-
 /**
- * Low-latency audio buffer playback engine utilizing AudioBufferSourceNode
- * via react-native-audio-api.
+ * Low-latency audio buffer playback engine that uses AudioBufferSourceNode.
  *
- * Pre-loads and decodes canonical HIIT audio assets into native uncompressed
- * PCM Float32 memory during initialization. Sound playback is dispatched
- * strictly on audioContext.currentTime, eliminating JavaScript event loop
- * jitter and timer drift.
+ * Pre-loads canonical Float32 PCM audio buffers into native memory during prepare.
+ * Dispatches playback directly on the audioContext.currentTime hardware clock
+ * to prevent timing drift from the JavaScript event loop.
  */
 export class AudioBufferPlaybackEngine implements AudioFeedbackService {
   private audioContext: AudioContext | null = null;
   private readonly audioContextFactory?: () => AudioContext;
   private readonly audioManager: typeof AudioManager;
-  private readonly assets: Record<CanonicalSoundName, unknown>;
+  private readonly assets: Record<CanonicalSoundName, DecodeDataInput>;
   private readonly isSoundEnabled: () => boolean;
   private readonly sessionOptions: SessionOptions;
 
   private readonly soundBuffers = new Map<CanonicalSoundName, AudioBuffer>();
   private readonly activeSources = new Set<AudioBufferSourceNode>();
 
-  private isReady = false;
+  private ready = false;
   private preparePromise: Promise<void> | null = null;
 
   constructor(options?: AudioBufferPlaybackEngineOptions) {
@@ -110,25 +79,18 @@ export class AudioBufferPlaybackEngine implements AudioFeedbackService {
     this.isSoundEnabled = options?.isSoundEnabled ?? (() => true);
     this.sessionOptions =
       options?.sessionOptions ?? WORKOUT_AUDIO_SESSION_OPTIONS;
+
+    this.configureAudioSession();
   }
 
-  /**
-   * Returns whether the audio engine has completed buffer pre-loading and is ready for playback.
-   */
-  public isEngineReady(): boolean {
-    return this.isReady;
+  public isReady(): boolean {
+    return this.ready;
   }
 
-  /**
-   * Retrieves the decoded AudioBuffer for a canonical sound asset.
-   */
   public getSoundBuffer(sound: CanonicalSoundName): AudioBuffer | undefined {
     return this.soundBuffers.get(sound);
   }
 
-  /**
-   * Returns the underlying AudioContext instance, initializing it lazily if needed.
-   */
   public getAudioContext(): AudioContext {
     if (!this.audioContext) {
       this.audioContext = this.audioContextFactory
@@ -138,9 +100,6 @@ export class AudioBufferPlaybackEngine implements AudioFeedbackService {
     return this.audioContext;
   }
 
-  /**
-   * Configures the system audio session with playback ducking and Android interruption observation.
-   */
   public configureAudioSession(): void {
     try {
       if (typeof this.audioManager.setAudioSessionOptions === "function") {
@@ -158,11 +117,11 @@ export class AudioBufferPlaybackEngine implements AudioFeedbackService {
   }
 
   /**
-   * Asynchronously prepares the engine: configures the system audio session,
-   * resumes the AudioContext if suspended, and decodes the canonical sound assets into RAM.
+   * Pre-warms the audio engine: activates session options, resumes the AudioContext,
+   * and decodes all canonical WAV assets into native memory.
    */
   public async prepare(): Promise<void> {
-    if (this.isReady) {
+    if (this.ready) {
       return;
     }
 
@@ -186,13 +145,12 @@ export class AudioBufferPlaybackEngine implements AudioFeedbackService {
 
       const assetEntries = Object.entries(this.assets) as [
         CanonicalSoundName,
-        unknown,
+        DecodeDataInput,
       ][];
 
       await Promise.all(
         assetEntries.map(async ([name, assetSource]) => {
           try {
-            // @ts-expect-error DecodeDataInput accepts number/uri/ArrayBuffer
             const buffer = await ctx.decodeAudioData(assetSource);
             this.soundBuffers.set(name, buffer);
           } catch (error) {
@@ -205,19 +163,18 @@ export class AudioBufferPlaybackEngine implements AudioFeedbackService {
         })
       );
 
-      this.isReady = true;
+      this.ready = true;
     } finally {
       this.preparePromise = null;
     }
   }
 
   /**
-   * Dispatches sound playback via AudioBufferSourceNode scheduled directly on
-   * audioContext.currentTime or a specified hardware timestamp.
+   * Plays a pre-decoded sound buffer on the hardware timeline.
    *
    * @param sound - Canonical sound name.
-   * @param scheduledTime - Hardware timestamp (seconds) on audioContext timeline. Defaults to currentTime.
-   * @returns Active AudioBufferSourceNode, or null if sound is disabled or buffer unavailable.
+   * @param scheduledTime - Target hardware timestamp in seconds (defaults to currentTime).
+   * @returns The active source node, or null if sound is disabled or not loaded.
    */
   public playSound(
     sound: CanonicalSoundName,
@@ -259,30 +216,6 @@ export class AudioBufferPlaybackEngine implements AudioFeedbackService {
     return source;
   }
 
-  /**
-   * Schedules a sequence of sounds across the audioContext timeline without JavaScript timers.
-   */
-  public scheduleSequence(
-    steps: ScheduledSequenceStep[]
-  ): AudioBufferSourceNode[] {
-    const ctx = this.getAudioContext();
-    const now = ctx.currentTime;
-    const nodes: AudioBufferSourceNode[] = [];
-
-    for (const step of steps) {
-      const scheduledTime = now + step.delaySeconds;
-      const node = this.playSound(step.sound, scheduledTime);
-      if (node) {
-        nodes.push(node);
-      }
-    }
-
-    return nodes;
-  }
-
-  /**
-   * Immediately halts all active AudioBufferSourceNodes.
-   */
   public stopAudio(): void {
     for (const source of this.activeSources) {
       try {
@@ -298,31 +231,22 @@ export class AudioBufferPlaybackEngine implements AudioFeedbackService {
     this.activeSources.clear();
   }
 
-  /**
-   * Suspends the underlying AudioContext to conserve battery when inactive.
-   */
   public async suspend(): Promise<void> {
     if (this.audioContext && this.audioContext.state === "running") {
       await this.audioContext.suspend();
     }
   }
 
-  /**
-   * Resumes the underlying AudioContext.
-   */
   public async resume(): Promise<void> {
     if (this.audioContext && this.audioContext.state === "suspended") {
       await this.audioContext.resume();
     }
   }
 
-  /**
-   * Completely tears down the audio engine, stopping playback and closing the context.
-   */
   public async dispose(): Promise<void> {
     this.stopAudio();
     this.soundBuffers.clear();
-    this.isReady = false;
+    this.ready = false;
 
     if (this.audioContext && this.audioContext.state !== "closed") {
       try {
@@ -366,13 +290,12 @@ export class AudioBufferPlaybackEngine implements AudioFeedbackService {
     return Promise.resolve();
   }
 
-  public playRoundChangeCue?(_round?: number): Promise<void> {
+  public playLapCue(): Promise<void> {
     this.playSound("round_change");
     return Promise.resolve();
   }
 
-  public playLapCue(): Promise<void> {
-    this.playSound("round_change");
-    return Promise.resolve();
+  public playRoundChangeCue?(_round?: number): Promise<void> {
+    return this.playLapCue();
   }
 }
