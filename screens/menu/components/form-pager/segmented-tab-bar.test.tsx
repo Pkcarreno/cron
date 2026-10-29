@@ -38,12 +38,22 @@ describe("SegmentedTabBar", () => {
         <SegmentedTabBar options={MOCK_OPTIONS} selectedIndex={0} />
       );
 
-      // Verify all 5 tab buttons are immediately rendered without needing layout events
+      // Verify all 5 tab buttons and testID parent containers have collapsable={false} for Fabric
       for (const option of MOCK_OPTIONS) {
         const tab = screen.getByTestId(`menu-tab-${option.value}`);
         expect(tab).toBeTruthy();
         expect(tab.props.collapsable).toBe(false);
       }
+
+      expect(screen.getByTestId("segmented-tab-bar").props.collapsable).toBe(
+        false
+      );
+      expect(
+        screen.getByTestId("segmented-tab-bar-track").props.collapsable
+      ).toBe(false);
+      expect(
+        screen.getByTestId("segmented-tab-bar-pill").props.collapsable
+      ).toBe(false);
 
       // Verify static geometry constants are defined deterministically
       expect(DEFAULT_TAB_WIDTHS[TimerMode.FOR_TIME]).toBe(105);

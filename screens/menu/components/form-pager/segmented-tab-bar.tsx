@@ -58,27 +58,30 @@ export const LEFT_INSET = 20;
  * relative to the tab track using precomputed tab centers.
  */
 export const computePositionFromTouchX = (
-  touchX: number,
-  centers: readonly number[]
+  touchPositionX: number,
+  tabCenters: readonly number[]
 ): number => {
   "worklet";
-  const count = centers.length;
-  if (count <= 1) {
+  const centerCount = tabCenters.length;
+  if (centerCount <= 1) {
     return 0;
   }
-  if (touchX <= centers[0]) {
+  if (touchPositionX <= tabCenters[0]) {
     return 0;
   }
-  if (touchX >= centers[count - 1]) {
-    return count - 1;
+  if (touchPositionX >= tabCenters[centerCount - 1]) {
+    return centerCount - 1;
   }
-  for (let i = 0; i < count - 1; i += 1) {
-    if (touchX >= centers[i] && touchX <= centers[i + 1]) {
-      const span = centers[i + 1] - centers[i];
-      if (span <= 0) {
+  for (let i = 0; i < centerCount - 1; i += 1) {
+    if (
+      touchPositionX >= tabCenters[i] &&
+      touchPositionX <= tabCenters[i + 1]
+    ) {
+      const distanceBetweenCenters = tabCenters[i + 1] - tabCenters[i];
+      if (distanceBetweenCenters <= 0) {
         return i;
       }
-      return i + (touchX - centers[i]) / span;
+      return i + (touchPositionX - tabCenters[i]) / distanceBetweenCenters;
     }
   }
   return 0;
@@ -88,18 +91,21 @@ export const computePositionFromTouchX = (
  * Identifies the tab index corresponding to a discrete touch X coordinate.
  */
 export const computeTabIndexFromTouchX = (
-  touchX: number,
-  offsets: readonly number[],
-  widths: readonly number[]
+  touchPositionX: number,
+  tabOffsets: readonly number[],
+  tabWidths: readonly number[]
 ): number => {
   "worklet";
-  const count = offsets.length;
+  const count = tabOffsets.length;
   for (let i = 0; i < count; i += 1) {
-    if (touchX >= offsets[i] && touchX < offsets[i] + widths[i]) {
+    if (
+      touchPositionX >= tabOffsets[i] &&
+      touchPositionX < tabOffsets[i] + tabWidths[i]
+    ) {
       return i;
     }
   }
-  if (touchX < offsets[0]) {
+  if (touchPositionX < tabOffsets[0]) {
     return 0;
   }
   return count - 1;
@@ -126,10 +132,10 @@ export const SegmentedTabBar = <T extends string>({
 }: SegmentedTabBarProps<T>) => {
   const internalScrollPosition = useSharedValue(selectedIndex);
   const scrollPosition = externalScrollPosition ?? internalScrollPosition;
-  const startScrollPosition = useSharedValue(selectedIndex);
+  const startTrackOffsetShared = useSharedValue(0);
 
-  const geometries: TabGeometry[] = useMemo(() => {
-    const list: TabGeometry[] = [];
+  const calculatedGeometries: TabGeometry[] = useMemo(() => {
+    const tabGeometries: TabGeometry[] = [];
     let currentOffset = 0;
 
     for (const option of options) {
@@ -138,7 +144,7 @@ export const SegmentedTabBar = <T extends string>({
         DEFAULT_TAB_WIDTHS[option.label] ??
         Math.max(64, option.label.length * 10 + 16);
 
-      list.push({
+      tabGeometries.push({
         center: currentOffset + width / 2,
         offset: currentOffset,
         width,
@@ -147,37 +153,40 @@ export const SegmentedTabBar = <T extends string>({
       currentOffset += width;
     }
 
-    return list;
+    return tabGeometries;
   }, [options]);
 
-  const { indices, offsets, totalWidth, widths } = useMemo(() => {
-    const count = geometries.length;
+  const { tabIndices, tabOffsets, totalTrackWidth, tabWidths } = useMemo(() => {
+    const count = calculatedGeometries.length;
     const safeCount = Math.max(count, 2);
-    const ind = Array.from({ length: safeCount }, (_, i) => i);
-    const off = geometries.map((g) => g.offset);
-    const w = geometries.map((g) => g.width);
-    const tot = geometries.reduce((sum, g) => sum + g.width, 0);
+    const indicesList = Array.from({ length: safeCount }, (_, index) => index);
+    const offsetsList = calculatedGeometries.map((geometry) => geometry.offset);
+    const widthsList = calculatedGeometries.map((geometry) => geometry.width);
+    const totalWidthValue = calculatedGeometries.reduce(
+      (accumulatedWidth, geometry) => accumulatedWidth + geometry.width,
+      0
+    );
 
-    while (off.length < safeCount) {
-      off.push(off.at(-1) ?? 0);
-      w.push(w.at(-1) ?? 64);
+    while (offsetsList.length < safeCount) {
+      offsetsList.push(offsetsList.at(-1) ?? 0);
+      widthsList.push(widthsList.at(-1) ?? 64);
     }
 
     return {
-      indices: ind,
-      offsets: off,
-      totalWidth: tot,
-      widths: w,
+      tabIndices: indicesList,
+      tabOffsets: offsetsList,
+      tabWidths: widthsList,
+      totalTrackWidth: totalWidthValue,
     };
-  }, [geometries]);
+  }, [calculatedGeometries]);
 
   // Negative offsets translate the track so the active tab stays pinned to the left margin
   const trackTranslations = useMemo(
-    () => offsets.map((off) => -off),
-    [offsets]
+    () => tabOffsets.map((offset) => -offset),
+    [tabOffsets]
   );
 
-  const activeDetentShared = useSharedValue(selectedIndex);
+  const activeDetentIndexShared = useSharedValue(selectedIndex);
 
   const handleCommitChange = useCallback(
     (index: number) => {
@@ -209,56 +218,78 @@ export const SegmentedTabBar = <T extends string>({
         .activeOffsetX([-5, 5])
         .onStart(() => {
           "worklet";
-          startScrollPosition.value = scrollPosition.value;
-          activeDetentShared.value = Math.max(
+          startTrackOffsetShared.value = interpolate(
+            scrollPosition.value,
+            tabIndices,
+            tabOffsets,
+            Extrapolation.CLAMP
+          );
+          activeDetentIndexShared.value = Math.max(
             0,
             Math.min(options.length - 1, Math.round(scrollPosition.value))
           );
         })
         .onUpdate((event) => {
           "worklet";
-          // Direct scrub along the bar: moving finger left brings subsequent tabs to the left margin
-          const avgTabWidth = 90;
-          const deltaIndex = -event.translationX / avgTabWidth;
-          const newPos = Math.max(
-            0,
-            Math.min(options.length - 1, startScrollPosition.value + deltaIndex)
+          // Moving finger left scrubs forward along the tab track without geometry drift
+          const targetTrackOffset =
+            startTrackOffsetShared.value - event.translationX;
+          const nextScrollPosition = interpolate(
+            targetTrackOffset,
+            tabOffsets,
+            tabIndices,
+            Extrapolation.CLAMP
           );
-          scrollPosition.value = newPos;
+          scrollPosition.value = nextScrollPosition;
 
-          const currentDetent = Math.max(
+          const currentDetentIndex = Math.max(
             0,
-            Math.min(options.length - 1, Math.round(newPos))
+            Math.min(options.length - 1, Math.round(nextScrollPosition))
           );
-          if (currentDetent !== activeDetentShared.value) {
-            activeDetentShared.value = currentDetent;
+          if (currentDetentIndex !== activeDetentIndexShared.value) {
+            activeDetentIndexShared.value = currentDetentIndex;
             scheduleOnRN(Haptics.selectionAsync);
           }
         })
         .onEnd((event) => {
           "worklet";
-          const velocityInfluence = -(event.velocityX / 1000) * 0.3;
-          const projected = scrollPosition.value + velocityInfluence;
-          const targetIndex = Math.max(
+          const currentTrackOffset = interpolate(
+            scrollPosition.value,
+            tabIndices,
+            tabOffsets,
+            Extrapolation.CLAMP
+          );
+          // Velocity influence projected in track pixel space, then mapped to resting index
+          const velocityPixelOffset = -(event.velocityX / 1000) * 30;
+          const projectedTrackOffset = currentTrackOffset + velocityPixelOffset;
+          const projectedScrollPosition = interpolate(
+            projectedTrackOffset,
+            tabOffsets,
+            tabIndices,
+            Extrapolation.CLAMP
+          );
+          const targetTabIndex = Math.max(
             0,
-            Math.min(options.length - 1, Math.round(projected))
+            Math.min(options.length - 1, Math.round(projectedScrollPosition))
           );
 
-          scrollPosition.value = withSpring(targetIndex, {
+          scrollPosition.value = withSpring(targetTabIndex, {
             dampingRatio: 0.8,
             duration: 300,
             reduceMotion: ReduceMotion.System,
             velocity: -event.velocityX / 100,
           });
 
-          scheduleOnRN(handleCommitChange, targetIndex);
+          scheduleOnRN(handleCommitChange, targetTabIndex);
         }),
     [
       handleCommitChange,
       options.length,
       scrollPosition,
-      activeDetentShared,
-      startScrollPosition,
+      activeDetentIndexShared,
+      startTrackOffsetShared,
+      tabIndices,
+      tabOffsets,
     ]
   );
 
@@ -268,35 +299,36 @@ export const SegmentedTabBar = <T extends string>({
         .maxDuration(250)
         .onEnd((event) => {
           "worklet";
-          const currentShift = interpolate(
+          const currentTrackTranslationX = interpolate(
             scrollPosition.value,
-            indices,
+            tabIndices,
             trackTranslations,
             Extrapolation.CLAMP
           );
-          const touchXOnTrack = event.x - LEFT_INSET - currentShift;
-          const targetIndex = computeTabIndexFromTouchX(
-            touchXOnTrack,
-            offsets,
-            widths
+          const touchTrackCoordinateX =
+            event.x - LEFT_INSET - currentTrackTranslationX;
+          const targetTabIndex = computeTabIndexFromTouchX(
+            touchTrackCoordinateX,
+            tabOffsets,
+            tabWidths
           );
 
-          scrollPosition.value = withSpring(targetIndex, {
+          scrollPosition.value = withSpring(targetTabIndex, {
             dampingRatio: 1,
             duration: 250,
             reduceMotion: ReduceMotion.System,
           });
 
           scheduleOnRN(Haptics.selectionAsync);
-          scheduleOnRN(handleCommitChange, targetIndex);
+          scheduleOnRN(handleCommitChange, targetTabIndex);
         }),
     [
       handleCommitChange,
-      indices,
-      offsets,
+      tabIndices,
+      tabOffsets,
       scrollPosition,
       trackTranslations,
-      widths,
+      tabWidths,
     ]
   );
 
@@ -307,27 +339,27 @@ export const SegmentedTabBar = <T extends string>({
 
   // The white pill is pinned to the left margin (LEFT_INSET); its width continuously morphs
   const pillAnimatedStyle = useAnimatedStyle(() => {
-    const width = interpolate(
+    const indicatorPillWidth = interpolate(
       scrollPosition.value,
-      indices,
-      widths,
+      tabIndices,
+      tabWidths,
       Extrapolation.CLAMP
     );
     return {
-      width,
+      width: indicatorPillWidth,
     };
   });
 
   // Track translates so the active tab stays pinned to the left margin
   const trackAnimatedStyle = useAnimatedStyle(() => {
-    const translateX = interpolate(
+    const trackTranslateX = interpolate(
       scrollPosition.value,
-      indices,
+      tabIndices,
       trackTranslations,
       Extrapolation.CLAMP
     );
     return {
-      transform: [{ translateX }],
+      transform: [{ translateX: trackTranslateX }],
     };
   });
 
@@ -336,6 +368,7 @@ export const SegmentedTabBar = <T extends string>({
       {/* Tab bar clipping viewport across the screen with transparent background */}
       <View
         accessible={true}
+        collapsable={false}
         role="tablist"
         accessibilityRole="tablist"
         style={styles.viewportContainer}
@@ -345,16 +378,17 @@ export const SegmentedTabBar = <T extends string>({
           <View style={styles.interactiveContainer}>
             {/* Background moving track with rounded corners containing inactive tabs */}
             <Animated.View
+              collapsable={false}
               testID="segmented-tab-bar-track"
               style={[
                 styles.movingTrack,
                 styles.trackBackground,
-                { width: totalWidth },
+                { width: totalTrackWidth },
                 trackAnimatedStyle,
               ]}
             >
               {options.map((option, index) => {
-                const geom = geometries[index];
+                const geom = calculatedGeometries[index];
                 return (
                   <View
                     key={`inactive-${option.value}`}
@@ -376,18 +410,19 @@ export const SegmentedTabBar = <T extends string>({
 
             {/* Absolute selection indicator pill pinned to the left margin */}
             <Animated.View
+              collapsable={false}
               testID="segmented-tab-bar-pill"
               style={[styles.indicatorPill, pillAnimatedStyle]}
             >
               <Animated.View
                 style={[
                   styles.innerActiveTextRow,
-                  { width: totalWidth },
+                  { width: totalTrackWidth },
                   trackAnimatedStyle,
                 ]}
               >
                 {options.map((option, index) => {
-                  const geom = geometries[index];
+                  const geom = calculatedGeometries[index];
                   return (
                     <View
                       key={`active-${option.value}`}
@@ -413,12 +448,12 @@ export const SegmentedTabBar = <T extends string>({
               style={[
                 styles.movingTrack,
                 styles.touchTargetsRow,
-                { width: totalWidth },
+                { width: totalTrackWidth },
                 trackAnimatedStyle,
               ]}
             >
               {options.map((option, index) => {
-                const geom = geometries[index];
+                const geom = calculatedGeometries[index];
                 const isSelected = selectedIndex === index;
                 return (
                   <Pressable
