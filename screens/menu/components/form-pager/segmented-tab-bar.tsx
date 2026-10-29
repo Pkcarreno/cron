@@ -24,16 +24,17 @@ import type { FormTabOption } from "./types";
 
 /**
  * Precomputed static typography widths derived from Geist 18px medium metrics
- * with 16px total horizontal padding (paddingHorizontal: 8).
+ * with 16px total horizontal padding (paddingHorizontal: 8) plus safety margin
+ * to prevent subpixel text truncation and line wrapping on high-density displays.
  */
 export const DEFAULT_TAB_WIDTHS: Record<string, number> = {
-  [TimerMode.FOR_TIME]: 105,
-  [TimerMode.AMRAP]: 81,
-  [TimerMode.INTERVAL]: 103,
-  [TimerMode.EMOM]: 73,
-  [TimerMode.STOP_WATCH]: 139,
-  "FOR TIME": 99,
-  "STOP WATCH": 133,
+  [TimerMode.FOR_TIME]: 110,
+  [TimerMode.AMRAP]: 86,
+  [TimerMode.INTERVAL]: 109,
+  [TimerMode.EMOM]: 78,
+  [TimerMode.STOP_WATCH]: 145,
+  "FOR TIME": 104,
+  "STOP WATCH": 140,
 };
 
 export interface TabGeometry {
@@ -43,11 +44,11 @@ export interface TabGeometry {
 }
 
 export const DEFAULT_TAB_GEOMETRIES: Record<TimerMode, TabGeometry> = {
-  [TimerMode.FOR_TIME]: { center: 52.5, offset: 0, width: 105 },
-  [TimerMode.AMRAP]: { center: 145.5, offset: 105, width: 81 },
-  [TimerMode.INTERVAL]: { center: 237.5, offset: 186, width: 103 },
-  [TimerMode.EMOM]: { center: 325.5, offset: 289, width: 73 },
-  [TimerMode.STOP_WATCH]: { center: 431.5, offset: 362, width: 139 },
+  [TimerMode.FOR_TIME]: { center: 55, offset: 0, width: 110 },
+  [TimerMode.AMRAP]: { center: 153, offset: 110, width: 86 },
+  [TimerMode.INTERVAL]: { center: 250.5, offset: 196, width: 109 },
+  [TimerMode.EMOM]: { center: 344, offset: 305, width: 78 },
+  [TimerMode.STOP_WATCH]: { center: 455.5, offset: 383, width: 145 },
 };
 
 export const TAB_CONTAINER_HEIGHT = 36;
@@ -400,7 +401,12 @@ export const SegmentedTabBar = <T extends string>({
                       },
                     ]}
                   >
-                    <Text weight="200" size={TAB_FONT_SIZE} color="neutral">
+                    <Text
+                      weight="200"
+                      size={TAB_FONT_SIZE}
+                      color="neutral"
+                      numberOfLines={1}
+                    >
                       {option.label}
                     </Text>
                   </View>
@@ -434,7 +440,12 @@ export const SegmentedTabBar = <T extends string>({
                         },
                       ]}
                     >
-                      <Text size={TAB_FONT_SIZE} weight="500" color="black">
+                      <Text
+                        size={TAB_FONT_SIZE}
+                        weight="500"
+                        color="black"
+                        numberOfLines={1}
+                      >
                         {option.label}
                       </Text>
                     </View>

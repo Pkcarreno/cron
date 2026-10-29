@@ -56,21 +56,21 @@ describe("SegmentedTabBar", () => {
       ).toBe(false);
 
       // Verify static geometry constants are defined deterministically
-      expect(DEFAULT_TAB_WIDTHS[TimerMode.FOR_TIME]).toBe(105);
-      expect(DEFAULT_TAB_WIDTHS[TimerMode.AMRAP]).toBe(81);
-      expect(DEFAULT_TAB_WIDTHS[TimerMode.INTERVAL]).toBe(103);
-      expect(DEFAULT_TAB_WIDTHS[TimerMode.EMOM]).toBe(73);
-      expect(DEFAULT_TAB_WIDTHS[TimerMode.STOP_WATCH]).toBe(139);
+      expect(DEFAULT_TAB_WIDTHS[TimerMode.FOR_TIME]).toBe(110);
+      expect(DEFAULT_TAB_WIDTHS[TimerMode.AMRAP]).toBe(86);
+      expect(DEFAULT_TAB_WIDTHS[TimerMode.INTERVAL]).toBe(109);
+      expect(DEFAULT_TAB_WIDTHS[TimerMode.EMOM]).toBe(78);
+      expect(DEFAULT_TAB_WIDTHS[TimerMode.STOP_WATCH]).toBe(145);
 
       expect(DEFAULT_TAB_GEOMETRIES[TimerMode.FOR_TIME]).toEqual({
-        center: 52.5,
+        center: 55,
         offset: 0,
-        width: 105,
+        width: 110,
       });
       expect(DEFAULT_TAB_GEOMETRIES[TimerMode.STOP_WATCH]).toEqual({
-        center: 431.5,
-        offset: 362,
-        width: 139,
+        center: 455.5,
+        offset: 383,
+        width: 145,
       });
     });
 
@@ -82,6 +82,18 @@ describe("SegmentedTabBar", () => {
       expect(screen.queryByTestId("caret-down-icon")).toBeNull();
       expect(screen.queryByRole("menu")).toBeNull();
       expect(screen.queryByText("CaretDownIcon")).toBeNull();
+    });
+
+    it("renders tab labels with single-line constraint to prevent line wrapping", async () => {
+      const screen = await renderWithProviders(
+        <SegmentedTabBar options={MOCK_OPTIONS} selectedIndex={0} />
+      );
+
+      const labelElements = screen.getAllByText("FOR_TIME");
+      expect(labelElements.length).toBeGreaterThanOrEqual(2);
+      for (const element of labelElements) {
+        expect(element.props.numberOfLines).toBe(1);
+      }
     });
 
     it("positions selection indicator pill absolutely with continuous 1:1 linear tracking", async () => {
