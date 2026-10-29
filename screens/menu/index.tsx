@@ -9,7 +9,7 @@ import { activeTimerModeAtom } from "@/stores/workout";
 
 import { FloatingActionDock } from "./components/floating-action-dock";
 import { FormPager } from "./components/form-pager";
-import { MENU_PAGES } from "./hooks/use-timer-form";
+import { MENU_PAGES } from "./pages";
 
 export const Menu = () => {
   const [currentMode, setCurrentMode] = useAtom(activeTimerModeAtom);

@@ -11,6 +11,7 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
 } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
   DropdownMenu,
@@ -52,6 +53,9 @@ export const FormPager = <T extends string>({
   children,
   testID,
 }: FormPagerProps<T>) => {
+  const insets = useSafeAreaInsets();
+  const formPaddingBottom = Math.max(96, 72 + insets.bottom);
+
   const {
     pagerRef,
     scrollPosition,
@@ -246,7 +250,7 @@ export const FormPager = <T extends string>({
             style={styles.page}
           >
             {typeof option.content === "function"
-              ? option.content({ bottom: 96 })
+              ? option.content({ bottom: formPaddingBottom })
               : option.content}
           </View>
         ))}

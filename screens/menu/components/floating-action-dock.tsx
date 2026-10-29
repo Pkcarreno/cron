@@ -18,7 +18,11 @@ export const FloatingActionDock = ({ style }: FloatingActionDockProps) => {
   const handleStart = useStartTimer();
 
   return (
-    <View testID="floating-action-dock" style={[styles.container, style]}>
+    <View
+      testID="floating-action-dock"
+      collapsable={false}
+      style={[styles.container, style]}
+    >
       <Link href="/settings" asChild>
         <Button size="icon" icon={SlidersIcon} variant="ghost" />
       </Link>

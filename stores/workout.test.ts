@@ -17,6 +17,7 @@ import {
   emomWorkoutAtom,
   forTimeWorkoutAtom,
   intervalWorkoutAtom,
+  isActiveTimerValidAtom,
   isCurrentTimerValidAtom,
   stopWatchWorkoutAtom,
   workoutAtoms,
@@ -92,9 +93,10 @@ describe("activeTimerModeAtom and dynamic validation atom", () => {
     expect(store.get(activeTimerModeAtom)).toBe(TimerMode.FOR_TIME);
   });
 
-  it("evaluates isCurrentTimerValidAtom for the active mode", () => {
+  it("evaluates isCurrentTimerValidAtom for the active mode and exposes alias isActiveTimerValidAtom", () => {
     const store = createStore();
 
+    expect(isActiveTimerValidAtom).toBe(isCurrentTimerValidAtom);
     expect(store.get(isCurrentTimerValidAtom)).toBe(true);
 
     store.set(forTimeWorkoutAtom, { timecapMs: 0 });

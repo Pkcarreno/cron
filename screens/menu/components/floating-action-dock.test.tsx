@@ -35,6 +35,7 @@ describe("FloatingActionDock", () => {
 
     const dock = screen.getByTestId("floating-action-dock");
     expect(dock).toBeTruthy();
+    expect(dock.props.collapsable).toBe(false);
 
     const startButton = screen.getByTestId("start-timer-button");
     expect(startButton).toBeTruthy();

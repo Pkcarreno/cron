@@ -1,22 +1,23 @@
+import type { Getter } from "jotai";
 import { atom } from "jotai";
 
 import type { TimerConfig } from "@/helpers/timer/factory";
 import { TimerMode } from "@/helpers/timer/factory";
-import {
-  amrapDefaults,
-  emomDefaults,
-  forTimeDefaults,
-  intervalDefaults,
-  stopWatchDefaults,
-} from "@/helpers/timer/utils/config-serializer";
 import type {
   AmrapFormValues,
   EmomFormValues,
   ForTimeFormValues,
   IntervalFormValues,
   StopWatchFormValues,
-} from "@/screens/menu/schema";
-import { schemasByMode } from "@/screens/menu/schema";
+} from "@/helpers/timer/schemas";
+import {
+  amrapDefaults,
+  emomDefaults,
+  forTimeDefaults,
+  intervalDefaults,
+  schemasByMode,
+  stopWatchDefaults,
+} from "@/helpers/timer/schemas";
 
 import { atomWithMMKV } from "./storage";
 
@@ -55,14 +56,8 @@ export const workoutAtoms = {
   [TimerMode.STOP_WATCH]: stopWatchWorkoutAtom,
 } as const;
 
-/**
- * Evaluates validation status solely for the active mode schema.
- * Dynamically subscribes to the active workout atom to avoid re-renders
- * when inactive forms change.
- */
-export const isCurrentTimerValidAtom = atom<boolean>((get) => {
-  const activeMode = get(activeTimerModeAtom);
-  switch (activeMode) {
+const evaluateActiveTimerValidity = (mode: TimerMode, get: Getter): boolean => {
+  switch (mode) {
     case TimerMode.FOR_TIME: {
       return schemasByMode[TimerMode.FOR_TIME].safeParse(
         get(forTimeWorkoutAtom)
@@ -90,14 +85,13 @@ export const isCurrentTimerValidAtom = atom<boolean>((get) => {
       return false;
     }
   }
-});
+};
 
-/**
- * Returns the current workout configuration for the active mode.
- */
-export const activeTimerConfigAtom = atom<TimerConfig>((get) => {
-  const activeMode = get(activeTimerModeAtom);
-  switch (activeMode) {
+const resolveActiveTimerConfig = (
+  mode: TimerMode,
+  get: Getter
+): TimerConfig => {
+  switch (mode) {
     case TimerMode.FOR_TIME: {
       return { mode: TimerMode.FOR_TIME, ...get(forTimeWorkoutAtom) };
     }
@@ -117,4 +111,27 @@ export const activeTimerConfigAtom = atom<TimerConfig>((get) => {
       return { mode: TimerMode.FOR_TIME, ...get(forTimeWorkoutAtom) };
     }
   }
+};
+
+/**
+ * Evaluates validation status solely for the active mode schema.
+ * Dynamically subscribes to the active workout atom to avoid re-renders
+ * when inactive forms change.
+ */
+export const isCurrentTimerValidAtom = atom<boolean>((get) => {
+  const activeMode = get(activeTimerModeAtom);
+  return evaluateActiveTimerValidity(activeMode, get);
+});
+
+/**
+ * Semantic naming alias for `isCurrentTimerValidAtom`.
+ */
+export const isActiveTimerValidAtom = isCurrentTimerValidAtom;
+
+/**
+ * Returns the current workout configuration for the active mode.
+ */
+export const activeTimerConfigAtom = atom<TimerConfig>((get) => {
+  const activeMode = get(activeTimerModeAtom);
+  return resolveActiveTimerConfig(activeMode, get);
 });
