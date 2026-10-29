@@ -1,13 +1,6 @@
-import { LinearGradient } from "expo-linear-gradient";
 import { CaretDownIcon } from "phosphor-react-native";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import type { LayoutChangeEvent, NativeSyntheticEvent } from "react-native";
+import React, { useEffect, useMemo, useRef } from "react";
+import type { NativeSyntheticEvent } from "react-native";
 import { StyleSheet, View } from "react-native";
 import type { PagerViewOnPageScrollEventData } from "react-native-pager-view";
 import PagerView from "react-native-pager-view";
@@ -18,6 +11,7 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
 } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
   DropdownMenu,
@@ -59,6 +53,9 @@ export const FormPager = <T extends string>({
   children,
   testID,
 }: FormPagerProps<T>) => {
+  const insets = useSafeAreaInsets();
+  const formPaddingBottom = Math.max(96, 72 + insets.bottom);
+
   const {
     pagerRef,
     scrollPosition,
@@ -77,16 +74,6 @@ export const FormPager = <T extends string>({
     handleOnPressDropdownMenuItem,
     handleOnDropdownStateChange,
   } = useFormPager(options, value, onValueChange);
-
-  const [footerHeight, setFooterHeight] = useState(0);
-
-  const handleFooterMeasuraOnLayout = useCallback(
-    (event: LayoutChangeEvent) => {
-      const { height } = event.nativeEvent.layout;
-      setFooterHeight(height);
-    },
-    []
-  );
 
   const propIndex = useMemo(() => {
     if (value) {
@@ -263,25 +250,13 @@ export const FormPager = <T extends string>({
             style={styles.page}
           >
             {typeof option.content === "function"
-              ? option.content({ bottom: footerHeight + 12 })
+              ? option.content({ bottom: formPaddingBottom })
               : option.content}
           </View>
         ))}
       </AnimatedPagerView>
 
-      <LinearGradient
-        onLayout={handleFooterMeasuraOnLayout}
-        style={styles.footer}
-        colors={[
-          "transparent",
-          "rgba(0, 0, 0, 0.6)",
-          "rgba(0, 0, 0, 0.8)",
-          "black",
-        ]}
-        locations={[0, 0.08, 0.16, 1]}
-      >
-        {children}
-      </LinearGradient>
+      {children}
     </View>
   );
 };
@@ -290,12 +265,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     gap: 12,
-  },
-  footer: {
-    bottom: 0,
-    left: 0,
-    position: "absolute",
-    right: 0,
   },
   page: {
     flex: 1,

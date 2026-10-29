@@ -1,27 +1,19 @@
-import { Link } from "expo-router";
-import { SlidersIcon } from "phosphor-react-native";
-import { useCallback, useState } from "react";
+import { LinearGradient } from "expo-linear-gradient";
+import { useAtom } from "jotai";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import Button from "@/components/button";
 import { Logo } from "@/components/logo";
 import { Text } from "@/components/text";
-import type { TimerMode } from "@/helpers/timer/factory";
+import { activeTimerModeAtom } from "@/stores/workout";
 
+import { FloatingActionDock } from "./components/floating-action-dock";
 import { FormPager } from "./components/form-pager";
-import { useTimerForms } from "./hooks/use-timer-form";
-import { TIMER_MODES } from "./schema";
+import { MENU_PAGES } from "./pages";
 
 export const Menu = () => {
-  const [currentMode, setCurrentMode] = useState<TimerMode>(TIMER_MODES[0]);
-  const { isValid, pages, startTimer } = useTimerForms(currentMode);
+  const [currentMode, setCurrentMode] = useAtom(activeTimerModeAtom);
   const inset = useSafeAreaInsets();
-
-  const handleStart = useCallback(
-    () => startTimer(currentMode),
-    [startTimer, currentMode]
-  );
 
   return (
     <View
@@ -42,23 +34,22 @@ export const Menu = () => {
         <FormPager
           value={currentMode}
           onValueChange={setCurrentMode}
-          options={pages}
-        >
-          <View style={[styles.footer, { paddingBottom: inset.bottom + 12 }]}>
-            <Link href="/settings" asChild>
-              <Button size="icon" icon={SlidersIcon} variant="ghost" />
-            </Link>
-
-            <Button
-              testID="start-timer-button"
-              disabled={!isValid}
-              style={styles.fullSpace}
-              title="Start"
-              onPress={handleStart}
-            />
-          </View>
-        </FormPager>
+          options={MENU_PAGES}
+        />
       </View>
+      <LinearGradient
+        pointerEvents="box-none"
+        style={styles.floatingDockGradient}
+        colors={[
+          "transparent",
+          "rgba(0, 0, 0, 0.6)",
+          "rgba(0, 0, 0, 0.8)",
+          "black",
+        ]}
+        locations={[0, 0.08, 0.16, 1]}
+      >
+        <FloatingActionDock style={{ paddingBottom: inset.bottom + 12 }} />
+      </LinearGradient>
     </View>
   );
 };
@@ -75,14 +66,11 @@ const styles = StyleSheet.create({
   contentHeading: {
     paddingLeft: 28,
   },
-  footer: {
-    flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-  },
-  fullSpace: {
-    flex: 1,
+  floatingDockGradient: {
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    right: 0,
   },
   header: {
     alignItems: "center",

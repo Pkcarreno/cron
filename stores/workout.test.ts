@@ -11,10 +11,14 @@ import {
 import { storage } from "@/stores/storage";
 
 import {
+  activeTimerConfigAtom,
+  activeTimerModeAtom,
   amrapWorkoutAtom,
   emomWorkoutAtom,
   forTimeWorkoutAtom,
   intervalWorkoutAtom,
+  isActiveTimerValidAtom,
+  isCurrentTimerValidAtom,
   stopWatchWorkoutAtom,
   workoutAtoms,
 } from "./workout";
@@ -80,5 +84,79 @@ describe("workout store persistence", () => {
     expect(workoutAtoms[TimerMode.EMOM]).toBe(emomWorkoutAtom);
     expect(workoutAtoms[TimerMode.INTERVAL]).toBe(intervalWorkoutAtom);
     expect(workoutAtoms[TimerMode.STOP_WATCH]).toBe(stopWatchWorkoutAtom);
+  });
+});
+
+describe("activeTimerModeAtom and dynamic validation atom", () => {
+  it("initializes activeTimerModeAtom with default TimerMode.FOR_TIME", () => {
+    const store = createStore();
+    expect(store.get(activeTimerModeAtom)).toBe(TimerMode.FOR_TIME);
+  });
+
+  it("evaluates isCurrentTimerValidAtom for the active mode and exposes alias isActiveTimerValidAtom", () => {
+    const store = createStore();
+
+    expect(isActiveTimerValidAtom).toBe(isCurrentTimerValidAtom);
+    expect(store.get(isCurrentTimerValidAtom)).toBe(true);
+
+    store.set(forTimeWorkoutAtom, { timecapMs: 0 });
+    expect(store.get(isCurrentTimerValidAtom)).toBe(false);
+
+    store.set(forTimeWorkoutAtom, { timecapMs: 60_000 });
+    expect(store.get(isCurrentTimerValidAtom)).toBe(true);
+  });
+
+  it("evaluates validity solely for the active mode without subscribing to inactive forms", () => {
+    const store = createStore();
+    store.set(activeTimerModeAtom, TimerMode.FOR_TIME);
+
+    const listener = jest.fn();
+    const unsub = store.sub(isCurrentTimerValidAtom, listener);
+
+    // Initial read to establish active subscription to forTimeWorkoutAtom
+    expect(store.get(isCurrentTimerValidAtom)).toBe(true);
+    expect(listener).not.toHaveBeenCalled();
+
+    // Changing an inactive form (AMRAP) must NOT trigger the listener
+    store.set(amrapWorkoutAtom, { durationMs: 0 });
+    expect(listener).not.toHaveBeenCalled();
+    expect(store.get(isCurrentTimerValidAtom)).toBe(true);
+
+    // Changing the active form (FOR_TIME) MUST trigger the listener
+    store.set(forTimeWorkoutAtom, { timecapMs: 0 });
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(store.get(isCurrentTimerValidAtom)).toBe(false);
+
+    // Switch mode to AMRAP (which was set to invalid duration 0)
+    store.set(activeTimerModeAtom, TimerMode.AMRAP);
+    expect(store.get(isCurrentTimerValidAtom)).toBe(false);
+
+    const listenerCallCount = listener.mock.calls.length;
+
+    // Now FOR_TIME is inactive; changing it must NOT trigger the listener
+    store.set(forTimeWorkoutAtom, { timecapMs: 60_000 });
+    expect(listener.mock.calls.length).toBe(listenerCallCount);
+
+    // Changing AMRAP must trigger the listener
+    store.set(amrapWorkoutAtom, { durationMs: 60_000 });
+    expect(store.get(isCurrentTimerValidAtom)).toBe(true);
+    expect(listener.mock.calls.length).toBeGreaterThan(listenerCallCount);
+
+    unsub();
+  });
+
+  it("returns the active timer config through activeTimerConfigAtom", () => {
+    const store = createStore();
+
+    expect(store.get(activeTimerConfigAtom)).toEqual({
+      mode: TimerMode.FOR_TIME,
+      ...forTimeDefaults,
+    });
+
+    store.set(activeTimerModeAtom, TimerMode.EMOM);
+    expect(store.get(activeTimerConfigAtom)).toEqual({
+      mode: TimerMode.EMOM,
+      ...emomDefaults,
+    });
   });
 });
