@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback } from "react";
 import type { NativeSyntheticEvent } from "react-native";
 import { StyleSheet, View } from "react-native";
 import type { PagerViewOnPageScrollEventData } from "react-native-pager-view";
@@ -36,21 +36,6 @@ export const FormPager = <T extends string>({
     scrollHandler,
     handlePageSelected,
   } = useFormPager(options, value, onValueChange);
-
-  const propIndex = useMemo(() => {
-    if (value) {
-      return options.findIndex((opt) => opt.value === value);
-    }
-    return -1;
-  }, [options, value]);
-  const currentIndexRef = useRef(Math.max(propIndex, 0));
-
-  useEffect(() => {
-    if (propIndex >= 0 && propIndex !== currentIndexRef.current) {
-      pagerRef.current?.setPage(propIndex);
-      currentIndexRef.current = propIndex;
-    }
-  }, [propIndex, pagerRef, currentIndexRef]);
 
   const handleTabPress = useCallback(
     (index: number) => {

@@ -2,7 +2,7 @@
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useMemo } from "react";
 import type { StyleProp, ViewStyle } from "react-native";
-import { Dimensions, Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import type { SharedValue } from "react-native-reanimated";
 import Animated, {
@@ -51,6 +51,7 @@ export const DEFAULT_TAB_GEOMETRIES: Record<TimerMode, TabGeometry> = {
 };
 
 export const TAB_CONTAINER_HEIGHT = 36;
+export const LEFT_INSET = 20;
 
 /**
  * Calculates continuous position [0, count - 1] from a touch X coordinate
@@ -112,7 +113,6 @@ export interface SegmentedTabBarProps<T extends string = string> {
   onValueChange?: (value: T) => void;
   testID?: string;
   style?: StyleProp<ViewStyle>;
-  containerWidth?: number;
 }
 
 export const SegmentedTabBar = <T extends string>({
@@ -123,20 +123,10 @@ export const SegmentedTabBar = <T extends string>({
   onValueChange,
   testID,
   style,
-  containerWidth: externalContainerWidth,
 }: SegmentedTabBarProps<T>) => {
-  const defaultContainerWidth = useMemo(() => {
-    try {
-      return Dimensions.get("window").width - 40;
-    } catch {
-      return 350;
-    }
-  }, []);
-
-  const containerWidth = externalContainerWidth ?? defaultContainerWidth;
-
   const internalScrollPosition = useSharedValue(selectedIndex);
   const scrollPosition = externalScrollPosition ?? internalScrollPosition;
+  const startScrollPosition = useSharedValue(selectedIndex);
 
   const geometries: TabGeometry[] = useMemo(() => {
     const list: TabGeometry[] = [];
@@ -160,23 +150,20 @@ export const SegmentedTabBar = <T extends string>({
     return list;
   }, [options]);
 
-  const { centers, indices, offsets, totalWidth, widths } = useMemo(() => {
+  const { indices, offsets, totalWidth, widths } = useMemo(() => {
     const count = geometries.length;
     const safeCount = Math.max(count, 2);
     const ind = Array.from({ length: safeCount }, (_, i) => i);
     const off = geometries.map((g) => g.offset);
     const w = geometries.map((g) => g.width);
-    const c = geometries.map((g) => g.center);
     const tot = geometries.reduce((sum, g) => sum + g.width, 0);
 
     while (off.length < safeCount) {
       off.push(off.at(-1) ?? 0);
       w.push(w.at(-1) ?? 64);
-      c.push(c.at(-1) ?? 32);
     }
 
     return {
-      centers: c,
       indices: ind,
       offsets: off,
       totalWidth: tot,
@@ -184,24 +171,11 @@ export const SegmentedTabBar = <T extends string>({
     };
   }, [geometries]);
 
-  const trackShifts = useMemo(() => {
-    if (totalWidth <= containerWidth) {
-      return indices.map(() => 0);
-    }
-    const maxShift = -(totalWidth - containerWidth);
-    return geometries.map((geom) => {
-      const desiredShift = containerWidth / 2 - geom.center;
-      return Math.max(maxShift, Math.min(0, desiredShift));
-    });
-  }, [containerWidth, totalWidth, indices, geometries]);
-
-  const safeTrackShifts = useMemo(() => {
-    const list = [...trackShifts];
-    while (list.length < indices.length) {
-      list.push(list.at(-1) ?? 0);
-    }
-    return list;
-  }, [trackShifts, indices.length]);
+  // Negative offsets translate the track so the active tab stays pinned to the left margin
+  const trackTranslations = useMemo(
+    () => offsets.map((off) => -off),
+    [offsets]
+  );
 
   const activeDetentShared = useSharedValue(selectedIndex);
 
@@ -235,6 +209,7 @@ export const SegmentedTabBar = <T extends string>({
         .activeOffsetX([-5, 5])
         .onStart(() => {
           "worklet";
+          startScrollPosition.value = scrollPosition.value;
           activeDetentShared.value = Math.max(
             0,
             Math.min(options.length - 1, Math.round(scrollPosition.value))
@@ -242,7 +217,13 @@ export const SegmentedTabBar = <T extends string>({
         })
         .onUpdate((event) => {
           "worklet";
-          const newPos = computePositionFromTouchX(event.x, centers);
+          // Direct scrub along the bar: moving finger left brings subsequent tabs to the left margin
+          const avgTabWidth = 90;
+          const deltaIndex = -event.translationX / avgTabWidth;
+          const newPos = Math.max(
+            0,
+            Math.min(options.length - 1, startScrollPosition.value + deltaIndex)
+          );
           scrollPosition.value = newPos;
 
           const currentDetent = Math.max(
@@ -256,7 +237,7 @@ export const SegmentedTabBar = <T extends string>({
         })
         .onEnd((event) => {
           "worklet";
-          const velocityInfluence = (event.velocityX / 1000) * 0.4;
+          const velocityInfluence = -(event.velocityX / 1000) * 0.3;
           const projected = scrollPosition.value + velocityInfluence;
           const targetIndex = Math.max(
             0,
@@ -267,17 +248,17 @@ export const SegmentedTabBar = <T extends string>({
             dampingRatio: 0.8,
             duration: 300,
             reduceMotion: ReduceMotion.System,
-            velocity: event.velocityX / 100,
+            velocity: -event.velocityX / 100,
           });
 
           scheduleOnRN(handleCommitChange, targetIndex);
         }),
     [
-      centers,
       handleCommitChange,
       options.length,
       scrollPosition,
       activeDetentShared,
+      startScrollPosition,
     ]
   );
 
@@ -287,8 +268,15 @@ export const SegmentedTabBar = <T extends string>({
         .maxDuration(250)
         .onEnd((event) => {
           "worklet";
+          const currentShift = interpolate(
+            scrollPosition.value,
+            indices,
+            trackTranslations,
+            Extrapolation.CLAMP
+          );
+          const touchXOnTrack = event.x - LEFT_INSET - currentShift;
           const targetIndex = computeTabIndexFromTouchX(
-            event.x,
+            touchXOnTrack,
             offsets,
             widths
           );
@@ -302,7 +290,14 @@ export const SegmentedTabBar = <T extends string>({
           scheduleOnRN(Haptics.selectionAsync);
           scheduleOnRN(handleCommitChange, targetIndex);
         }),
-    [handleCommitChange, offsets, scrollPosition, widths]
+    [
+      handleCommitChange,
+      indices,
+      offsets,
+      scrollPosition,
+      trackTranslations,
+      widths,
+    ]
   );
 
   const composedGesture = useMemo(
@@ -310,13 +305,8 @@ export const SegmentedTabBar = <T extends string>({
     [panGesture, tapGesture]
   );
 
+  // The white pill is pinned to the left margin (LEFT_INSET); its width continuously morphs
   const pillAnimatedStyle = useAnimatedStyle(() => {
-    const translateX = interpolate(
-      scrollPosition.value,
-      indices,
-      offsets,
-      Extrapolation.CLAMP
-    );
     const width = interpolate(
       scrollPosition.value,
       indices,
@@ -324,31 +314,16 @@ export const SegmentedTabBar = <T extends string>({
       Extrapolation.CLAMP
     );
     return {
-      transform: [{ translateX }],
       width,
     };
   });
 
-  const innerTextRowAnimatedStyle = useAnimatedStyle(() => {
-    const translateX = interpolate(
-      scrollPosition.value,
-      indices,
-      offsets,
-      Extrapolation.CLAMP
-    );
-    return {
-      transform: [{ translateX: -translateX }],
-    };
-  });
-
+  // Track translates so the active tab stays pinned to the left margin
   const trackAnimatedStyle = useAnimatedStyle(() => {
-    if (totalWidth <= containerWidth) {
-      return { transform: [{ translateX: 0 }] };
-    }
     const translateX = interpolate(
       scrollPosition.value,
       indices,
-      safeTrackShifts,
+      trackTranslations,
       Extrapolation.CLAMP
     );
     return {
@@ -358,23 +333,24 @@ export const SegmentedTabBar = <T extends string>({
 
   return (
     <View style={[styles.outerContainer, style]}>
+      {/* Gray bar goes edge-to-edge across the screen */}
       <View
         accessible={true}
         role="tablist"
         accessibilityRole="tablist"
-        style={[styles.trackClippingContainer, { width: containerWidth }]}
+        style={styles.edgeToEdgeTrackContainer}
         testID={testID ?? "segmented-tab-bar"}
       >
         <GestureDetector gesture={composedGesture}>
-          <Animated.View
-            style={[
-              styles.movingTrack,
-              { width: totalWidth },
-              trackAnimatedStyle,
-            ]}
-          >
-            {/* Background inactive track */}
-            <View style={[styles.staticTrackRow, { width: totalWidth }]}>
+          <View style={styles.interactiveContainer}>
+            {/* Background moving track containing inactive tabs */}
+            <Animated.View
+              style={[
+                styles.movingTrack,
+                { width: totalWidth },
+                trackAnimatedStyle,
+              ]}
+            >
               {options.map((option, index) => {
                 const geom = geometries[index];
                 return (
@@ -394,9 +370,9 @@ export const SegmentedTabBar = <T extends string>({
                   </View>
                 );
               })}
-            </View>
+            </Animated.View>
 
-            {/* Absolute selection indicator pill with pure 1:1 linear tracking */}
+            {/* Absolute selection indicator pill pinned to the left margin */}
             <Animated.View
               testID="segmented-tab-bar-pill"
               style={[styles.indicatorPill, pillAnimatedStyle]}
@@ -405,7 +381,7 @@ export const SegmentedTabBar = <T extends string>({
                 style={[
                   styles.innerActiveTextRow,
                   { width: totalWidth },
-                  innerTextRowAnimatedStyle,
+                  trackAnimatedStyle,
                 ]}
               >
                 {options.map((option, index) => {
@@ -431,11 +407,12 @@ export const SegmentedTabBar = <T extends string>({
             </Animated.View>
 
             {/* Accessible interactive touch targets for screen readers and taps */}
-            <View
+            <Animated.View
               style={[
-                styles.staticTrackRow,
+                styles.movingTrack,
                 styles.touchTargetsRow,
                 { width: totalWidth },
+                trackAnimatedStyle,
               ]}
             >
               {options.map((option, index) => {
@@ -461,8 +438,8 @@ export const SegmentedTabBar = <T extends string>({
                   />
                 );
               })}
-            </View>
-          </Animated.View>
+            </Animated.View>
+          </View>
         </GestureDetector>
       </View>
     </View>
@@ -470,11 +447,18 @@ export const SegmentedTabBar = <T extends string>({
 };
 
 const styles = StyleSheet.create({
+  edgeToEdgeTrackContainer: {
+    backgroundColor: colors.neutral[700],
+    height: TAB_CONTAINER_HEIGHT,
+    overflow: "hidden",
+    position: "relative",
+    width: "100%",
+  },
   indicatorPill: {
     backgroundColor: colors.white,
     borderRadius: 12,
     bottom: 0,
-    left: 0,
+    left: LEFT_INSET,
     overflow: "hidden",
     position: "absolute",
     top: 0,
@@ -486,21 +470,20 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 0,
   },
-  movingTrack: {
-    backgroundColor: colors.neutral[700],
-    borderRadius: 12,
-    height: TAB_CONTAINER_HEIGHT,
-    position: "relative",
-  },
-  outerContainer: {
-    marginHorizontal: 20,
-    position: "relative",
-  },
-  staticTrackRow: {
+  interactiveContainer: {
     height: "100%",
-    left: 0,
+    position: "relative",
+    width: "100%",
+  },
+  movingTrack: {
+    height: "100%",
+    left: LEFT_INSET,
     position: "absolute",
     top: 0,
+  },
+  outerContainer: {
+    position: "relative",
+    width: "100%",
   },
   tabPill: {
     alignItems: "center",
@@ -518,10 +501,5 @@ const styles = StyleSheet.create({
   },
   touchTargetsRow: {
     zIndex: 3,
-  },
-  trackClippingContainer: {
-    height: TAB_CONTAINER_HEIGHT,
-    overflow: "hidden",
-    position: "relative",
   },
 });
