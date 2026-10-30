@@ -103,6 +103,30 @@ jest.mock("@rn-primitives/dropdown-menu", () => {
   };
 });
 
+jest.mock("@rn-primitives/switch", () => {
+  const ReactMock = require("react");
+  const { Pressable, View } = require("react-native");
+
+  const Root = ({ checked, onCheckedChange, children, ...props }: any) =>
+    ReactMock.createElement(
+      Pressable,
+      {
+        ...props,
+        accessibilityRole: "switch",
+        accessibilityState: { checked },
+        onPress: () => onCheckedChange?.(!checked),
+      },
+      children
+    );
+
+  const Thumb = (props: any) => ReactMock.createElement(View, props);
+
+  return {
+    Root,
+    Thumb,
+  };
+});
+
 jest.mock("@tanstack/devtools-event-client", () => ({
   EventClient: class {
     emit() {}

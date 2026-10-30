@@ -18,7 +18,10 @@ import {
   getModeAbbreviation,
 } from "@/helpers/timer/utils/formatter";
 import type { FeedbackServiceInterface } from "@/services/audio/feedback-service";
-import { preparationTimeMsAtom } from "@/stores/settings";
+import {
+  isHighPrecisionTimerEnabledAtom,
+  preparationTimeMsAtom,
+} from "@/stores/settings";
 
 export enum TimerStatus {
   READY = "READY",
@@ -64,13 +67,15 @@ export const useTimerInstance = (
   feedbackService?: FeedbackServiceInterface
 ): React.RefObject<TimerController | null> => {
   const [preparationTimeMs] = useAtom(preparationTimeMsAtom);
+  const [isHighPrecisionTimerEnabled] = useAtom(
+    isHighPrecisionTimerEnabledAtom
+  );
   const controllerRef = useRef<TimerController | null>(null);
   const prevConfigKeyRef = useRef<string>("");
   const prevPrepTimeRef = useRef<number>(preparationTimeMs);
   const prevServiceRef = useRef<FeedbackServiceInterface | undefined>(
     feedbackService
   );
-
   const configKey = JSON.stringify(config);
 
   if (
@@ -84,6 +89,7 @@ export const useTimerInstance = (
     }
 
     const options: TimerControllerOptions = {
+      highPrecision: isHighPrecisionTimerEnabled,
       uiTickResolutionMs:
         config.mode === TimerMode.STOP_WATCH && "uiTickResolutionMs" in config
           ? config.uiTickResolutionMs
@@ -99,6 +105,12 @@ export const useTimerInstance = (
     prevPrepTimeRef.current = preparationTimeMs;
     prevServiceRef.current = feedbackService;
   }
+
+  useEffect(() => {
+    if (controllerRef.current) {
+      controllerRef.current.setHighPrecision(isHighPrecisionTimerEnabled);
+    }
+  }, [isHighPrecisionTimerEnabled]);
 
   useEffect(
     () => () => {

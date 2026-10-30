@@ -10,7 +10,10 @@ import type { TimerConfig } from "@/helpers/timer/factory";
 import { TimerMode } from "@/helpers/timer/factory";
 import { TimerPhase } from "@/helpers/timer/strategy";
 import type { FeedbackServiceInterface } from "@/services/audio/feedback-service";
-import { preparationTimeMsAtom } from "@/stores/settings";
+import {
+  isHighPrecisionTimerEnabledAtom,
+  preparationTimeMsAtom,
+} from "@/stores/settings";
 import { renderHookWithProviders } from "@/test-utils/render-with-providers";
 
 import type { UICheckpoint } from "./use-timer";
@@ -534,6 +537,35 @@ describe("useTimer integration", () => {
       });
 
       expect(currentControllerInstance).not.toBe(initialInstance);
+    });
+
+    it("dynamically updates controller precision mode when isHighPrecisionTimerEnabledAtom changes in store", async () => {
+      const store = createStore();
+      store.set(isHighPrecisionTimerEnabledAtom, false);
+
+      const config: TimerConfig = {
+        durationMs: 30_000,
+        mode: TimerMode.AMRAP,
+      };
+
+      const { result, rerender } = await renderHookWithProviders(
+        () => useTimerInstance(config),
+        { store }
+      );
+
+      const initialInstance = result.current.current;
+      expect(initialInstance).not.toBeNull();
+      expect(initialInstance?.getIsHighPrecision()).toBe(false);
+
+      // Enable high precision in store
+      await act(() => {
+        store.set(isHighPrecisionTimerEnabledAtom, true);
+        rerender({});
+      });
+
+      // The controller instance is reused and setHighPrecision is dynamically called
+      expect(result.current.current).toBe(initialInstance);
+      expect(result.current.current?.getIsHighPrecision()).toBe(true);
     });
 
     it("disposes controller cleanly upon unmount without leaving orphaned listeners", async () => {

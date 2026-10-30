@@ -62,6 +62,7 @@ export type TimerEventHandlerMap = {
 export interface TimerControllerOptions {
   uiTickResolutionMs?: number;
   appState?: typeof AppState;
+  highPrecision?: boolean;
 }
 
 export class TimerController {
@@ -105,13 +106,19 @@ export class TimerController {
     this.strategy = strategy;
     this.preparationTimeMs = preparationTimeMs;
 
+    let highPrecision = false;
+
     if (typeof options === "number") {
       this.uiTickResolutionMs = options;
     } else if (options?.uiTickResolutionMs !== undefined) {
       this.uiTickResolutionMs = options.uiTickResolutionMs;
     }
 
-    this.engine = new TickEngine();
+    if (typeof options === "object" && options?.highPrecision !== undefined) {
+      ({ highPrecision } = options);
+    }
+
+    this.engine = new TickEngine({ highPrecision });
     this.engine.onTickCallbacks.push((tickEvent) => this.handleTick(tickEvent));
 
     let appStateSource: typeof AppState | undefined = AppState;
@@ -142,6 +149,14 @@ export class TimerController {
 
   public getUiTickResolution(): number | null {
     return this.uiTickResolutionMs;
+  }
+
+  public setHighPrecision(enabled: boolean): void {
+    this.engine.setHighPrecision(enabled);
+  }
+
+  public getIsHighPrecision(): boolean {
+    return this.engine.getIsHighPrecision();
   }
 
   public getIsVisualUpdatesPaused(): boolean {
