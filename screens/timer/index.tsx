@@ -156,11 +156,12 @@ const TimerScreen = () => {
 
       <OledBurnInProtector>
         <PressableArea
-          onLongPress={pause}
+          deadZone={14}
+          hapticMode="delayed-press"
           onDoublePress={
             flags.hasCheckpointsBehavior ? recordCheckpoint : undefined
           }
-          deadZone={14}
+          onLongPress={pause}
         >
           <TimerFace
             hours={hours}
