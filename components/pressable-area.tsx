@@ -12,6 +12,11 @@ import {
   useLongPressGesture,
   useTapGesture,
 } from "react-native-gesture-handler";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 
 import {
   triggerAndroidHaptic,
@@ -36,6 +41,12 @@ export const PressableArea = ({
   onLongPress,
   deadZone = 0,
 }: PressableAreaProps) => {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.get() }],
+  }));
+
   const doubleTap = useTapGesture({
     enabled: Boolean(onDoublePress),
     numberOfTaps: 2,
@@ -53,11 +64,21 @@ export const PressableArea = ({
     enabled: Boolean(onLongPress),
     minDuration: LONG_PRESS_DURATION,
     onActivate: () => {
+      scale.set(withSpring(1, { dampingRatio: 1, duration: 150 }));
       triggerAndroidHaptic(AndroidHaptics.Long_Press, {
         mode: ImpactFeedbackStyle.Heavy,
         type: triggerType.Impact,
       });
       onLongPress?.();
+    },
+    onBegin: () => {
+      scale.set(withSpring(0.98, { dampingRatio: 1, duration: 150 }));
+      triggerHaptic({
+        type: triggerType.Selection,
+      });
+    },
+    onFinalize: () => {
+      scale.set(withSpring(1, { dampingRatio: 1, duration: 150 }));
     },
     runOnJS: true,
   });
@@ -78,7 +99,7 @@ export const PressableArea = ({
   const composed = useExclusiveGestures(doubleTap, longPress, singleTap);
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, animatedStyle]}>
       {children}
 
       <View
@@ -92,7 +113,7 @@ export const PressableArea = ({
           <View collapsable={false} style={styles.container} />
         </GestureDetector>
       </View>
-    </View>
+    </Animated.View>
   );
 };
 

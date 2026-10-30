@@ -15,7 +15,11 @@ import {
   GestureHandlerRootView,
   State,
 } from "react-native-gesture-handler";
-import { fireGestureHandler } from "react-native-gesture-handler/jest-utils";
+import {
+  createGestureController,
+  fireGestureHandler,
+} from "react-native-gesture-handler/jest-utils";
+import * as Reanimated from "react-native-reanimated";
 import renderer, { act } from "react-test-renderer";
 
 import {
@@ -185,6 +189,78 @@ describe("PressableArea", () => {
         type: triggerType.Impact,
       }
     );
+  });
+
+  it("responds immediately on touch-down with scale: 0.98 and a light selection haptic", () => {
+    const withSpringSpy = jest.spyOn(Reanimated, "withSpring");
+    const onLongPress = jest.fn();
+
+    const { longPress } = renderPressableArea({
+      onLongPress,
+    });
+    const controller = createGestureController(longPress);
+
+    act(() => {
+      controller.begin();
+    });
+
+    expect(triggerHaptic).toHaveBeenCalledWith({
+      type: triggerType.Selection,
+    });
+    expect(withSpringSpy).toHaveBeenCalledWith(0.98, {
+      dampingRatio: 1,
+      duration: 150,
+    });
+    expect(onLongPress).not.toHaveBeenCalled();
+  });
+
+  it("maintains the hold for 600 ms to trigger heavy impact haptics, pauses session, and restores scale to 1", () => {
+    const withSpringSpy = jest.spyOn(Reanimated, "withSpring");
+    const onLongPress = jest.fn();
+
+    const { longPress } = renderPressableArea({
+      onLongPress,
+    });
+    const controller = createGestureController(longPress);
+
+    act(() => {
+      controller.begin();
+      controller.activate();
+    });
+
+    expect(onLongPress).toHaveBeenCalledTimes(1);
+    expect(triggerAndroidHaptic).toHaveBeenCalledWith(
+      AndroidHaptics.Long_Press,
+      {
+        mode: ImpactFeedbackStyle.Heavy,
+        type: triggerType.Impact,
+      }
+    );
+    expect(withSpringSpy).toHaveBeenCalledWith(1, {
+      dampingRatio: 1,
+      duration: 150,
+    });
+  });
+
+  it("smoothly returns the container to scale: 1 without pausing when released early before 600 ms", () => {
+    const withSpringSpy = jest.spyOn(Reanimated, "withSpring");
+    const onLongPress = jest.fn();
+
+    const { longPress } = renderPressableArea({
+      onLongPress,
+    });
+    const controller = createGestureController(longPress);
+
+    act(() => {
+      controller.begin();
+      controller.fail();
+    });
+
+    expect(onLongPress).not.toHaveBeenCalled();
+    expect(withSpringSpy).toHaveBeenLastCalledWith(1, {
+      dampingRatio: 1,
+      duration: 150,
+    });
   });
 
   it("enforces mutual exclusion rules where single-tap requires double-tap and long-press to fail", () => {
