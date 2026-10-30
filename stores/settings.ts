@@ -15,6 +15,11 @@ export const isSoundEnabledAtom = atomWithMMKV<boolean>(
   true
 );
 
+export const isHighPrecisionTimerEnabledAtom = atomWithMMKV<boolean>(
+  "settings.isHighPrecisionTimerEnabled",
+  false
+);
+
 export const preparationTimeMsAtom = atomWithMMKV<number>(
   "settings.preparationTimeMs",
   10_000

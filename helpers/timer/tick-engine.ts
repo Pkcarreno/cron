@@ -3,6 +3,13 @@ export interface TickEvent {
   totalElapsedMs: number;
 }
 
+export interface TickEngineOptions {
+  highPrecision?: boolean;
+}
+
+// 20 Hz default sampling interval
+export const DEFAULT_TICK_INTERVAL_MS = 50;
+
 const getMonotonicTimestamp = (): number => {
   if (
     typeof performance !== "undefined" &&
@@ -15,14 +22,39 @@ const getMonotonicTimestamp = (): number => {
 
 export class TickEngine {
   private isRunning = false;
+  private isHighPrecision = false;
   private startTime = 0;
   private lastTickTime = 0;
   private totalElapsedMs = 0;
   private wallClockStartTime = 0;
 
   private animationFrameId: number | null = null;
+  private intervalId: ReturnType<typeof setInterval> | null = null;
 
   public onTickCallbacks: ((event: TickEvent) => void)[] = [];
+
+  constructor(options?: TickEngineOptions | boolean) {
+    if (typeof options === "boolean") {
+      this.isHighPrecision = options;
+    } else if (options?.highPrecision !== undefined) {
+      this.isHighPrecision = options.highPrecision;
+    }
+  }
+
+  public getIsHighPrecision(): boolean {
+    return this.isHighPrecision;
+  }
+
+  public setHighPrecision(enabled: boolean): void {
+    if (this.isHighPrecision === enabled) {
+      return;
+    }
+    this.isHighPrecision = enabled;
+    if (this.isRunning) {
+      this.pauseLoop();
+      this.startLoop();
+    }
+  }
 
   public start() {
     if (this.isRunning) {
@@ -47,8 +79,11 @@ export class TickEngine {
     this.isRunning = false;
     this.pauseLoop();
 
+    const monoNow = getMonotonicTimestamp();
+    this.totalElapsedMs = monoNow - this.startTime;
+
     const wallNow = Date.now();
-    this.totalElapsedMs = wallNow - this.wallClockStartTime;
+    this.wallClockStartTime = wallNow - this.totalElapsedMs;
   }
 
   public reset() {
@@ -61,7 +96,8 @@ export class TickEngine {
 
   public getElapsedMs(): number {
     if (this.isRunning) {
-      return Date.now() - this.wallClockStartTime;
+      const monoNow = getMonotonicTimestamp();
+      return monoNow - this.startTime;
     }
     return this.totalElapsedMs;
   }
@@ -75,10 +111,18 @@ export class TickEngine {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
+    if (this.intervalId !== null) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
   }
 
   public resumeLoop() {
-    if (this.isRunning && this.animationFrameId === null) {
+    if (
+      this.isRunning &&
+      this.animationFrameId === null &&
+      this.intervalId === null
+    ) {
       const monoNow = getMonotonicTimestamp();
       this.lastTickTime = monoNow;
       this.startLoop();
@@ -112,8 +156,19 @@ export class TickEngine {
   }
 
   private startLoop() {
-    if (this.animationFrameId === null && this.isRunning) {
-      this.animationFrameId = requestAnimationFrame(() => this.loop());
+    if (!this.isRunning) {
+      return;
+    }
+
+    if (this.isHighPrecision) {
+      if (this.animationFrameId === null) {
+        this.animationFrameId = requestAnimationFrame(() => this.loop());
+      }
+    } else if (this.intervalId === null) {
+      this.intervalId = setInterval(
+        () => this.tick(),
+        DEFAULT_TICK_INTERVAL_MS
+      );
     }
   }
 
@@ -123,13 +178,18 @@ export class TickEngine {
     }
 
     this.animationFrameId = requestAnimationFrame(() => this.loop());
+    this.tick();
+  }
 
-    const wallNow = Date.now();
-    this.totalElapsedMs = wallNow - this.wallClockStartTime;
+  private tick() {
+    if (!this.isRunning) {
+      return;
+    }
 
     const monoNow = getMonotonicTimestamp();
     const deltaMs = monoNow - this.lastTickTime;
     this.lastTickTime = monoNow;
+    this.totalElapsedMs = monoNow - this.startTime;
 
     const event: TickEvent = {
       deltaMs,

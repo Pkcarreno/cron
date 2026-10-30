@@ -20,6 +20,7 @@ import { colors } from "@/helpers/colors";
 import { formatDuration } from "@/helpers/timer/utils/formatter";
 import {
   hasHapticEnabledAtom,
+  isHighPrecisionTimerEnabledAtom,
   isRawTimerEnabledAtom,
   isSoundEnabledAtom,
   preparationTimeMsAtom,
@@ -45,6 +46,7 @@ export const Settings = () => (
           <PreparationSelectorItem />
           <SoundSwitchItem />
           <HapticsSwitchItem />
+          <HighPerformanceTimerSwitchItem />
         </MenuGroup>
       </Menu>
 
@@ -166,6 +168,28 @@ const HapticsSwitchItem = () => {
   );
 };
 
+const HighPerformanceTimerSwitchItem = () => {
+  const [isHighPrecisionTimerEnabled, setIsHighPrecisionTimerEnabled] = useAtom(
+    isHighPrecisionTimerEnabledAtom
+  );
+
+  return (
+    <MenuItem style={styles.switchItemWithAdvisory}>
+      <View style={styles.switchTextContainer}>
+        <MenuItemText>High-performance timer</MenuItemText>
+        <Text colorSubtone="500" size={12}>
+          Increases battery consumption in extended workouts
+        </Text>
+      </View>
+      <Switch
+        accessibilityLabel="High-performance timer"
+        checked={isHighPrecisionTimerEnabled}
+        onCheckedChange={setIsHighPrecisionTimerEnabled}
+      />
+    </MenuItem>
+  );
+};
+
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
@@ -176,5 +200,15 @@ const styles = StyleSheet.create({
   },
   extra: {
     paddingHorizontal: 12,
+  },
+  switchItemWithAdvisory: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  switchTextContainer: {
+    flex: 1,
+    gap: 2,
+    paddingRight: 12,
   },
 });

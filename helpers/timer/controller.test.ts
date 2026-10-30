@@ -51,7 +51,7 @@ describe("timerController", () => {
       controller.start();
       jest.advanceTimersByTime(100);
 
-      expect(tickSpy).toHaveBeenCalledTimes(101);
+      expect(tickSpy).toHaveBeenCalledTimes(2);
 
       expect(tickSpy).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -59,6 +59,21 @@ describe("timerController", () => {
           phase: TimerPhase.WORK,
         })
       );
+    });
+
+    it("emits tick events at high precision rate when enabled", () => {
+      const strategy = new UpStrategy(10_000);
+      const controller = new TimerController(strategy, 0, {
+        highPrecision: true,
+      });
+
+      const tickSpy = jest.fn();
+      controller.on(TimerEventType.TICK, tickSpy);
+
+      controller.start();
+      jest.advanceTimersByTime(100);
+
+      expect(tickSpy).toHaveBeenCalledTimes(101);
     });
 
     it("emits tick events continuously while quantizing UI_TICK to visible seconds", () => {
@@ -73,7 +88,7 @@ describe("timerController", () => {
       controller.start();
       jest.advanceTimersByTime(1000);
 
-      expect(tickSpy).toHaveBeenCalledTimes(1001);
+      expect(tickSpy).toHaveBeenCalledTimes(20);
       expect(uiTickSpy.mock.calls.length).toBeLessThanOrEqual(2);
       expect(uiTickSpy).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -115,7 +130,7 @@ describe("timerController", () => {
       controller.start();
       jest.advanceTimersByTime(500);
 
-      expect(tickSpy).toHaveBeenCalledTimes(501);
+      expect(tickSpy).toHaveBeenCalledTimes(10);
       expect(uiTickSpy).toHaveBeenCalledTimes(6);
 
       controller.setUiTickResolution(200);
@@ -200,7 +215,7 @@ describe("timerController", () => {
 
       controller.start();
 
-      jest.advanceTimersByTime(10);
+      jest.advanceTimersByTime(50);
 
       expect(tickSpy).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -210,7 +225,7 @@ describe("timerController", () => {
       );
 
       // advance to complete the first work phase, now time is 2000ms
-      jest.advanceTimersByTime(1990);
+      jest.advanceTimersByTime(1950);
 
       expect(tickSpy).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -333,7 +348,7 @@ describe("timerController", () => {
 
       controller.start();
       jest.advanceTimersByTime(100);
-      expect(tickSpy).toHaveBeenCalledTimes(101);
+      expect(tickSpy).toHaveBeenCalledTimes(2);
 
       const callsBeforeDispose = tickSpy.mock.calls.length;
 
@@ -361,7 +376,7 @@ describe("timerController", () => {
       jest.advanceTimersByTime(100);
 
       expect(spy1).not.toHaveBeenCalled();
-      expect(spy2).toHaveBeenCalledTimes(101);
+      expect(spy2).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -708,10 +723,54 @@ describe("timerController", () => {
       );
 
       controller.start();
-      jest.advanceTimersByTime(10);
+      jest.advanceTimersByTime(50);
 
       // Immediately anticipates countdown beep at 2s remaining
       expect(onApproachingTransition).toHaveBeenCalledTimes(1);
+    });
+
+    it("fires TRANSITION_APPROACHING and countdown beeps accurately at 20 Hz without dropped cues", () => {
+      const onApproachingTransition = jest.fn();
+      const onBeep = jest.fn();
+      const onGo = jest.fn();
+
+      const strategy = new UpStrategy(10_000);
+      const preparationMs = 4000;
+      const controller = new TimerController(strategy, preparationMs);
+
+      controller.on(
+        TimerEventType.TRANSITION_APPROACHING,
+        onApproachingTransition
+      );
+      controller.on(TimerEventType.BEEP, onBeep);
+      controller.on(TimerEventType.GO, onGo);
+
+      controller.start();
+
+      // At 500ms: remaining 3500ms, future 3000ms -> TRANSITION_APPROACHING fires
+      jest.advanceTimersByTime(500);
+      expect(onApproachingTransition).toHaveBeenCalledTimes(1);
+
+      // At 1000ms: beep(3)
+      jest.advanceTimersByTime(500);
+      expect(onBeep).toHaveBeenCalledWith(3);
+
+      // At 2000ms: beep(2)
+      jest.advanceTimersByTime(1000);
+      expect(onBeep).toHaveBeenCalledWith(2);
+
+      // At 3000ms: beep(1)
+      jest.advanceTimersByTime(1000);
+      expect(onBeep).toHaveBeenCalledWith(1);
+
+      // At 3500ms: 500ms before GO -> TRANSITION_APPROACHING fires
+      jest.advanceTimersByTime(500);
+      expect(onApproachingTransition).toHaveBeenCalledTimes(2);
+
+      // At 4000ms: GO fires
+      jest.advanceTimersByTime(500);
+      expect(onGo).toHaveBeenCalledTimes(1);
+      expect(onBeep).toHaveBeenCalledTimes(3);
     });
   });
 
