@@ -16,7 +16,7 @@ export const TimerContext = createContext<TimerActions | null>(null);
 export const useTimerContext = (): TimerActions => {
   const context = useContext(TimerContext);
   if (!context) {
-    throw new Error("useTimerContext must be used within a <Timer.Root>");
+    throw new Error("Use useTimerContext within a <Timer.Root> component.");
   }
   return context;
 };

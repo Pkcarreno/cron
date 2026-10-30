@@ -36,7 +36,7 @@ export const getTimerFlags = (
 };
 
 /**
- * Base primitive atoms
+ * Independent primitive atoms isolate high-frequency tick updates from static session metadata.
  */
 export const timerConfigAtom = atom<TimerConfig>({
   mode: TimerMode.FOR_TIME,
@@ -64,7 +64,8 @@ export const timerEndedAtAtom = atom<Date | null>(null);
 export const isLowBatteryAtom = atom<boolean>(false);
 
 /**
- * Derived state atoms
+ * Derived selectors enforce Object.is memoization so 1 Hz second ticks do not invalidate
+ * 1/60 Hz minute SVGs, notch headers, or context phase tags.
  */
 export const timerModeAbbrAtom = atom<string>((get) => {
   const config = get(timerConfigAtom);

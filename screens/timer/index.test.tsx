@@ -136,6 +136,9 @@ describe("Timer screen audio lifecycle", () => {
       expect(Timer.OledBurnInProtector).toBeDefined();
       expect(Timer.LocalClock).toBeDefined();
       expect(Timer.Summary).toBeDefined();
+      expect(Timer.MinutesSvg).toBeDefined();
+      expect(Timer.SecondsSvg).toBeDefined();
+      expect(Timer.ContextBannerSvg).toBeDefined();
     });
 
     it("renders properly when composed via compound components", async () => {
@@ -316,6 +319,20 @@ describe("Timer screen audio lifecycle", () => {
       });
 
       expect(screen.getByTestId("timer-screen")).toBeTruthy();
+    });
+
+    it("transitions to summary screen seamlessly when workout finishes", async () => {
+      const store = createStore();
+      const screen = await renderWithProviders(<Timer />, { store });
+
+      // Fast-forward through preparation (10s) and entire AMRAP workout duration (60s)
+      await act(() => {
+        jest.advanceTimersByTime(70_000);
+      });
+
+      // Workout finish event should transition screen to summary face
+      expect(screen.getByText("session summary")).toBeTruthy();
+      expect(screen.getByText("Back to menu")).toBeTruthy();
     });
   });
 });

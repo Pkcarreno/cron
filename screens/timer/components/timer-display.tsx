@@ -55,9 +55,9 @@ export const TimerQuickAccess: FC = () => {
       collapsable={false}
     >
       {quickAccessInfo.length > 0 ? (
-        quickAccessInfo.map((data, index) => (
-          <View key={data} style={quickAccessStyles.itemWrapper}>
-            <Text style={quickAccessStyles.text}>{data}</Text>
+        quickAccessInfo.map((badge, index) => (
+          <View key={badge} style={quickAccessStyles.itemWrapper}>
+            <Text style={quickAccessStyles.text}>{badge}</Text>
 
             {index < quickAccessInfo.length - 1 && (
               <Text style={quickAccessStyles.text}> | </Text>
@@ -81,23 +81,6 @@ export const TimerDisplay: FC<TimerDisplayProps> = ({ children }) => {
   const insets = useSafeAreaInsets();
   const flags = useAtomValue(timerFlagsAtom);
 
-  if (children) {
-    return (
-      <View
-        style={[
-          styles.contentWrapper,
-          {
-            paddingBottom: insets.bottom,
-            paddingLeft: insets.left,
-            paddingRight: insets.right,
-          },
-        ]}
-      >
-        {children}
-      </View>
-    );
-  }
-
   return (
     <View
       style={[
@@ -109,29 +92,33 @@ export const TimerDisplay: FC<TimerDisplayProps> = ({ children }) => {
         },
       ]}
     >
-      <TimerQuickAccess />
-      <TimerContextBanner />
+      {children ?? (
+        <>
+          <TimerQuickAccess />
+          <TimerContextBanner />
 
-      <View
-        style={timeStyles.container}
-        testID="timer-display"
-        collapsable={false}
-      >
-        <View
-          style={[timeStyles.slot, !flags.showsMinuteDigits && styles.hide]}
-          testID="timer-minutes-slot"
-          collapsable={false}
-        >
-          <TimerMinutes />
-        </View>
-        <View
-          style={timeStyles.slot}
-          testID="timer-seconds-slot"
-          collapsable={false}
-        >
-          <TimerSeconds />
-        </View>
-      </View>
+          <View
+            style={timeStyles.container}
+            testID="timer-display"
+            collapsable={false}
+          >
+            <View
+              style={[timeStyles.slot, !flags.showsMinuteDigits && styles.hide]}
+              testID="timer-minutes-slot"
+              collapsable={false}
+            >
+              <TimerMinutes />
+            </View>
+            <View
+              style={timeStyles.slot}
+              testID="timer-seconds-slot"
+              collapsable={false}
+            >
+              <TimerSeconds />
+            </View>
+          </View>
+        </>
+      )}
     </View>
   );
 };

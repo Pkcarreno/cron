@@ -16,7 +16,9 @@ const formatWallClock = (date: Date): string =>
   });
 
 export const LocalClock: FC<LocalClockProps> = ({ style }) => {
-  const [timeStr, setTimeStr] = useState(() => formatWallClock(new Date()));
+  const [formattedTime, setFormattedTime] = useState(() =>
+    formatWallClock(new Date())
+  );
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
@@ -29,7 +31,7 @@ export const LocalClock: FC<LocalClockProps> = ({ style }) => {
 
       timeoutId = setTimeout(
         () => {
-          setTimeStr(formatWallClock(new Date()));
+          setFormattedTime(formatWallClock(new Date()));
           scheduleNextMinute();
         },
         Math.max(msUntilNextMinute, 1)
@@ -43,7 +45,7 @@ export const LocalClock: FC<LocalClockProps> = ({ style }) => {
     };
   }, []);
 
-  return <Text style={[styles.text, style]}>{timeStr}</Text>;
+  return <Text style={[styles.text, style]}>{formattedTime}</Text>;
 };
 
 const styles = StyleSheet.create({

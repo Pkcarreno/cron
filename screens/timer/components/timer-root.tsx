@@ -48,19 +48,17 @@ export interface TimerRootProps {
   config?: TimerConfig;
   feedbackService?: FeedbackService;
   onFinish?: (summary: SessionSummary) => void;
-  onPause?: () => void;
-  onResume?: () => void;
+  shouldAutoStart?: boolean;
 }
 
 // oxlint-disable eslint/max-statements
 export const TimerRoot: FC<TimerRootProps> = ({
-  autoStart = true,
+  autoStart,
   children,
   config: propConfig,
   feedbackService: propFeedbackService,
   onFinish,
-  onPause,
-  onResume,
+  shouldAutoStart = autoStart ?? true,
 }) => {
   const router = useRouter();
   const rawConfigParams = useLocalSearchParams<TimerRouteParams>();
@@ -227,14 +225,12 @@ export const TimerRoot: FC<TimerRootProps> = ({
   const pause = useCallback(() => {
     setStatus(TimerStatus.PAUSED);
     controllerRef.current?.pause();
-    onPause?.();
-  }, [controllerRef, onPause, setStatus]);
+  }, [controllerRef, setStatus]);
 
   const start = useCallback(() => {
     setStatus(TimerStatus.RUNNING);
     controllerRef.current?.start();
-    onResume?.();
-  }, [controllerRef, onResume, setStatus]);
+  }, [controllerRef, setStatus]);
 
   const reset = useCallback(() => {
     setStatus(TimerStatus.READY);
@@ -274,14 +270,14 @@ export const TimerRoot: FC<TimerRootProps> = ({
   }, [handleEndSession, router, status]);
 
   useEffect(() => {
-    if (autoStart) {
+    if (shouldAutoStart) {
       start();
     }
 
     return () => {
       reset();
     };
-  }, [autoStart, start, reset]);
+  }, [shouldAutoStart, start, reset]);
 
   const actions = useMemo<TimerActions>(
     () => ({
