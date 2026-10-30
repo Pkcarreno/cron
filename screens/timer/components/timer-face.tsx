@@ -1,22 +1,25 @@
 import { useKeepAwake } from "expo-keep-awake";
 import type { FC } from "react";
 import { useMemo } from "react";
-import { Dimensions, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors } from "@/helpers/colors";
 import { formatDuration } from "@/helpers/timer/utils/formatter";
 import { useIsLowBattery } from "@/hooks/use-is-low-battery";
 import type { timerType } from "@/hooks/use-timer";
+import { ContextBannerSvg } from "@/screens/timer/components/svg/context-banner-svg";
+import { MinutesSvg } from "@/screens/timer/components/svg/minutes-svg";
+import { SecondsSvg } from "@/screens/timer/components/svg/seconds-svg";
 import type { ContextFormatType } from "@/screens/timer/types";
 
 interface Props extends Pick<
   timerType,
   "flags" | "hours" | "minutes" | "seconds" | "modeAbbr"
 > {
-  lap: number | undefined;
-  delta: number | undefined;
   currentTime: string;
+  delta: number | undefined;
+  lap: number | undefined;
   contextLabel: ContextFormatType["value"];
   contextLabelColor?: ContextFormatType["color"];
   contextValue: ContextFormatType["value"];
@@ -39,26 +42,6 @@ export const TimerFace: FC<Props> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const isLowBattery = useIsLowBattery();
-
-  const contextLabelTextExternalStyles = useMemo(() => {
-    if (contextLabelColor) {
-      return {
-        color: contextLabelColor,
-      };
-    }
-
-    return {};
-  }, [contextLabelColor]);
-
-  const contextValueTextExternalStyles = useMemo(() => {
-    if (contextValueColor) {
-      return {
-        color: contextValueColor,
-      };
-    }
-
-    return {};
-  }, [contextValueColor]);
 
   const quickAccessInfo = useMemo(
     () =>
@@ -125,56 +108,28 @@ export const TimerFace: FC<Props> = ({
           </View>
         )}
 
-        <View style={contextInfoStyles.container}>
-          <View
-            style={contextInfoStyles.labelWrapper}
-            testID="context-label"
-            collapsable={false}
-          >
-            <Text
-              style={[
-                contextInfoStyles.labelText,
-                contextLabelTextExternalStyles,
-              ]}
-            >
-              {contextLabel ?? "\u2003"}
-            </Text>
-          </View>
-          <View style={contextInfoStyles.valueWrapper}>
-            <Text
-              style={[
-                contextInfoStyles.valueText,
-                contextValueTextExternalStyles,
-              ]}
-            >
-              {contextValue ?? "\u2003"}
-            </Text>
-          </View>
+        <View
+          style={contextBannerStyles.container}
+          testID="context-label"
+          collapsable={false}
+        >
+          <ContextBannerSvg
+            label={contextLabel}
+            labelColor={contextLabelColor}
+            value={contextValue}
+            valueColor={contextValueColor}
+          />
         </View>
 
-        <View style={timeStyles.container}>
+        <View style={timeStyles.container} testID="timer-display">
           <View
-            style={[
-              timeStyles.digitsWrapper,
-              !flags.showsMinuteDigits && styles.hide,
-            ]}
+            style={[timeStyles.slot, !flags.showsMinuteDigits && styles.hide]}
+            testID="timer-minutes-slot"
           >
-            <Text
-              style={timeStyles.digits}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-            >
-              {minutes}
-            </Text>
+            <MinutesSvg minutes={minutes} />
           </View>
-          <View style={timeStyles.digitsWrapper}>
-            <Text
-              style={timeStyles.digits}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-            >
-              {seconds}
-            </Text>
+          <View style={timeStyles.slot} testID="timer-seconds-slot">
+            <SecondsSvg seconds={seconds} />
           </View>
         </View>
       </View>
@@ -182,13 +137,9 @@ export const TimerFace: FC<Props> = ({
   );
 };
 
-const { width } = Dimensions.get("window");
-const giantFontSize = width * 0.75;
-const contextFontSize = width * 0.25;
-const roundFontSize = width * 0.22;
-
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: colors.black,
     flex: 1,
   },
   contentWrapper: {
@@ -231,32 +182,12 @@ const statusBarStyles = StyleSheet.create({
   },
 });
 
-const contextInfoStyles = StyleSheet.create({
+const contextBannerStyles = StyleSheet.create({
   container: {
-    alignItems: "flex-end",
-    flexDirection: "row",
-    gap: 8,
-    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 12,
     width: "100%",
   },
-  labelText: {
-    color: colors.neutral[400],
-    fontFamily: "Geist Mono",
-    fontSize: contextFontSize,
-    fontWeight: "900",
-    lineHeight: contextFontSize,
-  },
-  labelWrapper: {},
-  valueText: {
-    color: colors.neutral[400],
-    fontFamily: "Geist Mono",
-    fontSize: roundFontSize,
-    fontWeight: "400",
-    lineHeight: roundFontSize,
-  },
-  valueWrapper: {},
 });
 
 const quickAccessStyles = StyleSheet.create({
@@ -277,21 +208,13 @@ const timeStyles = StyleSheet.create({
     alignItems: "center",
     flex: 1,
     justifyContent: "center",
-  },
-  digits: {
-    color: colors.white,
-    fontFamily: "Geist Mono",
-    fontSize: giantFontSize,
-    fontWeight: "700",
-    includeFontPadding: false,
-    lineHeight: giantFontSize,
-    textAlign: "center",
-    textAlignVertical: "center",
     width: "100%",
   },
-  digitsWrapper: {
+  slot: {
+    alignItems: "center",
+    flex: 1,
+    height: "50%",
     justifyContent: "center",
-    overflow: "visible",
     width: "100%",
   },
 });
