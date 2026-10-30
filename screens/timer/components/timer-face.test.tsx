@@ -7,6 +7,7 @@ import { renderWithProviders } from "@/test-utils/render-with-providers";
 import { ContextBannerSvg } from "./svg/context-banner-svg";
 import { MinutesSvg } from "./svg/minutes-svg";
 import { SecondsSvg } from "./svg/seconds-svg";
+import { TimerDigitsSvg } from "./svg/timer-digits-svg";
 import { TimerFace } from "./timer-face";
 
 describe("TimerFace", () => {
@@ -80,8 +81,13 @@ describe("TimerFace", () => {
       />
     );
 
+    const display = screen.getByTestId("timer-display");
     const minutesSlot = screen.getByTestId("timer-minutes-slot");
     const secondsSlot = screen.getByTestId("timer-seconds-slot");
+
+    expect(display.props.collapsable).toBe(false);
+    expect(minutesSlot.props.collapsable).toBe(false);
+    expect(secondsSlot.props.collapsable).toBe(false);
 
     const minutesStyle = StyleSheet.flatten(minutesSlot.props.style);
     const secondsStyle = StyleSheet.flatten(secondsSlot.props.style);
@@ -90,7 +96,7 @@ describe("TimerFace", () => {
     expect(secondsStyle.flex).toBe(1);
   });
 
-  it("renders minutes slot with opacity: 0 during preparation mode (!showsMinuteDigits) preserving layout slot", async () => {
+  it("renders minutes slot and quick-access with opacity: 0 during preparation mode preserving layout slots", async () => {
     const screen = await renderWithProviders(
       <TimerFace
         currentTime="12:00"
@@ -110,8 +116,13 @@ describe("TimerFace", () => {
       />
     );
 
+    const quickAccess = screen.getByTestId("timer-quick-access-info");
     const minutesSlot = screen.getByTestId("timer-minutes-slot");
     const secondsSlot = screen.getByTestId("timer-seconds-slot");
+
+    expect(quickAccess.props.collapsable).toBe(false);
+    const quickAccessStyle = StyleSheet.flatten(quickAccess.props.style);
+    expect(quickAccessStyle.opacity).toBe(0);
 
     const minutesStyle = StyleSheet.flatten(minutesSlot.props.style);
     const secondsStyle = StyleSheet.flatten(secondsSlot.props.style);
@@ -260,5 +271,24 @@ describe("Vectorial SVG display components", () => {
     expect(svg.props.vbHeight).toBe(260);
     expect(screen.queryByTestId("context-banner-label")).toBeNull();
     expect(screen.queryByTestId("context-banner-value")).toBeNull();
+  });
+
+  it("renders TimerDigitsSvg with custom accessibility label and testID", async () => {
+    const screen = await renderWithProviders(
+      <TimerDigitsSvg
+        accessibilityLabel="Custom: 99"
+        digits="99"
+        testID="custom-digits-svg"
+        textTestID="custom-digits-text"
+      />
+    );
+
+    const svg = screen.getByTestId("custom-digits-svg");
+    expect(svg.props.vbWidth).toBe(260);
+    expect(svg.props.vbHeight).toBe(190);
+    expect(screen.getByLabelText("Custom: 99")).toBeTruthy();
+
+    const text = screen.getByTestId("custom-digits-text");
+    expect(text.props.children.props.children).toBe("99");
   });
 });

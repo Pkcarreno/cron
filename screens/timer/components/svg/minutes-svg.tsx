@@ -1,10 +1,7 @@
 import type { FC } from "react";
-import { StyleSheet, View } from "react-native";
 import type { StyleProp, ViewStyle } from "react-native";
-import Svg, { Text as SvgText } from "react-native-svg";
-import type { FontVariant } from "react-native-svg";
 
-import { colors } from "@/helpers/colors";
+import { TimerDigitsSvg } from "@/screens/timer/components/svg/timer-digits-svg";
 
 export interface MinutesSvgProps {
   fill?: string;
@@ -15,42 +12,16 @@ export interface MinutesSvgProps {
 
 export const MinutesSvg: FC<MinutesSvgProps> = ({
   minutes,
-  fill = colors.white,
+  fill,
   style,
   testID = "timer-minutes-svg",
 }) => (
-  <View style={style ? [styles.container, style] : styles.container}>
-    <Svg
-      accessibilityLabel={`Minutes: ${minutes}`}
-      height="100%"
-      preserveAspectRatio="xMidYMid meet"
-      testID={testID}
-      viewBox="0 0 260 190"
-      width="100%"
-    >
-      <SvgText
-        alignmentBaseline="central"
-        fill={fill}
-        fontFamily="Geist Mono"
-        fontSize={210}
-        fontVariant={["tabular-nums"] as unknown as FontVariant}
-        fontWeight="700"
-        testID="timer-minutes-text"
-        textAnchor="middle"
-        x="130"
-        y="95"
-      >
-        {minutes}
-      </SvgText>
-    </Svg>
-  </View>
+  <TimerDigitsSvg
+    accessibilityLabel={`Minutes: ${minutes}`}
+    digits={minutes}
+    fill={fill}
+    style={style}
+    testID={testID}
+    textTestID="timer-minutes-text"
+  />
 );
-
-const styles = StyleSheet.create({
-  container: {
-    alignItems: "center",
-    height: "100%",
-    justifyContent: "center",
-    width: "100%",
-  },
-});

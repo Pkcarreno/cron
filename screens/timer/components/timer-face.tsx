@@ -88,25 +88,30 @@ export const TimerFace: FC<Props> = ({
           },
         ]}
       >
-        {!flags.isPreparing && (
-          <View style={quickAccessStyles.container}>
-            {quickAccessInfo.length > 0 ? (
-              quickAccessInfo.map((data, index) => (
-                <View key={data} style={quickAccessStyles.itemWrapper}>
-                  <Text style={statusBarStyles.text}>{data}</Text>
+        <View
+          style={[
+            quickAccessStyles.container,
+            flags.isPreparing && styles.hide,
+          ]}
+          testID="timer-quick-access-info"
+          collapsable={false}
+        >
+          {quickAccessInfo.length > 0 ? (
+            quickAccessInfo.map((data, index) => (
+              <View key={data} style={quickAccessStyles.itemWrapper}>
+                <Text style={statusBarStyles.text}>{data}</Text>
 
-                  {index < quickAccessInfo.length - 1 && (
-                    <Text style={statusBarStyles.text}> | </Text>
-                  )}
-                </View>
-              ))
-            ) : (
-              <View style={quickAccessStyles.itemWrapper}>
-                <Text style={statusBarStyles.text}>{"\u2003"}</Text>
+                {index < quickAccessInfo.length - 1 && (
+                  <Text style={statusBarStyles.text}> | </Text>
+                )}
               </View>
-            )}
-          </View>
-        )}
+            ))
+          ) : (
+            <View style={quickAccessStyles.itemWrapper}>
+              <Text style={statusBarStyles.text}>{"\u2003"}</Text>
+            </View>
+          )}
+        </View>
 
         <View
           style={contextBannerStyles.container}
@@ -121,14 +126,23 @@ export const TimerFace: FC<Props> = ({
           />
         </View>
 
-        <View style={timeStyles.container} testID="timer-display">
+        <View
+          style={timeStyles.container}
+          testID="timer-display"
+          collapsable={false}
+        >
           <View
             style={[timeStyles.slot, !flags.showsMinuteDigits && styles.hide]}
             testID="timer-minutes-slot"
+            collapsable={false}
           >
             <MinutesSvg minutes={minutes} />
           </View>
-          <View style={timeStyles.slot} testID="timer-seconds-slot">
+          <View
+            style={timeStyles.slot}
+            testID="timer-seconds-slot"
+            collapsable={false}
+          >
             <SecondsSvg seconds={seconds} />
           </View>
         </View>
