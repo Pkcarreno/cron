@@ -157,7 +157,6 @@ const TimerScreen = () => {
       <OledBurnInProtector>
         <PressableArea
           deadZone={14}
-          hapticMode="delayed-press"
           onDoublePress={
             flags.hasCheckpointsBehavior ? recordCheckpoint : undefined
           }

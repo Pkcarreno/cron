@@ -1,4 +1,4 @@
-import type { FC, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useEffect } from "react";
 import type { StyleProp, ViewStyle } from "react-native";
 import { StyleSheet } from "react-native";
@@ -49,14 +49,14 @@ export interface OledBurnInProtectorProps {
  * Active OLED burn-in protector component.
  * Applies subtle cyclic micro-translations along an 8-step orbital path using critically damped springs.
  */
-export const OledBurnInProtector: FC<OledBurnInProtectorProps> = ({
+export const OledBurnInProtector = ({
   children,
   coordinates = DEFAULT_ORBITAL_COORDINATES,
   intervalMs = DEFAULT_ORBITAL_INTERVAL_MS,
   onStepChange,
   style,
   testID = "oled-burn-in-protector",
-}) => {
+}: OledBurnInProtectorProps) => {
   const isReducedMotion = useReducedMotion();
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -71,8 +71,9 @@ export const OledBurnInProtector: FC<OledBurnInProtectorProps> = ({
     let stepIndex = 0;
 
     const intervalId = setInterval(() => {
+      const currentStep = stepIndex;
+      const target = coordinates[currentStep];
       stepIndex = (stepIndex + 1) % coordinates.length;
-      const target = coordinates[stepIndex];
 
       translateX.set(
         withSpring(target.x, {
@@ -89,7 +90,7 @@ export const OledBurnInProtector: FC<OledBurnInProtectorProps> = ({
         })
       );
 
-      onStepChange?.(stepIndex, target);
+      onStepChange?.(currentStep, target);
     }, intervalMs);
 
     return () => {

@@ -44,8 +44,6 @@ jest.mock("@/helpers/haptics", () => ({
 interface RenderOptions {
   deadZone?: number;
   doubleTapCooldownMs?: number;
-  hapticMode?: "delayed-press" | "commit-only";
-  holdThresholdMs?: number;
   onDoublePress?: () => void;
   onLongPress?: () => void;
   onPress?: () => void;
@@ -197,7 +195,7 @@ describe("PressableArea", () => {
     );
   });
 
-  it("responds immediately on touch-down with scale: 0.98 and a light selection haptic after hold threshold", () => {
+  it("responds immediately on touch-down with scale: 0.98 without triggering haptics on touch-down", () => {
     const withSpringSpy = jest.spyOn(Reanimated, "withSpring");
     const onLongPress = jest.fn();
 
@@ -215,63 +213,8 @@ describe("PressableArea", () => {
       duration: 150,
     });
     expect(triggerHaptic).not.toHaveBeenCalled();
-
-    act(() => {
-      jest.advanceTimersByTime(80);
-    });
-
-    expect(triggerHaptic).toHaveBeenCalledWith({
-      type: triggerType.Selection,
-    });
+    expect(triggerAndroidHaptic).not.toHaveBeenCalled();
     expect(onLongPress).not.toHaveBeenCalled();
-  });
-
-  it("does not fire selection haptic when touch is released before hold threshold", () => {
-    const onLongPress = jest.fn();
-
-    const { longPress } = renderPressableArea({
-      onLongPress,
-    });
-    const controller = createGestureController(longPress);
-
-    act(() => {
-      controller.begin();
-      jest.advanceTimersByTime(40);
-      controller.fail();
-    });
-
-    expect(triggerHaptic).not.toHaveBeenCalled();
-    expect(onLongPress).not.toHaveBeenCalled();
-  });
-
-  it("operates in commit-only haptic mode without touch-down selection haptic", () => {
-    const onLongPress = jest.fn();
-
-    const { longPress } = renderPressableArea({
-      hapticMode: "commit-only",
-      onLongPress,
-    });
-    const controller = createGestureController(longPress);
-
-    act(() => {
-      controller.begin();
-      jest.advanceTimersByTime(100);
-    });
-
-    expect(triggerHaptic).not.toHaveBeenCalled();
-
-    act(() => {
-      controller.activate();
-    });
-
-    expect(onLongPress).toHaveBeenCalledTimes(1);
-    expect(triggerAndroidHaptic).toHaveBeenCalledWith(
-      AndroidHaptics.Long_Press,
-      {
-        mode: ImpactFeedbackStyle.Heavy,
-        type: triggerType.Impact,
-      }
-    );
   });
 
   it("maintains the hold for 600 ms to trigger heavy impact haptics, pauses session, and restores scale to 1", () => {
@@ -317,6 +260,8 @@ describe("PressableArea", () => {
     });
 
     expect(onLongPress).not.toHaveBeenCalled();
+    expect(triggerHaptic).not.toHaveBeenCalled();
+    expect(triggerAndroidHaptic).not.toHaveBeenCalled();
     expect(withSpringSpy).toHaveBeenLastCalledWith(1, {
       dampingRatio: 1,
       duration: 150,

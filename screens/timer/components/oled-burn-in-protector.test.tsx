@@ -62,18 +62,18 @@ describe("OledBurnInProtector", () => {
 
     expect(onStepChange).not.toHaveBeenCalled();
 
-    // Advance 90 seconds -> Step 1: (0, 2)
+    // Advance 90 seconds -> Step 0: (0, 2)
     act(() => {
       jest.advanceTimersByTime(DEFAULT_ORBITAL_INTERVAL_MS);
     });
 
     expect(onStepChange).toHaveBeenCalledTimes(1);
     expect(onStepChange).toHaveBeenLastCalledWith(
-      1,
-      DEFAULT_ORBITAL_COORDINATES[1]
+      0,
+      DEFAULT_ORBITAL_COORDINATES[0]
     );
     expect(withSpringSpy).toHaveBeenCalledWith(
-      DEFAULT_ORBITAL_COORDINATES[1].x,
+      DEFAULT_ORBITAL_COORDINATES[0].x,
       {
         dampingRatio: 1,
         duration: 800,
@@ -81,7 +81,7 @@ describe("OledBurnInProtector", () => {
       }
     );
     expect(withSpringSpy).toHaveBeenCalledWith(
-      DEFAULT_ORBITAL_COORDINATES[1].y,
+      DEFAULT_ORBITAL_COORDINATES[0].y,
       {
         dampingRatio: 1,
         duration: 800,
@@ -89,8 +89,8 @@ describe("OledBurnInProtector", () => {
       }
     );
 
-    // Advance through the remaining 6 steps of the 8-step orbital cycle
-    for (let i = 2; i < DEFAULT_ORBITAL_COORDINATES.length; i += 1) {
+    // Advance through the remaining 7 steps of the 8-step orbital cycle
+    for (let i = 1; i < DEFAULT_ORBITAL_COORDINATES.length; i += 1) {
       act(() => {
         jest.advanceTimersByTime(DEFAULT_ORBITAL_INTERVAL_MS);
       });
