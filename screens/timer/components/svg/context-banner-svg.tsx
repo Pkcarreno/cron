@@ -43,7 +43,7 @@ export const ContextBannerSvg: FC<ContextBannerSvgProps> = ({
         height="100%"
         preserveAspectRatio="xMidYMid meet"
         testID={testID}
-        viewBox="0 0 1000 240"
+        viewBox="0 0 1000 260"
         width="100%"
       >
         {hasLabel ? (
@@ -51,13 +51,13 @@ export const ContextBannerSvg: FC<ContextBannerSvgProps> = ({
             alignmentBaseline="central"
             fill={labelColor}
             fontFamily="Geist Mono"
-            fontSize={175}
+            fontSize={210}
             fontVariant={["tabular-nums"] as unknown as FontVariant}
             fontWeight="900"
             testID="context-banner-label"
             textAnchor="start"
-            x="32"
-            y="120"
+            x="24"
+            y="130"
           >
             {String(label)}
           </SvgText>
@@ -67,13 +67,13 @@ export const ContextBannerSvg: FC<ContextBannerSvgProps> = ({
             alignmentBaseline="central"
             fill={valueColor}
             fontFamily="Geist Mono"
-            fontSize={155}
+            fontSize={190}
             fontVariant={["tabular-nums"] as unknown as FontVariant}
             fontWeight="400"
             testID="context-banner-value"
             textAnchor="end"
-            x="968"
-            y="120"
+            x="976"
+            y="130"
           >
             {String(value)}
           </SvgText>
@@ -85,7 +85,7 @@ export const ContextBannerSvg: FC<ContextBannerSvgProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    aspectRatio: 1000 / 240,
+    aspectRatio: 1000 / 260,
     width: "100%",
   },
 });

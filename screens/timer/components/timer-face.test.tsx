@@ -166,7 +166,7 @@ describe("TimerFace", () => {
     expect(secondsText.props.children.props.children).toBe("58");
   });
 
-  it("renders context banner SVG with normalized 1000x240 viewBox and tabular typography", async () => {
+  it("renders context banner SVG with normalized 1000x260 viewBox and tabular typography", async () => {
     const screen = await renderWithProviders(
       <TimerFace
         currentTime="12:00"
@@ -190,7 +190,7 @@ describe("TimerFace", () => {
 
     const bannerSvg = screen.getByTestId("timer-context-banner-svg");
     expect(bannerSvg.props.vbWidth).toBe(1000);
-    expect(bannerSvg.props.vbHeight).toBe(240);
+    expect(bannerSvg.props.vbHeight).toBe(260);
     expect(screen.getByLabelText("REST 3")).toBeTruthy();
 
     const label = screen.getByTestId("context-banner-label");
@@ -257,7 +257,7 @@ describe("Vectorial SVG display components", () => {
 
     const svg = screen.getByTestId("empty-banner");
     expect(svg.props.vbWidth).toBe(1000);
-    expect(svg.props.vbHeight).toBe(240);
+    expect(svg.props.vbHeight).toBe(260);
     expect(screen.queryByTestId("context-banner-label")).toBeNull();
     expect(screen.queryByTestId("context-banner-value")).toBeNull();
   });
