@@ -74,6 +74,7 @@ export interface FeedbackServiceInterface {
   prepare: () => Promise<void>;
   stop: () => void;
   trigger: (cue: FeedbackCue) => void;
+  warmUp: () => void;
 }
 
 export interface FeedbackServiceOptions {
@@ -192,7 +193,10 @@ export class FeedbackService implements FeedbackServiceInterface {
 
     let isRoundChanging = false;
 
-    const unsubs: (() => void)[] = [
+    const subscriptions: (() => void)[] = [
+      controller.on(TimerEventType.TRANSITION_APPROACHING, () => {
+        this.warmUp();
+      }),
       controller.on(TimerEventType.BEEP, () => {
         this.trigger(FeedbackCue.COUNTDOWN);
       }),
@@ -224,20 +228,20 @@ export class FeedbackService implements FeedbackServiceInterface {
       }),
     ];
 
-    const detachFn = () => {
-      for (const unsub of unsubs) {
-        unsub();
+    const detachHandler = () => {
+      for (const unsubscribe of subscriptions) {
+        unsubscribe();
       }
       if (this.attachedController === controller) {
         this.attachedController = null;
       }
-      if (this.detachCallback === detachFn) {
+      if (this.detachCallback === detachHandler) {
         this.detachCallback = null;
       }
     };
 
-    this.detachCallback = detachFn;
-    return detachFn;
+    this.detachCallback = detachHandler;
+    return detachHandler;
   }
 
   /**
@@ -287,10 +291,20 @@ export class FeedbackService implements FeedbackServiceInterface {
   }
 
   /**
+   * Pre-warms the audio pipeline ahead of upcoming cues to prevent acoustic clicks and cold-start latency.
+   * Sound check is delegated here and in the audio engine.
+   */
+  public warmUp(): void {
+    if (this.isSoundEnabled) {
+      this.audioEngine.warmUp();
+    }
+  }
+
+  /**
    * Halts active audio playback.
    */
   public stop(): void {
-    this.audioEngine.stopAudio();
+    this.audioEngine.stop();
   }
 
   /**

@@ -645,6 +645,74 @@ describe("timerController", () => {
       controller.reset();
       expect(onReset).toHaveBeenCalledTimes(1);
     });
+
+    it("emits TRANSITION_APPROACHING lookahead event 500ms before countdown and phase transitions", () => {
+      const onApproachingTransition = jest.fn();
+      const onBeep = jest.fn();
+      const onGo = jest.fn();
+      const onPhaseChange = jest.fn();
+
+      const strategy = new IntervalStrategy(2000, 1000, 1);
+      const preparationMs = 5000;
+      const controller = new TimerController(strategy, preparationMs);
+
+      controller.on(
+        TimerEventType.TRANSITION_APPROACHING,
+        onApproachingTransition
+      );
+      controller.on(TimerEventType.BEEP, onBeep);
+      controller.on(TimerEventType.GO, onGo);
+      controller.on(TimerEventType.PHASE_CHANGE, onPhaseChange);
+
+      controller.start();
+
+      // At 1400ms: no transition approaching yet (3600ms remaining prep)
+      jest.advanceTimersByTime(1400);
+      expect(onApproachingTransition).not.toHaveBeenCalled();
+
+      // At 1500ms: 500ms lookahead sees 3000ms remaining prep -> emits TRANSITION_APPROACHING
+      jest.advanceTimersByTime(100);
+      expect(onApproachingTransition).toHaveBeenCalledTimes(1);
+
+      // At 2000ms: Countdown beep (3) emits
+      jest.advanceTimersByTime(500);
+      expect(onBeep).toHaveBeenCalledWith(3);
+
+      // Advance to 4500ms (500ms before GO)
+      jest.advanceTimersByTime(2500);
+      expect(onApproachingTransition).toHaveBeenCalledTimes(2);
+
+      // At 5000ms: GO emits
+      jest.advanceTimersByTime(500);
+      expect(onGo).toHaveBeenCalledTimes(1);
+
+      // In WORK phase (2000ms): at 1500ms into work (6500ms total), 500ms lookahead sees REST phase transition
+      jest.advanceTimersByTime(1500);
+      expect(onApproachingTransition).toHaveBeenCalledTimes(3);
+
+      // At 7000ms: REST phase emits
+      jest.advanceTimersByTime(500);
+      expect(onPhaseChange).toHaveBeenCalledWith(TimerPhase.REST);
+    });
+
+    it("emits TRANSITION_APPROACHING immediately on start when preparation is short (<= 3000ms)", () => {
+      const onApproachingTransition = jest.fn();
+      const strategy = new UpStrategy(10_000);
+      // 2s preparation
+      const preparationMs = 2000;
+      const controller = new TimerController(strategy, preparationMs);
+
+      controller.on(
+        TimerEventType.TRANSITION_APPROACHING,
+        onApproachingTransition
+      );
+
+      controller.start();
+      jest.advanceTimersByTime(10);
+
+      // Immediately anticipates countdown beep at 2s remaining
+      expect(onApproachingTransition).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("AppState lifecycle and background catch-up", () => {

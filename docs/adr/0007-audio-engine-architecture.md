@@ -33,12 +33,20 @@ We replace real-time synthetic oscillators with an in-memory **AudioBufferSource
 - System audio session is configured via `AudioManager.setAudioSessionOptions` with:
   - `iosCategory: "playback"`: Ensures cues play aloud through the loudspeaker even when the device's physical mute/silent switch is turned on.
   - `iosMode: "default"`: Maintains standard full-fidelity routing without falling back to low-sample-rate telephony/HFP profiles.
-  - `iosOptions: ["duckOthers", "mixWithOthers", "defaultToSpeaker"]`: Ducks external background music (Spotify, Apple Music) while cues play, without cutting or pausing the athlete's workout soundtrack.
-- Native Android audio focus observation is activated via `AudioManager.observeAudioInterruptions(true)`.
+  - `iosOptions: ["duckOthers", "mixWithOthers", "defaultToSpeaker"]`: Configures external background music (Spotify, Apple Music) to duck while cues play, without cutting or pausing the athlete's workout soundtrack.
+  - `iosNotifyOthersOnDeactivation: true`: Notifies external audio apps immediately upon session deactivation so normal volume is restored.
+- **Demand-driven transient audio focus & session activation**:
+  - On engine initialization and during `prepare()`, audio focus is **not claimed** and the audio session remains inactive to ensure external music players are never paused or ducked while the timer screen is opened or idle.
+  - When playing a sound cue (`playSound`), the engine requests transient focus with ducking on Android (`AudioManager.observeAudioInterruptions("gainTransientMayDuck")`) and activates the iOS audio session (`AudioManager.setAudioSessionActivity(true)`).
+  - **Anticipatory Warmup (`warmUp()`)**: To prevent cold-start DAC pops and buffer underruns, `TimerController` emits a sound-agnostic `TimerEventType.TRANSITION_APPROACHING` event ~500ms before upcoming cues (calculated via deterministic strategy lookahead `calculateState(elapsed + 500)`). If sound is enabled, `FeedbackService` triggers `audioEngine.warmUp()`, which eagerly claims transient ducking focus and resumes the suspended `AudioContext` so the audio thread is completely warm and stable before the note triggers.
+  - **Acoustic Drain Window (`AUDIO_DRAIN_TIME_MS = 200`)**: Speaker hardware FIFO and platform DMA buffers retain audio for ~30–50ms after JavaScript `sourceNode.onended` fires. Immediate focus release or suspension creates an abrupt DC offset cut / acoustic pop. An intentional 200ms drain delay ensures all physical samples clear the hardware speaker buffer before external volume restores.
+  - **Countdown Ducking Hold (`COUNTDOWN_HOLD_DUCKING_MS = 1200`)**: During 1-second countdown cadences (3... 2... 1... GO), ducking is maintained across ticks for 1200ms to eliminate nauseating "volume pumping" in external music.
+  - **Idle DAC Sleep (`AUDIO_IDLE_SLEEP_MS = 1500`)**: After audio focus is released and the speaker drain window elapses, an idle timer suspends `AudioContext` after 1500ms, conserving device battery during long workout intervals without sacrificing immediate response.
+  - When playback explicitly stops (`stopAudio`/`dispose`), release timers are cancelled, focus is relinquished, and `AudioContext` suspends immediately.
 
 ### 4. Lifecycle & Energy Management
 
-- `prepare()` provides idempotent, eager initialization and context warm-up before interval countdowns begin. The workout timer screen (`screens/timer/index.tsx`) calls `prepare()` on mount to warm the DAC, decode sound buffers, and configure the system audio session before countdown ticks start.
+- `prepare()` provides idempotent, eager decoding of canonical sound buffers into native RAM before interval countdowns begin. The workout timer screen (`screens/timer/index.tsx`) calls `prepare()` on mount to pre-load buffers into memory without waking the DAC or stealing audio focus while idle.
 - `dispose()` releases native audio graph resources, detaches controller observers, and terminates store subscriptions when the athlete finishes or leaves the timer screen.
 - `suspend()` pauses DAC hardware time progression when the timer is idle, conserving battery.
 - `stopAudio()` immediately halts and disconnects active buffer sources upon pause, reset, or finish.

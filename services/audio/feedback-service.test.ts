@@ -16,7 +16,9 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
     dispose: jest.Mock;
     playSound: jest.Mock;
     prepare: jest.Mock;
+    stop: jest.Mock;
     stopAudio: jest.Mock;
+    warmUp: jest.Mock;
   };
   let impactAsyncSpy: jest.SpyInstance;
   let notificationAsyncSpy: jest.SpyInstance;
@@ -25,11 +27,14 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
+    const stopMock = jest.fn();
     mockAudioEngine = {
       dispose: jest.fn(() => Promise.resolve()),
       playSound: jest.fn(),
       prepare: jest.fn(() => Promise.resolve()),
-      stopAudio: jest.fn(),
+      stop: stopMock,
+      stopAudio: stopMock,
+      warmUp: jest.fn(),
     };
 
     impactAsyncSpy = jest
@@ -321,6 +326,48 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
       expect(mockAudioEngine.stopAudio).toHaveBeenCalledTimes(2);
 
       controller.dispose();
+    });
+
+    it("forwards TRANSITION_APPROACHING event to audioEngine.warmUp() when sound is enabled", () => {
+      const strategy = new IntervalStrategy(2000, 1000, 1);
+      const controller = new TimerController(strategy, 5000);
+
+      const service = new FeedbackService({
+        audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
+        store: testStore,
+      });
+      service.attach(controller);
+
+      jest.useFakeTimers();
+      controller.start();
+
+      // At 1500ms: 500ms lookahead triggers TRANSITION_APPROACHING
+      jest.advanceTimersByTime(1500);
+      expect(mockAudioEngine.warmUp).toHaveBeenCalledTimes(1);
+
+      controller.dispose();
+      jest.useRealTimers();
+    });
+
+    it("does not trigger warmUp when sound is disabled", () => {
+      testStore.set(isSoundEnabledAtom, false);
+      const strategy = new IntervalStrategy(2000, 1000, 1);
+      const controller = new TimerController(strategy, 5000);
+
+      const service = new FeedbackService({
+        audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
+        store: testStore,
+      });
+      service.attach(controller);
+
+      jest.useFakeTimers();
+      controller.start();
+
+      jest.advanceTimersByTime(1500);
+      expect(mockAudioEngine.warmUp).not.toHaveBeenCalled();
+
+      controller.dispose();
+      jest.useRealTimers();
     });
 
     it("detaches cleanly and ignores subsequent controller events", () => {

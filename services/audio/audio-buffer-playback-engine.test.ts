@@ -118,7 +118,7 @@ describe("AudioBufferPlaybackEngine", () => {
   });
 
   describe("Audio Session Configuration", () => {
-    it("eagerly configures audio session on engine creation", () => {
+    it("eagerly configures audio session on engine creation without claiming focus while idle", () => {
       const engine = new AudioBufferPlaybackEngine({
         audioContextFactory: () => mockAudioContext as never,
       });
@@ -132,6 +132,7 @@ describe("AudioBufferPlaybackEngine", () => {
         expect.objectContaining({
           iosCategory: "playback",
           iosMode: "default",
+          iosNotifyOthersOnDeactivation: true,
           iosOptions: expect.arrayContaining([
             "duckOthers",
             "mixWithOthers",
@@ -139,7 +140,8 @@ describe("AudioBufferPlaybackEngine", () => {
           ]),
         })
       );
-      expect(AudioManager.observeAudioInterruptions).toHaveBeenCalledWith(true);
+      // Crucial: do not steal permanent audio focus on engine creation
+      expect(AudioManager.observeAudioInterruptions).not.toHaveBeenCalled();
     });
 
     it("safely handles error if audio manager throws during configuration", () => {
@@ -200,7 +202,7 @@ describe("AudioBufferPlaybackEngine", () => {
       }
     });
 
-    it("resumes suspended audio context during prepare", async () => {
+    it("does not resume audio context during prepare to avoid pausing or ducking background music while idle", async () => {
       mockAudioContext.state = "suspended";
       const engine = new AudioBufferPlaybackEngine({
         audioContextFactory: () => mockAudioContext as never,
@@ -208,7 +210,8 @@ describe("AudioBufferPlaybackEngine", () => {
 
       await engine.prepare();
 
-      expect(mockAudioContext.resume).toHaveBeenCalledTimes(1);
+      expect(mockAudioContext.resume).not.toHaveBeenCalled();
+      expect(AudioManager.observeAudioInterruptions).not.toHaveBeenCalled();
     });
 
     it("is idempotent when prepare is called multiple times concurrently or sequentially", async () => {
@@ -386,6 +389,216 @@ describe("AudioBufferPlaybackEngine", () => {
 
       await engine.resume();
       expect(mockAudioContext.resume).toHaveBeenCalled();
+    });
+  });
+
+  describe("Demand-Driven Audio Focus & Transient Ducking", () => {
+    it("requests transient ducking focus and activates audio session upon playback", async () => {
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+      });
+
+      await engine.prepare();
+      expect(AudioManager.observeAudioInterruptions).not.toHaveBeenCalled();
+      expect(AudioManager.setAudioSessionActivity).not.toHaveBeenCalled();
+
+      engine.playSound("go");
+
+      expect(AudioManager.observeAudioInterruptions).toHaveBeenCalledWith(
+        "gainTransientMayDuck"
+      );
+      expect(AudioManager.setAudioSessionActivity).toHaveBeenCalledWith(true);
+    });
+
+    it("releases audio focus and deactivates session when sound finishes", async () => {
+      jest.useFakeTimers();
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+      });
+
+      await engine.prepare();
+      const source = engine.playSound("go");
+      expect(source).not.toBeNull();
+
+      expect(AudioManager.observeAudioInterruptions).toHaveBeenCalledWith(
+        "gainTransientMayDuck"
+      );
+
+      // Simulate sound playback end
+      mockSourceNode.onended?.(new Event("ended"));
+
+      // Still in drain window (200ms) to prevent speaker pop
+      expect(AudioManager.observeAudioInterruptions).not.toHaveBeenCalledWith(
+        false
+      );
+
+      // Advance through drain window (200ms)
+      jest.advanceTimersByTime(200);
+
+      expect(AudioManager.observeAudioInterruptions).toHaveBeenCalledWith(
+        false
+      );
+      expect(AudioManager.setAudioSessionActivity).toHaveBeenCalledWith(false);
+
+      // Advance through idle sleep timer (1500ms) to suspend AudioContext
+      jest.advanceTimersByTime(1500);
+      expect(mockAudioContext.suspend).toHaveBeenCalledTimes(1);
+
+      jest.useRealTimers();
+    });
+
+    it("maintains focus during overlapping sounds and releases only when all end", async () => {
+      jest.useFakeTimers();
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+      });
+
+      await engine.prepare();
+
+      const sourceNode1 = { ...mockSourceNode };
+      const sourceNode2 = { ...mockSourceNode };
+      mockAudioContext.createBufferSource
+        .mockReturnValueOnce(sourceNode1)
+        .mockReturnValueOnce(sourceNode2);
+
+      const source1 = engine.playSound("countdown_beep");
+      const source2 = engine.playSound("go");
+
+      expect(source1).toBe(sourceNode1);
+      expect(source2).toBe(sourceNode2);
+      expect(AudioManager.observeAudioInterruptions).toHaveBeenCalledWith(
+        "gainTransientMayDuck"
+      );
+
+      // Finish first sound - focus must NOT be released because second sound is still active
+      sourceNode1.onended?.(new Event("ended"));
+      expect(AudioManager.observeAudioInterruptions).not.toHaveBeenCalledWith(
+        false
+      );
+
+      // Finish second sound - focus must stay held during drain window
+      sourceNode2.onended?.(new Event("ended"));
+      expect(AudioManager.observeAudioInterruptions).not.toHaveBeenCalledWith(
+        false
+      );
+
+      // Advance past drain time (200ms)
+      jest.advanceTimersByTime(200);
+
+      expect(AudioManager.observeAudioInterruptions).toHaveBeenCalledWith(
+        false
+      );
+      expect(AudioManager.setAudioSessionActivity).toHaveBeenCalledWith(false);
+
+      jest.useRealTimers();
+    });
+
+    it("holds ducking during countdown beeps for 1200ms to prevent volume pumping across 1s intervals", async () => {
+      jest.useFakeTimers();
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+      });
+
+      await engine.prepare();
+      engine.playSound("countdown_beep");
+
+      // Simulate beep ending
+      mockSourceNode.onended?.(new Event("ended"));
+
+      // 1000ms later (next beep interval): ducking should STILL be held
+      jest.advanceTimersByTime(1000);
+      expect(AudioManager.observeAudioInterruptions).not.toHaveBeenCalledWith(
+        false
+      );
+
+      // After 1200ms total: hold expires and releases focus
+      jest.advanceTimersByTime(200);
+      expect(AudioManager.observeAudioInterruptions).toHaveBeenCalledWith(
+        false
+      );
+
+      jest.useRealTimers();
+    });
+
+    it("pre-warms the audio pipeline on warmUp and resumes suspended context", async () => {
+      jest.useFakeTimers();
+      mockAudioContext.state = "suspended";
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+      });
+
+      await engine.prepare();
+      engine.warmUp();
+
+      expect(AudioManager.observeAudioInterruptions).toHaveBeenCalledWith(
+        "gainTransientMayDuck"
+      );
+      expect(mockAudioContext.resume).toHaveBeenCalledTimes(1);
+
+      // Safety timeout releases focus if no cue fires within 3000ms
+      jest.advanceTimersByTime(3000);
+      expect(AudioManager.observeAudioInterruptions).toHaveBeenCalledWith(
+        false
+      );
+
+      jest.useRealTimers();
+    });
+
+    it("does not warm up when sound is disabled", async () => {
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+        isSoundEnabled: () => false,
+      });
+
+      await engine.prepare();
+      engine.warmUp();
+
+      expect(AudioManager.observeAudioInterruptions).not.toHaveBeenCalled();
+    });
+
+    it("releases audio focus immediately on stop", async () => {
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+      });
+
+      await engine.prepare();
+      engine.playSound("go");
+
+      engine.stop();
+
+      expect(AudioManager.observeAudioInterruptions).toHaveBeenCalledWith(
+        false
+      );
+      expect(AudioManager.setAudioSessionActivity).toHaveBeenCalledWith(false);
+    });
+
+    it("releases audio focus immediately on stopAudio alias", async () => {
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+      });
+
+      await engine.prepare();
+      engine.playSound("go");
+
+      engine.stopAudio();
+
+      expect(AudioManager.observeAudioInterruptions).toHaveBeenCalledWith(
+        false
+      );
+      expect(AudioManager.setAudioSessionActivity).toHaveBeenCalledWith(false);
+    });
+
+    it("does not request audio focus when sound is disabled", async () => {
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+        isSoundEnabled: () => false,
+      });
+
+      await engine.prepare();
+      engine.playSound("go");
+
+      expect(AudioManager.observeAudioInterruptions).not.toHaveBeenCalled();
+      expect(AudioManager.setAudioSessionActivity).not.toHaveBeenCalled();
     });
   });
 });
