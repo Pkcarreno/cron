@@ -25,20 +25,20 @@ export const MinutesSvg: FC<MinutesSvgProps> = ({
       height="100%"
       preserveAspectRatio="xMidYMid meet"
       testID={testID}
-      viewBox="0 0 400 200"
+      viewBox="0 0 260 190"
       width="100%"
     >
       <SvgText
         alignmentBaseline="central"
         fill={fill}
         fontFamily="Geist Mono"
-        fontSize={175}
+        fontSize={210}
         fontVariant={["tabular-nums"] as unknown as FontVariant}
         fontWeight="700"
         testID="timer-minutes-text"
         textAnchor="middle"
-        x="200"
-        y="100"
+        x="130"
+        y="95"
       >
         {minutes}
       </SvgText>

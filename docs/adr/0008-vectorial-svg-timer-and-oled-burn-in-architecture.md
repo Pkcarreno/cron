@@ -27,9 +27,9 @@ We restructure the timer screen by adopting a **Compound Component** architectur
 ### 1. Vectorial SVG Display Architecture (`react-native-svg`)
 
 - We replace native `Text` font measurement with three isolated SVG components utilizing normalized vector viewports:
-  - `<Timer.ContextBannerSvg>`: Dedicated horizontal SVG (`viewBox="0 0 1000 160"`) rendering phase tags (`WORK`, `REST`, `RND`) and counters without line-height truncation.
-  - `<Timer.MinutesSvg>`: Normalized vector container (`viewBox="0 0 400 200"`) in a `flex: 1` slot. During preparation (`!flags.showsMinuteDigits`), it renders with `opacity: 0`, strictly preserving the layout slot and preventing layout reflows upon workout start.
-  - `<Timer.SecondsSvg>`: Normalized vector container (`viewBox="0 0 400 200"`) in a twin `flex: 1` slot anchored to the bottom half.
+  - `<Timer.ContextBannerSvg>`: Dedicated horizontal SVG (`viewBox="0 0 1000 240"`) rendering phase tags (`WORK`, `REST`, `RND`) and counters without line-height truncation.
+  - `<Timer.MinutesSvg>`: Normalized vector container (`viewBox="0 0 260 190"`) in a `flex: 1` slot. During preparation (`!flags.showsMinuteDigits`), it renders with `opacity: 0`, strictly preserving the layout slot and preventing layout reflows upon workout start.
+  - `<Timer.SecondsSvg>`: Normalized vector container (`viewBox="0 0 260 190"`) in a twin `flex: 1` slot anchored to the bottom half.
 - Numerals use `Geist Mono` with `fontVariant={["tabular-nums"]}` inside `<Text>` SVG elements for monospaced glyph metrics.
 
 ### 2. Compound Components and State Granularity (Jotai)

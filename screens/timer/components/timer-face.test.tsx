@@ -146,10 +146,10 @@ describe("TimerFace", () => {
     const minutesSvg = screen.getByTestId("timer-minutes-svg");
     const secondsSvg = screen.getByTestId("timer-seconds-svg");
 
-    expect(minutesSvg.props.vbWidth).toBe(400);
-    expect(minutesSvg.props.vbHeight).toBe(200);
-    expect(secondsSvg.props.vbWidth).toBe(400);
-    expect(secondsSvg.props.vbHeight).toBe(200);
+    expect(minutesSvg.props.vbWidth).toBe(260);
+    expect(minutesSvg.props.vbHeight).toBe(190);
+    expect(secondsSvg.props.vbWidth).toBe(260);
+    expect(secondsSvg.props.vbHeight).toBe(190);
 
     expect(screen.getByLabelText("Minutes: 42")).toBeTruthy();
     expect(screen.getByLabelText("Seconds: 58")).toBeTruthy();
@@ -166,7 +166,7 @@ describe("TimerFace", () => {
     expect(secondsText.props.children.props.children).toBe("58");
   });
 
-  it("renders context banner SVG with normalized 1000x160 viewBox and tabular typography", async () => {
+  it("renders context banner SVG with normalized 1000x240 viewBox and tabular typography", async () => {
     const screen = await renderWithProviders(
       <TimerFace
         currentTime="12:00"
@@ -190,7 +190,7 @@ describe("TimerFace", () => {
 
     const bannerSvg = screen.getByTestId("timer-context-banner-svg");
     expect(bannerSvg.props.vbWidth).toBe(1000);
-    expect(bannerSvg.props.vbHeight).toBe(160);
+    expect(bannerSvg.props.vbHeight).toBe(240);
     expect(screen.getByLabelText("REST 3")).toBeTruthy();
 
     const label = screen.getByTestId("context-banner-label");
@@ -220,8 +220,8 @@ describe("Vectorial SVG display components", () => {
     );
 
     const svg = screen.getByTestId("custom-minutes-svg");
-    expect(svg.props.vbWidth).toBe(400);
-    expect(svg.props.vbHeight).toBe(200);
+    expect(svg.props.vbWidth).toBe(260);
+    expect(svg.props.vbHeight).toBe(190);
     expect(screen.getByLabelText("Minutes: 08")).toBeTruthy();
 
     const text = screen.getByTestId("timer-minutes-text");
@@ -238,8 +238,8 @@ describe("Vectorial SVG display components", () => {
     );
 
     const svg = screen.getByTestId("custom-seconds-svg");
-    expect(svg.props.vbWidth).toBe(400);
-    expect(svg.props.vbHeight).toBe(200);
+    expect(svg.props.vbWidth).toBe(260);
+    expect(svg.props.vbHeight).toBe(190);
     expect(screen.getByLabelText("Seconds: 29")).toBeTruthy();
 
     const text = screen.getByTestId("timer-seconds-text");
@@ -257,7 +257,7 @@ describe("Vectorial SVG display components", () => {
 
     const svg = screen.getByTestId("empty-banner");
     expect(svg.props.vbWidth).toBe(1000);
-    expect(svg.props.vbHeight).toBe(160);
+    expect(svg.props.vbHeight).toBe(240);
     expect(screen.queryByTestId("context-banner-label")).toBeNull();
     expect(screen.queryByTestId("context-banner-value")).toBeNull();
   });
