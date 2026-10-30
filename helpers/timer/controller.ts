@@ -18,6 +18,7 @@ export enum TimerEventType {
   TICK = "TICK",
   UI_TICK = "UI_TICK",
   CHECKPOINT = "CHECKPOINT",
+  TRANSITION_APPROACHING = "TRANSITION_APPROACHING",
 }
 
 export interface CheckpointData {
@@ -47,6 +48,7 @@ export interface TimerEventMap {
   [TimerEventType.TICK]: [state: TimerState];
   [TimerEventType.UI_TICK]: [state: TimerState];
   [TimerEventType.CHECKPOINT]: [lastCheckpoint: CheckpointData];
+  [TimerEventType.TRANSITION_APPROACHING]: [];
 }
 
 export type TimerEventCallback<K extends keyof TimerEventMap> = (
@@ -76,6 +78,7 @@ export class TimerController {
   private isVisualUpdatesPaused = false;
   private currentAppState: AppStateStatus = "active";
   private appStateSubscription: { remove: () => void } | null = null;
+  private hasEmittedApproachingTransition = false;
 
   private listeners: {
     [K in keyof TimerEventMap]: TimerEventCallback<K>[];
@@ -91,6 +94,7 @@ export class TimerController {
     [TimerEventType.TICK]: [],
     [TimerEventType.UI_TICK]: [],
     [TimerEventType.CHECKPOINT]: [],
+    [TimerEventType.TRANSITION_APPROACHING]: [],
   };
 
   constructor(
@@ -178,15 +182,7 @@ export class TimerController {
 
     const catchUpEvent = this.engine.catchUp();
     if (catchUpEvent && this.previousState) {
-      this.lastUiTickState = this.previousState;
-      this.lastEmittedUiSecond = Math.ceil(
-        this.previousState.displayTimeMs / 1000
-      );
-      if (this.uiTickResolutionMs !== null && this.uiTickResolutionMs > 0) {
-        this.lastEmittedQuantizedStep = Math.floor(
-          this.previousState.displayTimeMs / this.uiTickResolutionMs
-        );
-      }
+      this.updateUiTickSnapshot(this.previousState);
       this.emit(TimerEventType.UI_TICK, this.previousState);
     }
   }
@@ -213,24 +209,29 @@ export class TimerController {
       newState = this.strategy.calculateState(adjustedTick);
     }
 
+    this.detectApproachingTransition(tickEvent, newState);
     this.detectStateChanges(this.previousState, newState);
 
     this.previousState = newState;
     this.emit(TimerEventType.TICK, newState);
 
     if (this.shouldEmitUiTick(newState)) {
-      this.lastUiTickState = newState;
-      this.lastEmittedUiSecond = Math.ceil(newState.displayTimeMs / 1000);
-      if (this.uiTickResolutionMs !== null && this.uiTickResolutionMs > 0) {
-        this.lastEmittedQuantizedStep = Math.floor(
-          newState.displayTimeMs / this.uiTickResolutionMs
-        );
-      }
+      this.updateUiTickSnapshot(newState);
       this.emit(TimerEventType.UI_TICK, newState);
     }
 
     if (newState.isFinished) {
       this.engine.pause();
+    }
+  }
+
+  private updateUiTickSnapshot(state: TimerState): void {
+    this.lastUiTickState = state;
+    this.lastEmittedUiSecond = Math.ceil(state.displayTimeMs / 1000);
+    if (this.uiTickResolutionMs !== null && this.uiTickResolutionMs > 0) {
+      this.lastEmittedQuantizedStep = Math.floor(
+        state.displayTimeMs / this.uiTickResolutionMs
+      );
     }
   }
 
@@ -323,6 +324,61 @@ export class TimerController {
     this.emit(TimerEventType.CHECKPOINT, newCheckpoint);
   }
 
+  private detectApproachingTransition(
+    tickEvent: TickEvent,
+    currentState: TimerState
+  ) {
+    if (this.hasEmittedApproachingTransition || currentState.isFinished) {
+      return;
+    }
+
+    const LOOKAHEAD_MS = 500;
+    const futureElapsedMs = tickEvent.totalElapsedMs + LOOKAHEAD_MS;
+
+    if (currentState.phase === TimerPhase.PREPARATION) {
+      const currentRemainingPrep =
+        this.preparationTimeMs - tickEvent.totalElapsedMs;
+      const futureRemainingPrep = this.preparationTimeMs - futureElapsedMs;
+      const countdownThreshold = Math.min(this.preparationTimeMs, 3000);
+
+      // 500ms before countdown begins, or immediately on first tick if prep <= 3000ms
+      if (
+        (currentRemainingPrep > countdownThreshold &&
+          futureRemainingPrep <= countdownThreshold) ||
+        (currentRemainingPrep <= countdownThreshold &&
+          tickEvent.totalElapsedMs <= LOOKAHEAD_MS)
+      ) {
+        this.hasEmittedApproachingTransition = true;
+        this.emit(TimerEventType.TRANSITION_APPROACHING);
+        return;
+      }
+
+      // 500ms before preparation ends and WORK begins
+      if (currentRemainingPrep > 0 && futureRemainingPrep <= 0) {
+        this.hasEmittedApproachingTransition = true;
+        this.emit(TimerEventType.TRANSITION_APPROACHING);
+      }
+    } else {
+      const adjustedFutureTick: TickEvent = {
+        deltaMs: tickEvent.deltaMs,
+        totalElapsedMs: futureElapsedMs - this.preparationTimeMs,
+      };
+      const futureState = this.strategy.calculateState(adjustedFutureTick);
+
+      const isPhaseEnding = futureState.phase !== currentState.phase;
+      const isRoundEnding =
+        futureState.currentRound !== currentState.currentRound &&
+        futureState.currentRound > 0;
+      const isSessionFinishing =
+        !currentState.isFinished && futureState.isFinished;
+
+      if (isPhaseEnding || isRoundEnding || isSessionFinishing) {
+        this.hasEmittedApproachingTransition = true;
+        this.emit(TimerEventType.TRANSITION_APPROACHING);
+      }
+    }
+  }
+
   private detectStateChanges(
     oldState: TimerState | null,
     newState: TimerState
@@ -333,6 +389,7 @@ export class TimerController {
 
     // detect finish
     if (!oldState.isFinished && newState.isFinished) {
+      this.hasEmittedApproachingTransition = false;
       const summary = this.generateSummary(true);
       this.emit(TimerEventType.FINISH, summary);
       return;
@@ -343,6 +400,7 @@ export class TimerController {
       oldState.phase === TimerPhase.PREPARATION &&
       newState.phase === TimerPhase.WORK
     ) {
+      this.hasEmittedApproachingTransition = false;
       this.emit(TimerEventType.GO);
       return;
     }
@@ -356,10 +414,12 @@ export class TimerController {
       oldState.currentRound !== newState.currentRound &&
       newState.currentRound > 0
     ) {
+      this.hasEmittedApproachingTransition = false;
       this.emit(TimerEventType.ROUND_CHANGE, newState.currentRound);
     }
 
     if (oldState.phase !== newState.phase && !newState.isFinished) {
+      this.hasEmittedApproachingTransition = false;
       this.emit(TimerEventType.PHASE_CHANGE, newState.phase);
     }
   }
@@ -373,6 +433,7 @@ export class TimerController {
     const newSeconds = Math.ceil(newState.displayTimeMs / 1000);
 
     if (oldSeconds !== newSeconds && newSeconds <= 3 && newSeconds > 0) {
+      this.hasEmittedApproachingTransition = false;
       this.emit(TimerEventType.BEEP, newSeconds);
     }
   }
@@ -398,6 +459,7 @@ export class TimerController {
       [TimerEventType.TICK]: [],
       [TimerEventType.UI_TICK]: [],
       [TimerEventType.CHECKPOINT]: [],
+      [TimerEventType.TRANSITION_APPROACHING]: [],
     };
   }
 
@@ -437,9 +499,9 @@ export class TimerController {
     event: K,
     listener: TimerEventCallback<K>
   ): void {
-    const idx = this.listeners[event].indexOf(listener);
-    if (idx !== -1) {
-      this.listeners[event].splice(idx, 1);
+    const index = this.listeners[event].indexOf(listener);
+    if (index !== -1) {
+      this.listeners[event].splice(index, 1);
     }
   }
 
@@ -462,11 +524,13 @@ export class TimerController {
   }
 
   public pause() {
+    this.hasEmittedApproachingTransition = false;
     this.emit(TimerEventType.PAUSE);
     this.engine.pause();
   }
 
   public reset() {
+    this.hasEmittedApproachingTransition = false;
     this.emit(TimerEventType.RESET);
     this.checkpoints = [];
     this.previousState = null;

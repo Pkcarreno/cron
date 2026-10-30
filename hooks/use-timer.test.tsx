@@ -261,6 +261,7 @@ describe("useTimer integration", () => {
         prepare: jest.fn(() => Promise.resolve()),
         stop: jest.fn(),
         trigger: jest.fn(),
+        warmUp: jest.fn(),
       };
 
       const config: TimerConfig = {
