@@ -36,6 +36,55 @@ describe("TimerFace", () => {
     expect(container.props.collapsable).toBe(false);
   });
 
+  it("renders static chrome (WOD label, local time, context text, separators) in colors.neutral[400] over a true #000000 black background", async () => {
+    const screen = await renderWithProviders(
+      <TimerFace
+        currentTime="14:30"
+        contextLabel="WOD"
+        contextValue="1"
+        delta={undefined}
+        flags={{
+          hasCheckpointsBehavior: false,
+          isPreparing: false,
+          showsMinuteDigits: true,
+        }}
+        hours="1"
+        lap={1}
+        minutes="05"
+        modeAbbr="AMRAP"
+        seconds="00"
+      />
+    );
+
+    const container = screen.getByTestId("timer-screen");
+    const containerStyle = StyleSheet.flatten(container.props.style);
+    expect(containerStyle.backgroundColor).toBe(colors.black);
+    expect(colors.black).toBe("#000000");
+
+    const wodLabel = screen.getByText("AMRAP");
+    const wodStyle = StyleSheet.flatten(wodLabel.props.style);
+    expect(wodStyle.color).toBe(colors.neutral[400]);
+
+    const localTime = screen.getByText("14:30");
+    const localTimeStyle = StyleSheet.flatten(localTime.props.style);
+    expect(localTimeStyle.color).toBe(colors.neutral[400]);
+
+    const [separator] = screen.getAllByText(" | ");
+    const separatorStyle = StyleSheet.flatten(separator.props.style);
+    expect(separatorStyle.color).toBe(colors.neutral[400]);
+
+    const bannerLabel = screen.getByTestId("context-banner-label");
+    expect(bannerLabel.props.fill).toEqual({
+      payload: processColor(colors.neutral[400]),
+      type: 0,
+    });
+    const bannerValue = screen.getByTestId("context-banner-value");
+    expect(bannerValue.props.fill).toEqual({
+      payload: processColor(colors.neutral[400]),
+      type: 0,
+    });
+  });
+
   it("renders context label container with testID='context-label' and collapsable={false}", async () => {
     const screen = await renderWithProviders(
       <TimerFace

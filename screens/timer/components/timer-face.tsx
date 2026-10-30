@@ -180,7 +180,7 @@ const statusBarStyles = StyleSheet.create({
     paddingLeft: 16,
   },
   localTimeText: {
-    color: colors.neutral[500],
+    color: colors.neutral[400],
   },
   rightWrapper: {
     flex: 1,

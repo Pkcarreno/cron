@@ -3,7 +3,7 @@ import {
   ImpactFeedbackStyle,
   NotificationFeedbackType,
 } from "expo-haptics";
-import React from "react";
+import React, { useRef } from "react";
 import type { DimensionValue } from "react-native";
 import { StyleSheet, View } from "react-native";
 import {
@@ -12,6 +12,11 @@ import {
   useLongPressGesture,
   useTapGesture,
 } from "react-native-gesture-handler";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 
 import {
   triggerAndroidHaptic,
@@ -20,26 +25,43 @@ import {
 } from "@/helpers/haptics";
 
 const LONG_PRESS_DURATION = 600;
+const DEFAULT_DOUBLE_TAP_COOLDOWN_MS = 400;
 
 interface PressableAreaProps {
   children: React.ReactNode;
-  onPress?: () => void;
+  deadZone?: number;
+  doubleTapCooldownMs?: number;
   onDoublePress?: () => void;
   onLongPress?: () => void;
-  deadZone?: number;
+  onPress?: () => void;
 }
 
 export const PressableArea = ({
   children,
-  onPress,
+  deadZone = 0,
+  doubleTapCooldownMs = DEFAULT_DOUBLE_TAP_COOLDOWN_MS,
   onDoublePress,
   onLongPress,
-  deadZone = 0,
+  onPress,
 }: PressableAreaProps) => {
+  const scale = useSharedValue(1);
+  const lastDoubleTapTimestampRef = useRef<number>(0);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.get() }],
+  }));
+
   const doubleTap = useTapGesture({
     enabled: Boolean(onDoublePress),
+    maxDelay: 250,
     numberOfTaps: 2,
     onActivate: () => {
+      const now = Date.now();
+      if (now - lastDoubleTapTimestampRef.current < doubleTapCooldownMs) {
+        return;
+      }
+      lastDoubleTapTimestampRef.current = now;
+
       triggerHaptic({
         mode: NotificationFeedbackType.Success,
         type: triggerType.Notification,
@@ -53,11 +75,18 @@ export const PressableArea = ({
     enabled: Boolean(onLongPress),
     minDuration: LONG_PRESS_DURATION,
     onActivate: () => {
+      scale.set(withSpring(1, { dampingRatio: 1, duration: 150 }));
       triggerAndroidHaptic(AndroidHaptics.Long_Press, {
         mode: ImpactFeedbackStyle.Heavy,
         type: triggerType.Impact,
       });
       onLongPress?.();
+    },
+    onBegin: () => {
+      scale.set(withSpring(0.98, { dampingRatio: 1, duration: 150 }));
+    },
+    onFinalize: () => {
+      scale.set(withSpring(1, { dampingRatio: 1, duration: 150 }));
     },
     runOnJS: true,
   });
@@ -78,21 +107,21 @@ export const PressableArea = ({
   const composed = useExclusiveGestures(doubleTap, longPress, singleTap);
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, animatedStyle]}>
       {children}
 
       <View
+        pointerEvents="box-none"
         style={[
           StyleSheet.absoluteFill,
           { padding: `${deadZone}%` as DimensionValue },
         ]}
-        pointerEvents="box-none"
       >
         <GestureDetector gesture={composed}>
           <View collapsable={false} style={styles.container} />
         </GestureDetector>
       </View>
-    </View>
+    </Animated.View>
   );
 };
 

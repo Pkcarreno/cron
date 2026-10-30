@@ -13,12 +13,13 @@ import { useGetCurrentTime } from "@/hooks/use-get-current-time";
 import { TimerStatus, useTimer } from "@/hooks/use-timer";
 import { FeedbackService } from "@/services/audio/feedback-service";
 
+import { OledBurnInProtector } from "./components/oled-burn-in-protector";
 import { SummaryFace } from "./components/summary-face";
 import { TimerFace } from "./components/timer-face";
 import type { ContextFormatType } from "./types";
 
 // oxlint-disable eslint/max-statements
-export const Timer = () => {
+const TimerScreen = () => {
   const rawConfigParams = useLocalSearchParams<TimerRouteParams>();
   const timerInput = deserializeTimerConfig(rawConfigParams);
 
@@ -153,40 +154,46 @@ export const Timer = () => {
       <StatusBar hidden={true} />
       <HideNavigationBar />
 
-      <PressableArea
-        onLongPress={pause}
-        onDoublePress={
-          flags.hasCheckpointsBehavior ? recordCheckpoint : undefined
-        }
-        deadZone={14}
-      >
-        <TimerFace
-          hours={hours}
-          lap={
-            checkpoints &&
-            checkpoints.length > 0 &&
-            timerInput.mode === TimerMode.STOP_WATCH
-              ? checkpoints.at(-1)?.lap
-              : undefined
+      <OledBurnInProtector>
+        <PressableArea
+          deadZone={14}
+          onDoublePress={
+            flags.hasCheckpointsBehavior ? recordCheckpoint : undefined
           }
-          delta={
-            checkpoints &&
-            checkpoints.length > 0 &&
-            timerInput.mode === TimerMode.STOP_WATCH
-              ? checkpoints.at(-1)?.lapDeltaMs
-              : undefined
-          }
-          minutes={minutes}
-          seconds={seconds}
-          contextLabel={timerContextLabelState.value}
-          contextLabelColor={timerContextLabelState.color}
-          contextValue={timerContextValueState.value}
-          contextValueColor={timerContextValueState.color}
-          currentTime={currentTime}
-          modeAbbr={modeAbbr}
-          flags={flags}
-        />
-      </PressableArea>
+          onLongPress={pause}
+        >
+          <TimerFace
+            hours={hours}
+            lap={
+              checkpoints &&
+              checkpoints.length > 0 &&
+              timerInput.mode === TimerMode.STOP_WATCH
+                ? checkpoints.at(-1)?.lap
+                : undefined
+            }
+            delta={
+              checkpoints &&
+              checkpoints.length > 0 &&
+              timerInput.mode === TimerMode.STOP_WATCH
+                ? checkpoints.at(-1)?.lapDeltaMs
+                : undefined
+            }
+            minutes={minutes}
+            seconds={seconds}
+            contextLabel={timerContextLabelState.value}
+            contextLabelColor={timerContextLabelState.color}
+            contextValue={timerContextValueState.value}
+            contextValueColor={timerContextValueState.color}
+            currentTime={currentTime}
+            modeAbbr={modeAbbr}
+            flags={flags}
+          />
+        </PressableArea>
+      </OledBurnInProtector>
     </>
   );
 };
+
+export const Timer = Object.assign(TimerScreen, {
+  OledBurnInProtector,
+});
