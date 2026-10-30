@@ -26,7 +26,7 @@ describe("Settings screen", () => {
     expect(screen.getByText("Preparation")).toBeTruthy();
     expect(screen.getByText("Sounds")).toBeTruthy();
     expect(screen.getByText("Haptics")).toBeTruthy();
-    expect(screen.getByText("High-performance timer")).toBeTruthy();
+    expect(screen.getByText("High-precision timer")).toBeTruthy();
     expect(
       screen.getByText("Increases battery consumption in extended workouts")
     ).toBeTruthy();
@@ -34,20 +34,20 @@ describe("Settings screen", () => {
     expect(screen.getByText("Developer")).toBeTruthy();
   });
 
-  it("toggles high-performance timer and persists to store", async () => {
+  it("toggles high-precision timer and persists to store", async () => {
     const screen = await renderWithProviders(<Settings />);
 
     expect(screen.store.get(isHighPrecisionTimerEnabledAtom)).toBe(false);
 
     await act(() => {
-      fireEvent.press(screen.getByLabelText("High-performance timer"));
+      fireEvent.press(screen.getByLabelText("High-precision timer"));
     });
     await screen.rerender(<Settings />);
 
     expect(screen.store.get(isHighPrecisionTimerEnabledAtom)).toBe(true);
 
     await act(() => {
-      fireEvent.press(screen.getByLabelText("High-performance timer"));
+      fireEvent.press(screen.getByLabelText("High-precision timer"));
     });
     await screen.rerender(<Settings />);
 

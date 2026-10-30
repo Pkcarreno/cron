@@ -76,8 +76,6 @@ export const useTimerInstance = (
   const prevServiceRef = useRef<FeedbackServiceInterface | undefined>(
     feedbackService
   );
-  const prevHighPrecisionRef = useRef<boolean>(isHighPrecisionTimerEnabled);
-
   const configKey = JSON.stringify(config);
 
   if (
@@ -106,11 +104,13 @@ export const useTimerInstance = (
     prevConfigKeyRef.current = configKey;
     prevPrepTimeRef.current = preparationTimeMs;
     prevServiceRef.current = feedbackService;
-    prevHighPrecisionRef.current = isHighPrecisionTimerEnabled;
-  } else if (prevHighPrecisionRef.current !== isHighPrecisionTimerEnabled) {
-    controllerRef.current.setHighPrecision(isHighPrecisionTimerEnabled);
-    prevHighPrecisionRef.current = isHighPrecisionTimerEnabled;
   }
+
+  useEffect(() => {
+    if (controllerRef.current) {
+      controllerRef.current.setHighPrecision(isHighPrecisionTimerEnabled);
+    }
+  }, [isHighPrecisionTimerEnabled]);
 
   useEffect(
     () => () => {

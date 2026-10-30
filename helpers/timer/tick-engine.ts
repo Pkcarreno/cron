@@ -33,10 +33,8 @@ export class TickEngine {
 
   public onTickCallbacks: ((event: TickEvent) => void)[] = [];
 
-  constructor(options?: TickEngineOptions | boolean) {
-    if (typeof options === "boolean") {
-      this.isHighPrecision = options;
-    } else if (options?.highPrecision !== undefined) {
+  constructor(options?: TickEngineOptions) {
+    if (options?.highPrecision !== undefined) {
       this.isHighPrecision = options.highPrecision;
     }
   }

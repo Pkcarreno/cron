@@ -46,7 +46,7 @@ export const Settings = () => (
           <PreparationSelectorItem />
           <SoundSwitchItem />
           <HapticsSwitchItem />
-          <HighPerformanceTimerSwitchItem />
+          <HighPrecisionTimerSwitchItem />
         </MenuGroup>
       </Menu>
 
@@ -168,7 +168,7 @@ const HapticsSwitchItem = () => {
   );
 };
 
-const HighPerformanceTimerSwitchItem = () => {
+const HighPrecisionTimerSwitchItem = () => {
   const [isHighPrecisionTimerEnabled, setIsHighPrecisionTimerEnabled] = useAtom(
     isHighPrecisionTimerEnabledAtom
   );
@@ -176,13 +176,13 @@ const HighPerformanceTimerSwitchItem = () => {
   return (
     <MenuItem style={styles.switchItemWithAdvisory}>
       <View style={styles.switchTextContainer}>
-        <MenuItemText>High-performance timer</MenuItemText>
+        <MenuItemText>High-precision timer</MenuItemText>
         <Text colorSubtone="500" size={12}>
           Increases battery consumption in extended workouts
         </Text>
       </View>
       <Switch
-        accessibilityLabel="High-performance timer"
+        accessibilityLabel="High-precision timer"
         checked={isHighPrecisionTimerEnabled}
         onCheckedChange={setIsHighPrecisionTimerEnabled}
       />

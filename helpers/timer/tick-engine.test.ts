@@ -142,8 +142,8 @@ describe("tickEngine", () => {
       const hpEngine = new TickEngine({ highPrecision: true });
       expect(hpEngine.getIsHighPrecision()).toBe(true);
 
-      const boolEngine = new TickEngine(true);
-      expect(boolEngine.getIsHighPrecision()).toBe(true);
+      const standardEngine = new TickEngine({ highPrecision: false });
+      expect(standardEngine.getIsHighPrecision()).toBe(false);
     });
 
     it("emits continuous ticks via requestAnimationFrame in high precision mode", () => {
