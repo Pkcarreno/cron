@@ -144,6 +144,7 @@ const styles = StyleSheet.create({
   },
   contentWrapper: {
     flex: 1,
+    overflow: "hidden",
   },
   hide: {
     opacity: 0,
@@ -213,7 +214,6 @@ const timeStyles = StyleSheet.create({
   slot: {
     alignItems: "center",
     flex: 1,
-    height: "50%",
     justifyContent: "center",
     width: "100%",
   },

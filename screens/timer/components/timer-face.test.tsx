@@ -87,9 +87,7 @@ describe("TimerFace", () => {
     const secondsStyle = StyleSheet.flatten(secondsSlot.props.style);
 
     expect(minutesStyle.flex).toBe(1);
-    expect(minutesStyle.height).toBe("50%");
     expect(secondsStyle.flex).toBe(1);
-    expect(secondsStyle.height).toBe("50%");
   });
 
   it("renders minutes slot with opacity: 0 during preparation mode (!showsMinuteDigits) preserving layout slot", async () => {
@@ -120,11 +118,9 @@ describe("TimerFace", () => {
 
     expect(minutesStyle.opacity).toBe(0);
     expect(minutesStyle.flex).toBe(1);
-    expect(minutesStyle.height).toBe("50%");
 
     expect(secondsStyle.opacity).toBeUndefined();
     expect(secondsStyle.flex).toBe(1);
-    expect(secondsStyle.height).toBe("50%");
   });
 
   it("renders normalized SVG viewBox attributes and Geist Mono tabular typography for minutes and seconds", async () => {
