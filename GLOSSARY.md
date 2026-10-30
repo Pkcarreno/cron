@@ -71,3 +71,13 @@ Canonical vocabulary for the `cron` high-intensity interval training (HIIT) time
 - **AudioBufferSourceNode**: Native Web Audio source node that reproduces in-memory, pre-decoded Float32 PCM audio buffers with sub-millisecond precision scheduled on hardware audio clocks (`audioContext.currentTime`), eliminating JavaScript timer jitter.
 - **Audio Prewarm** (`AudioPrewarm`): Eager awakening and context resumption of the native audio graph and DAC pipeline before active intervals commence, eliminating cold-start latency and truncated first beeps.
 - **Audio Ducking** (`AudioDucking`): System audio session configuration (`duckOthers`, `mixWithOthers`, `playback`) that temporarily attenuates external media (e.g. Spotify, Apple Music) while cues play, and forces audio routing to speakers even when the physical silent switch is engaged.
+
+---
+
+## 8. Display & Energy Architecture (`screens/timer/`)
+
+- **Vectorial ViewBox Display**: Rendering pipeline utilizing `react-native-svg` and normalized `viewBox` coordinates (`0 0 400 200`) to scale digits across all portrait viewport densities via GPU rasterization, eliminating line-height clipping and dynamic font adjustment jitter.
+- **Reflow-Free Spatial Slot**: Layout architecture where the upper 50% flex viewport is strictly reserved for minutes and the lower 50% for seconds. During single-digit preparation countdowns, the minutes container remains mounted with `opacity: 0` to preserve the layout slot without reflow upon workout start.
+- **Adaptive Tick Sampling**: Dynamic frequency governor in `TickEngine` alternating between an energy-efficient 20 Hz (50 ms) default interval loop and a 120 Hz continuous `requestAnimationFrame` loop, reducing JavaScript thread duty cycle by >80% during extended workouts.
+- **OLED Orbital Protector** (`OledBurnInProtector`): Reanimated wrapper applying imperceptible cyclic micro-translations (±1–2 px every 90 s) to periodically rotate electrical current across adjacent subpixels, preventing permanent burn-in on OLED panels during multi-hour screen-on sessions.
+- **Sub-Peak Luminance Capping**: Display standard clamping static user interface chrome (badges, labels, local clock) to `colors.neutral[400]` (`#A1A1AA`) over an absolute `#000000` true-black canvas, reducing power draw and organic diode degradation.
