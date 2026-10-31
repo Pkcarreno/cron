@@ -10,7 +10,7 @@ export enum TimerEventType {
   START = "START",
   PAUSE = "PAUSE",
   RESET = "RESET",
-  FINISH = "FINISH",
+  COMPLETED = "COMPLETED",
   GO = "GO",
   PHASE_CHANGE = "PHASE_CHANGE",
   ROUND_CHANGE = "ROUND_CHANGE",
@@ -40,7 +40,7 @@ export interface TimerEventMap {
   [TimerEventType.START]: [];
   [TimerEventType.PAUSE]: [];
   [TimerEventType.RESET]: [];
-  [TimerEventType.FINISH]: [summary: SessionSummary];
+  [TimerEventType.COMPLETED]: [summary: SessionSummary];
   [TimerEventType.GO]: [];
   [TimerEventType.PHASE_CHANGE]: [newPhase: TimerPhase];
   [TimerEventType.ROUND_CHANGE]: [newRound: number];
@@ -87,7 +87,7 @@ export class TimerController {
     [TimerEventType.START]: [],
     [TimerEventType.PAUSE]: [],
     [TimerEventType.RESET]: [],
-    [TimerEventType.FINISH]: [],
+    [TimerEventType.COMPLETED]: [],
     [TimerEventType.GO]: [],
     [TimerEventType.PHASE_CHANGE]: [],
     [TimerEventType.ROUND_CHANGE]: [],
@@ -402,11 +402,11 @@ export class TimerController {
       return;
     }
 
-    // detect finish
+    // detect completion
     if (!oldState.isFinished && newState.isFinished) {
       this.hasEmittedApproachingTransition = false;
       const summary = this.generateSummary(true);
-      this.emit(TimerEventType.FINISH, summary);
+      this.emit(TimerEventType.COMPLETED, summary);
       return;
     }
 
@@ -466,7 +466,7 @@ export class TimerController {
       [TimerEventType.START]: [],
       [TimerEventType.PAUSE]: [],
       [TimerEventType.RESET]: [],
-      [TimerEventType.FINISH]: [],
+      [TimerEventType.COMPLETED]: [],
       [TimerEventType.GO]: [],
       [TimerEventType.PHASE_CHANGE]: [],
       [TimerEventType.ROUND_CHANGE]: [],
@@ -487,16 +487,6 @@ export class TimerController {
     this.lastUiTickState = null;
     this.lastEmittedUiSecond = null;
     this.lastEmittedQuantizedStep = null;
-    this.removeAllListeners();
-  }
-
-  public finishTimer() {
-    this.engine.pause();
-
-    const isCompleted = this.previousState?.isFinished || false;
-    const summary = this.generateSummary(isCompleted);
-
-    this.emit(TimerEventType.FINISH, summary);
     this.removeAllListeners();
   }
 

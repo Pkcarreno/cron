@@ -185,7 +185,7 @@ export const TimerRoot: FC<TimerRootProps> = ({
       setCurrentRound(newRound);
     });
 
-    controller.on(TimerEventType.FINISH, (summary: SessionSummary) => {
+    controller.on(TimerEventType.COMPLETED, (summary: SessionSummary) => {
       const now = new Date();
       endedAtRef.current = now;
       setEndedAt(now);
@@ -243,8 +243,7 @@ export const TimerRoot: FC<TimerRootProps> = ({
 
   const handleEndSession = useCallback(() => {
     setStatus(TimerStatus.FINISHED);
-    controllerRef.current?.finishTimer();
-  }, [controllerRef, setStatus]);
+  }, [setStatus]);
 
   const getSummary = useCallback((): UISessionSummary | undefined => {
     const coreSummary = controllerRef.current?.getSummary();
@@ -263,11 +262,8 @@ export const TimerRoot: FC<TimerRootProps> = ({
   }, [controllerRef]);
 
   const handleFinish = useCallback(() => {
-    if (status !== TimerStatus.FINISHED) {
-      handleEndSession();
-    }
     router.back();
-  }, [handleEndSession, router, status]);
+  }, [router]);
 
   useEffect(() => {
     if (shouldAutoStart) {

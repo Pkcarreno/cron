@@ -203,7 +203,7 @@ export class FeedbackService implements FeedbackServiceInterface {
       controller.on(TimerEventType.GO, () => {
         this.trigger(FeedbackCue.GO);
       }),
-      controller.on(TimerEventType.FINISH, () => {
+      controller.on(TimerEventType.COMPLETED, () => {
         this.trigger(FeedbackCue.FINISH);
       }),
       controller.on(TimerEventType.ROUND_CHANGE, () => {

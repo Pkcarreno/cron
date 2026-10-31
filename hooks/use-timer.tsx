@@ -189,7 +189,7 @@ export const useTimerController = (
     controller.on(TimerEventType.ROUND_CHANGE, (newRound: number) => {
       handlersRef.current?.onRoundChange?.(newRound);
     });
-    controller.on(TimerEventType.FINISH, (summary: SessionSummary) => {
+    controller.on(TimerEventType.COMPLETED, (summary: SessionSummary) => {
       setStatus(TimerStatus.FINISHED);
       endedAtRef.current = new Date();
       handlersRef.current?.onFinish?.(summary);
@@ -259,9 +259,7 @@ export const useTimer = (
 
   const handleEndSession = useCallback(() => {
     setStatus(TimerStatus.FINISHED);
-    controllerRef.current?.finishTimer();
-    // oxlint-disable eslint/exhaustive-deps
-  }, [controllerRef]);
+  }, []);
 
   const getSummary = useCallback((): UISessionSummary | undefined => {
     const coreSummary = controllerRef.current?.getSummary();

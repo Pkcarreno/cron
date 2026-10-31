@@ -210,7 +210,7 @@ describe("timerController", () => {
 
       controller.on(TimerEventType.PHASE_CHANGE, phaseChangeSpy);
       controller.on(TimerEventType.ROUND_CHANGE, roundChangeSpy);
-      controller.on(TimerEventType.FINISH, finishSpy);
+      controller.on(TimerEventType.COMPLETED, finishSpy);
       controller.on(TimerEventType.TICK, tickSpy);
 
       controller.start();
@@ -272,7 +272,7 @@ describe("timerController", () => {
       const finishSpy = jest.fn();
       const phaseChangeSpy = jest.fn();
 
-      controller.on(TimerEventType.FINISH, finishSpy);
+      controller.on(TimerEventType.COMPLETED, finishSpy);
       controller.on(TimerEventType.PHASE_CHANGE, phaseChangeSpy);
 
       controller.start();
@@ -388,16 +388,16 @@ describe("timerController", () => {
       const strategy = new UpStrategy(targetTimeMs);
       const controller = new TimerController(strategy, DEFAULT_PREPARATION_MS);
 
-      const finishSpy = jest.fn();
-      controller.on(TimerEventType.FINISH, finishSpy);
+      const completedSpy = jest.fn();
+      controller.on(TimerEventType.COMPLETED, completedSpy);
 
       controller.start();
 
       jest.advanceTimersByTime(targetTimeMs + DEFAULT_PREPARATION_MS);
 
-      expect(finishSpy).toHaveBeenCalledTimes(1);
+      expect(completedSpy).toHaveBeenCalledTimes(1);
 
-      expect(finishSpy).toHaveBeenCalledWith(
+      expect(completedSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           activeSessionTimeMs: targetTimeMs,
           fullyCompleted: true,
@@ -407,14 +407,14 @@ describe("timerController", () => {
       );
     });
 
-    it("provides a summary with fullyCompleted set to false when finishTimer is called manually", () => {
+    it("does not emit COMPLETED event when paused and disposed manually", () => {
       const strategy = new StopwatchStrategy();
       const controller = new TimerController(strategy, 0);
 
-      const finishSpy = jest.fn();
+      const completedSpy = jest.fn();
       const tickSpy = jest.fn();
 
-      controller.on(TimerEventType.FINISH, finishSpy);
+      controller.on(TimerEventType.COMPLETED, completedSpy);
       controller.on(TimerEventType.TICK, tickSpy);
 
       controller.start();
@@ -422,18 +422,12 @@ describe("timerController", () => {
       const sessionDurationMs = 120_000;
       jest.advanceTimersByTime(sessionDurationMs);
 
-      expect(finishSpy).not.toHaveBeenCalled();
+      expect(completedSpy).not.toHaveBeenCalled();
 
-      controller.finishTimer();
+      controller.pause();
+      controller.dispose();
 
-      expect(finishSpy).toHaveBeenCalledTimes(1);
-
-      expect(finishSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          activeSessionTimeMs: sessionDurationMs,
-          fullyCompleted: false,
-        })
-      );
+      expect(completedSpy).not.toHaveBeenCalled();
 
       const ticksBeforeAdvancing = tickSpy.mock.calls.length;
       jest.advanceTimersByTime(5000);
@@ -596,7 +590,7 @@ describe("timerController", () => {
       controller.on(TimerEventType.GO, onGo);
       controller.on(TimerEventType.PHASE_CHANGE, onPhaseChange);
       controller.on(TimerEventType.ROUND_CHANGE, onRoundChange);
-      controller.on(TimerEventType.FINISH, onFinish);
+      controller.on(TimerEventType.COMPLETED, onFinish);
 
       controller.start();
 
@@ -826,7 +820,7 @@ describe("timerController", () => {
       const controller = new TimerController(strategy, 0);
 
       const finishSpy = jest.fn();
-      controller.on(TimerEventType.FINISH, finishSpy);
+      controller.on(TimerEventType.COMPLETED, finishSpy);
 
       controller.start();
       jest.advanceTimersByTime(1000);

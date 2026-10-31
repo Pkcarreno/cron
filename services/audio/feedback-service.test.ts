@@ -282,7 +282,7 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
       jest.useRealTimers();
     });
 
-    it("translates FINISH event to FINISH cue", () => {
+    it("translates COMPLETED event to FINISH cue", () => {
       const strategy = new IntervalStrategy(1000, 500, 1);
       const controller = new TimerController(strategy, 0);
 
@@ -305,6 +305,37 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
       );
 
       controller.dispose();
+      jest.useRealTimers();
+    });
+
+    it("does not play finish cue when timer is paused and disposed before completion", () => {
+      const strategy = new IntervalStrategy(5000, 2000, 3);
+      const controller = new TimerController(strategy, 0);
+
+      const service = new FeedbackService({
+        audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
+        store: testStore,
+      });
+      service.attach(controller);
+
+      jest.useFakeTimers();
+      controller.start();
+
+      // Advance 2000ms into workout
+      jest.advanceTimersByTime(2000);
+      mockAudioEngine.playSound.mockClear();
+      notificationAsyncSpy.mockClear();
+
+      controller.pause();
+      controller.dispose();
+
+      expect(mockAudioEngine.playSound).not.toHaveBeenCalledWith(
+        CANONICAL_SOUNDS.FINISH
+      );
+      expect(notificationAsyncSpy).not.toHaveBeenCalledWith(
+        Haptics.NotificationFeedbackType.Success
+      );
+
       jest.useRealTimers();
     });
 
