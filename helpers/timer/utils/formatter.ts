@@ -36,7 +36,7 @@ export const formatTimeForDisplay = (
 };
 
 export const formatFullTimeToString = (totalMs: number) => {
-  const totalSeconds = Math.ceil(totalMs / 1000);
+  const totalSeconds = Math.trunc(totalMs / 1000);
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = Math.floor(totalSeconds % 60);

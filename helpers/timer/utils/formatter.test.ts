@@ -125,12 +125,20 @@ describe("formatter", () => {
       expect(result).toBe("00:00:09");
     });
 
-    it("rounds up milliseconds to the nearest second", () => {
+    it("floors milliseconds to the completed second for elapsed time", () => {
       const totalMilliseconds = 1200;
 
       const result = formatFullTimeToString(totalMilliseconds);
 
-      expect(result).toBe("00:00:02");
+      expect(result).toBe("00:00:01");
+    });
+
+    it("formats 60,050ms as exactly 1 minute and 0 seconds", () => {
+      const totalMilliseconds = 60_050;
+
+      const result = formatFullTimeToString(totalMilliseconds);
+
+      expect(result).toBe("00:01:00");
     });
 
     it("calculates hours, minutes, and seconds correctly", () => {

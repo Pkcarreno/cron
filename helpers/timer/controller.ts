@@ -288,20 +288,29 @@ export class TimerController {
       displayTimeMs: 0,
     };
 
-    const currentElapsedMs = this.engine.getElapsedMs();
-    const totalSessionMs = Math.max(this.lastKnownElapsedMs, currentElapsedMs);
+    let activeSessionTimeMs: number;
+    let totalSessionTimeMs: number;
 
-    const activeSessionMs = Math.max(
-      0,
-      totalSessionMs - this.preparationTimeMs
-    );
+    const targetDurationMs = this.strategy.getTargetDurationMs?.();
+
+    if (fullyCompleted && targetDurationMs !== undefined) {
+      activeSessionTimeMs = targetDurationMs;
+      totalSessionTimeMs = this.preparationTimeMs + targetDurationMs;
+    } else {
+      const currentElapsedMs = this.engine.getElapsedMs();
+      totalSessionTimeMs = Math.max(this.lastKnownElapsedMs, currentElapsedMs);
+      activeSessionTimeMs = Math.max(
+        0,
+        totalSessionTimeMs - this.preparationTimeMs
+      );
+    }
 
     return {
-      activeSessionTimeMs: activeSessionMs,
+      activeSessionTimeMs,
       checkpoints: [...this.checkpoints],
       fullyCompleted,
       roundsCompleted: finalState.currentRound,
-      totalSessionTimeMs: totalSessionMs,
+      totalSessionTimeMs,
     };
   }
 
