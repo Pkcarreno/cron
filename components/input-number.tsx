@@ -20,6 +20,7 @@ export interface InputNumberProps {
   value: number;
   onChange?: OnChangeValueType;
   onChangeValue?: OnChangeValueType;
+  onCommitValue?: OnChangeValueType;
   editable?: PressableProps["disabled"];
   suffix?: string;
   valueSuffix?: string;
@@ -125,7 +126,13 @@ const styles = StyleSheet.create({
 
 type NumberPickerSheetBaseProps = Pick<
   InputNumberProps,
-  "value" | "onChange" | "onChangeValue" | "valueSuffix" | "min" | "max"
+  | "value"
+  | "onChange"
+  | "onChangeValue"
+  | "onCommitValue"
+  | "valueSuffix"
+  | "min"
+  | "max"
 >;
 
 export type NumberPickerSheetProps = NumberPickerSheetBaseProps &
@@ -144,6 +151,7 @@ export const NumberPickerSheet: React.FC<NumberPickerSheetProps> = ({
   value,
   onChange,
   onChangeValue,
+  onCommitValue,
   valueSuffix,
   min = 0,
   max = 99,
@@ -165,8 +173,9 @@ export const NumberPickerSheet: React.FC<NumberPickerSheetProps> = ({
   const handleSave = useCallback(() => {
     onChange?.(draftValue);
     onChangeValue?.(draftValue);
+    onCommitValue?.(draftValue);
     setOpenSheet(false);
-  }, [draftValue, onChange, onChangeValue]);
+  }, [draftValue, onChange, onChangeValue, onCommitValue]);
 
   return (
     <Sheet open={openSheet} onOpenChange={handleOpenChange}>
@@ -197,7 +206,12 @@ const HeaderValueDisplay = memo(
         {value}
       </Text>
       {suffix && (
-        <Text colorSubtone="500" weight="700" size={18}>
+        <Text
+          style={sheetFormStyles.suffix}
+          colorSubtone="500"
+          weight="700"
+          size={18}
+        >
           {suffix}
         </Text>
       )}
@@ -277,8 +291,14 @@ const QuickActionsRow = memo(
 QuickActionsRow.displayName = "QuickActionsRow";
 
 export interface NumberPickerFormProps {
+  /** Settled value of the picker. */
   value: number;
+  /** Callback invoked when a value is committed (e.g. quick actions or thumbwheel settle). */
   onChange: (value: number) => void;
+  /** Optional continuous integer change stream during active thumbwheel scroll. */
+  onChangeValue?: (value: number) => void;
+  /** Optional terminal event callback dispatched upon thumbwheel settle. */
+  onCommitValue?: (value: number) => void;
   onSave?: () => void;
   valueSuffix?: string;
   min?: number;
@@ -288,6 +308,8 @@ export interface NumberPickerFormProps {
 export const NumberPickerForm: React.FC<NumberPickerFormProps> = ({
   value,
   onChange,
+  onChangeValue,
+  onCommitValue,
   onSave,
   valueSuffix,
   min = 0,
@@ -295,6 +317,30 @@ export const NumberPickerForm: React.FC<NumberPickerFormProps> = ({
 }) => {
   // Lock natural content height on initial mount to prevent TrueSheet requestLayout thrashing
   const [lockedHeight, setLockedHeight] = useState<number | undefined>();
+  const [prevValue, setPrevValue] = useState(value);
+  const [displayValue, setDisplayValue] = useState(value);
+
+  if (value !== prevValue) {
+    setPrevValue(value);
+    setDisplayValue(value);
+  }
+
+  const handleContinuousChange = useCallback(
+    (nextValue: number) => {
+      setDisplayValue(nextValue);
+      onChangeValue?.(nextValue);
+    },
+    [onChangeValue]
+  );
+
+  const handleCommit = useCallback(
+    (nextValue: number) => {
+      setDisplayValue(nextValue);
+      onChange(nextValue);
+      onCommitValue?.(nextValue);
+    },
+    [onChange, onCommitValue]
+  );
 
   const handleContainerLayout = useCallback(
     (e: LayoutChangeEvent) => {
@@ -318,14 +364,15 @@ export const NumberPickerForm: React.FC<NumberPickerFormProps> = ({
         lockedHeight ? { height: lockedHeight } : undefined,
       ]}
     >
-      <HeaderValueDisplay value={value} suffix={valueSuffix} />
+      <HeaderValueDisplay value={displayValue} suffix={valueSuffix} />
 
       <View style={sheetFormStyles.content}>
         <View style={sheetFormStyles.inputWrapper}>
           <InputThumbwheel
             testID="thumbwheel-picker"
             value={value}
-            onChangeValue={onChange}
+            onChangeValue={handleContinuousChange}
+            onCommitValue={handleCommit}
             min={min}
             max={max}
           />
@@ -335,7 +382,7 @@ export const NumberPickerForm: React.FC<NumberPickerFormProps> = ({
           value={value}
           min={min}
           max={max}
-          onChange={onChange}
+          onChange={handleCommit}
         />
       </View>
       <View style={sheetFormStyles.footer}>
@@ -358,6 +405,7 @@ const sheetFormStyles = StyleSheet.create({
     alignItems: "baseline",
     flexDirection: "row",
     gap: 8,
+    height: 56,
     justifyContent: "center",
   },
   inputWrapper: {},
@@ -373,7 +421,14 @@ const sheetFormStyles = StyleSheet.create({
   root: {
     gap: 16,
   },
+  suffix: {
+    fontVariant: ["tabular-nums"],
+    includeFontPadding: false,
+    lineHeight: 24,
+  },
   value: {
     fontVariant: ["tabular-nums"],
+    includeFontPadding: false,
+    lineHeight: 56,
   },
 });

@@ -1,12 +1,33 @@
+/* oxlint-disable node/global-require, unicorn/prefer-module */
 import { TrueSheet } from "@lodev09/react-native-true-sheet";
 import { act, cleanup, fireEvent } from "@testing-library/react-native";
 import React from "react";
-import { Text } from "react-native";
+import { StyleSheet, Text } from "react-native";
 
 import { renderWithProviders } from "@/test-utils/render-with-providers";
 
 import { InputNumber, NumberPickerForm } from "./input-number";
 import { Sheet, SheetContent } from "./sheet";
+
+jest.mock("./input-thumbwheel", () => {
+  const actual = jest.requireActual("./input-thumbwheel");
+  const ReactMock = require("react");
+  const { View: ViewMock } = require("react-native");
+
+  const MockInputThumbwheel = (props: Record<string, unknown>) =>
+    ReactMock.createElement(ViewMock, {
+      collapsable: false,
+      testID: props.testID ?? "thumbwheel-picker",
+      ...props,
+    });
+  MockInputThumbwheel.displayName = "InputThumbwheel";
+
+  return {
+    __esModule: true,
+    ...actual,
+    default: MockInputThumbwheel,
+  };
+});
 
 describe("InputNumber integration", () => {
   beforeEach(() => {
@@ -129,6 +150,77 @@ describe("InputNumber integration", () => {
 
     const saveButton = screen.getByTestId("number-picker-save-button");
     expect(saveButton).toBeTruthy();
+  });
+
+  it("synchronizes dual-channel dispatch: updates header in real time and commits only on deceleration halt", async () => {
+    const onChange = jest.fn();
+    const onSave = jest.fn();
+
+    const screen = await renderWithProviders(
+      <NumberPickerForm
+        value={10}
+        onChange={onChange}
+        onSave={onSave}
+        valueSuffix="sec"
+      />
+    );
+
+    const thumbwheel = screen.getByTestId("thumbwheel-picker");
+
+    // 1. Continuous stream via onChangeValue updates display readout without triggering onChange
+    await act(() => {
+      thumbwheel.props.onChangeValue(25);
+    });
+
+    expect(screen.getByText("25")).toBeTruthy();
+    expect(onChange).not.toHaveBeenCalled();
+
+    // 2. Terminal event via onCommitValue commits final value to form state
+    await act(() => {
+      thumbwheel.props.onCommitValue(25);
+    });
+
+    expect(onChange).toHaveBeenCalledWith(25);
+  });
+
+  it("applies fixed line height and tabular font styling to HeaderValueDisplay to isolate layout", async () => {
+    const screen = await renderWithProviders(
+      <NumberPickerForm value={10} onChange={jest.fn()} valueSuffix="sec" />
+    );
+
+    const valueText = screen.getByText("10");
+    const flatValueStyle = StyleSheet.flatten(valueText.props.style);
+    expect(flatValueStyle.lineHeight).toBe(56);
+    expect(flatValueStyle.fontVariant).toContain("tabular-nums");
+    expect(flatValueStyle.includeFontPadding).toBe(false);
+
+    const suffixText = screen.getByText("sec");
+    const flatSuffixStyle = StyleSheet.flatten(suffixText.props.style);
+    expect(flatSuffixStyle.lineHeight).toBe(24);
+    expect(flatSuffixStyle.fontVariant).toContain("tabular-nums");
+    expect(flatSuffixStyle.includeFontPadding).toBe(false);
+  });
+
+  it("re-enables quick action buttons when moving away from boundary limits", async () => {
+    const onChange = jest.fn();
+
+    const screen = await renderWithProviders(
+      <NumberPickerForm value={0} min={0} max={60} onChange={onChange} />
+    );
+
+    // At min=0, minus buttons are disabled
+    const minusFive = screen.getByRole("button", { name: "-5" });
+    expect(minusFive.props.accessibilityState?.disabled).toBe(true);
+
+    // External or committed update to 15
+    await act(() => {
+      screen.rerender(
+        <NumberPickerForm value={15} min={0} max={60} onChange={onChange} />
+      );
+    });
+
+    // -5 button should now be enabled
+    expect(minusFive.props.accessibilityState?.disabled).toBeFalsy();
   });
 });
 
