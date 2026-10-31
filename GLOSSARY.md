@@ -34,7 +34,7 @@ Canonical vocabulary for the `cron` high-intensity interval training (HIIT) time
 ## 4. Engine Architecture (`helpers/timer/`)
 
 - **Tick Engine** (`TickEngine`): Low-level, high-precision delta time accumulator decoupled from React rendering. Emits millisecond deltas using monotonic timestamps.
-- **Timer Controller** (`TimerController`): The stateful coordinator managing lifecycle (`START`, `PAUSE`, `RESET`, `FINISH`), event dispatching, audio beeps, and session summaries.
+- **Timer Controller** (`TimerController`): The stateful coordinator managing lifecycle (`START`, `PAUSE`, `RESET`, `COMPLETED`), event dispatching, audio beeps, and session summaries.
 - **Timer Strategy** (`TimerStrategy`): Deterministic, pure state calculation interface. Given a `TickEvent`, returns the current `TimerState` (`displayTimeMs`, `currentRound`, `totalRounds`, `phase`, `isFinished`).
   - `DownStrategy`: Decrements remaining duration to zero.
   - `UpStrategy`: Increments elapsed time up to timecap.
