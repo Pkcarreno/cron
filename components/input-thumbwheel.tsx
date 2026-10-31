@@ -367,6 +367,11 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = React.memo(
       [clearWatchdog, settleToNearest]
     );
 
+    const snapToOffsets = useMemo(
+      () => data.map((itemIndex) => itemIndex * TICK_WIDTH),
+      [data]
+    );
+
     // Memoize ticks so React reconciliation takes 0ms when parent re-renders value
     const renderedTicks = useMemo(
       () =>
@@ -415,6 +420,7 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = React.memo(
             horizontal
             showsHorizontalScrollIndicator={false}
             nestedScrollEnabled={true}
+            snapToOffsets={snapToOffsets}
             snapToInterval={TICK_WIDTH}
             decelerationRate="fast"
             bounces={true}
