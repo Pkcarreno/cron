@@ -26,18 +26,22 @@ import { colors } from "@/helpers/colors";
 
 import { Text } from "./text";
 
+/** Width of each tick column in pixels. */
 export const TICK_WIDTH = 20;
 
+/** Viewport-pruned tick style collapsing opacity and transform to zero. */
 export const HIDDEN_TICK_STYLE = {
   opacity: 0,
   transform: [{ scale: 0 }],
 };
 
+/** Fully visible tick style for center region. */
 export const FULL_TICK_STYLE = {
   opacity: 1,
   transform: [{ scale: 1 }],
 };
 
+/** Props for the InputThumbwheel component. */
 export interface InputThumbwheelProps {
   value: number;
   onChangeValue?: (value: number) => void;
@@ -47,6 +51,7 @@ export interface InputThumbwheelProps {
   testID?: string;
 }
 
+/** Props for the AnimatedTick component. */
 export interface AnimatedTickProps {
   index: number;
   min: number;
@@ -64,6 +69,10 @@ const getThumbwheelData = (min: number, max: number, step: number) => {
   };
 };
 
+/**
+ * Individual tick mark on the thumbwheel.
+ * Applies ghost pruning outside 12 units of center and cylindrical perspective falloff.
+ */
 export const AnimatedTick = React.memo(
   ({ index, min, step, scrollX, halfWidth, testID }: AnimatedTickProps) => {
     const currentValue = min + index * step;
@@ -72,13 +81,13 @@ export const AnimatedTick = React.memo(
 
     const animatedStyle = useAnimatedStyle(() => {
       "worklet";
-      if (halfWidth <= 0) {
-        return FULL_TICK_STYLE;
-      }
-
       const centerIndex = Math.round(scrollX.get() / TICK_WIDTH);
       if (Math.abs(index - centerIndex) > 12) {
         return HIDDEN_TICK_STYLE;
+      }
+
+      if (halfWidth <= 0) {
+        return FULL_TICK_STYLE;
       }
 
       const distance = Math.abs(tickPosition - scrollX.get());
@@ -215,16 +224,13 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = React.memo(
         if (isProgrammatic.current) {
           return;
         }
-        if (isUserInteracting.current && watchdogTimerRef.current) {
-          resetWatchdog(newIndex * TICK_WIDTH);
-        }
         if (newIndex !== lastReportedIndex.current) {
           lastReportedIndex.current = newIndex;
           const newValue = Number((min + newIndex * step).toFixed(2));
           onChangeValue?.(newValue);
         }
       },
-      [min, step, onChangeValue, resetWatchdog]
+      [min, step, onChangeValue]
     );
 
     // Pure 120fps UI runtime scroll tracking: ZERO bridge traffic inside onScroll
@@ -310,18 +316,29 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = React.memo(
         clearWatchdog();
         const velocityX = e.nativeEvent.velocity?.x ?? 0;
         const offsetX = e.nativeEvent.contentOffset.x;
+        const maxOffset = (totalTicks - 1) * TICK_WIDTH;
 
-        // If release was with minimal velocity, settle immediately
+        // If drag release was with near-zero velocity, settle immediately
         if (Math.abs(velocityX) < 0.05) {
           isUserInteracting.current = false;
           settleToNearest(offsetX);
-        } else {
-          // Watchdog timer: Android drops onMomentumScrollEnd when clamping to boundaries (min/max).
-          // Force interaction release after 150 ms debounce to unblock quick action buttons.
-          resetWatchdog(offsetX);
+          return;
+        }
+
+        // Android drops onMomentumScrollEnd when clamping to boundaries (min / max).
+        // If released at boundary or heading towards it, arm 150 ms debounce watchdog to release lock.
+        const isAtMinBoundary =
+          offsetX <= 0 || (offsetX <= TICK_WIDTH && velocityX < 0);
+        const isAtMaxBoundary =
+          offsetX >= maxOffset ||
+          (offsetX >= maxOffset - TICK_WIDTH && velocityX > 0);
+
+        if (isAtMinBoundary || isAtMaxBoundary) {
+          const fallbackOffset = isAtMinBoundary ? 0 : maxOffset;
+          resetWatchdog(fallbackOffset);
         }
       },
-      [clearWatchdog, resetWatchdog, settleToNearest]
+      [clearWatchdog, resetWatchdog, settleToNearest, totalTicks]
     );
 
     const handleMomentumScrollEnd = useCallback(
