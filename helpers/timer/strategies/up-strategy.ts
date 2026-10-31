@@ -20,4 +20,8 @@ export class UpStrategy implements TimerStrategy {
       totalRounds: 1,
     };
   }
+
+  getTargetDurationMs(): number {
+    return this.targetTimeMs;
+  }
 }

@@ -7,17 +7,18 @@ export class IntervalStrategy implements TimerStrategy {
   private workTimeMs: number;
   // private restTimeMs: number;
   private totalRounds: number;
+  private totalDurationMs: number;
 
   constructor(workTimeMs: number, restTimeMs: number, totalRounds: number) {
     this.cycleTimeMs = workTimeMs + restTimeMs;
     this.workTimeMs = workTimeMs;
     // this.restTimeMs = restTimeMs;
     this.totalRounds = totalRounds;
+    this.totalDurationMs = this.cycleTimeMs * totalRounds;
   }
 
   calculateState(event: TickEvent): TimerState {
-    const isFinished =
-      event.totalElapsedMs >= this.cycleTimeMs * this.totalRounds;
+    const isFinished = event.totalElapsedMs >= this.totalDurationMs;
 
     if (isFinished) {
       return {
@@ -43,5 +44,9 @@ export class IntervalStrategy implements TimerStrategy {
       phase: isWorkPhase ? TimerPhase.WORK : TimerPhase.REST,
       totalRounds: this.totalRounds,
     };
+  }
+
+  getTargetDurationMs(): number {
+    return this.totalDurationMs;
   }
 }

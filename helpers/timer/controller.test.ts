@@ -407,6 +407,30 @@ describe("timerController", () => {
       );
     });
 
+    it("clamps activeSessionTimeMs and totalSessionTimeMs to exact target duration when finished automatically with tick overshoot", () => {
+      const targetTimeMs = 60_020;
+      const strategy = new DownStrategy(targetTimeMs);
+      const controller = new TimerController(strategy, DEFAULT_PREPARATION_MS);
+
+      const completedSpy = jest.fn();
+      controller.on(TimerEventType.COMPLETED, completedSpy);
+
+      controller.start();
+
+      // Advancing to 80,000ms ensures the tick engine crosses the 70,020ms boundary
+      // Because interval is 50ms, the finishing tick fires at 70,050ms (30ms overshoot)
+      jest.advanceTimersByTime(80_000);
+
+      expect(completedSpy).toHaveBeenCalledTimes(1);
+      expect(completedSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          activeSessionTimeMs: targetTimeMs,
+          fullyCompleted: true,
+          totalSessionTimeMs: targetTimeMs + DEFAULT_PREPARATION_MS,
+        })
+      );
+    });
+
     it("does not emit COMPLETED event when paused and disposed manually", () => {
       const strategy = new StopwatchStrategy();
       const controller = new TimerController(strategy, 0);

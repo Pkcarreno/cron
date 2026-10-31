@@ -5,15 +5,16 @@ import type { TickEvent } from "@/helpers/timer/tick-engine";
 export class RoundStrategy implements TimerStrategy {
   private roundTimeMs: number;
   private totalRounds: number;
+  private totalDurationMs: number;
 
   constructor(roundTimeMs: number, totalRounds: number) {
     this.roundTimeMs = roundTimeMs;
     this.totalRounds = totalRounds;
+    this.totalDurationMs = roundTimeMs * totalRounds;
   }
 
   calculateState(event: TickEvent): TimerState {
-    const totalDuration = this.roundTimeMs * this.totalRounds;
-    const isFinished = event.totalElapsedMs >= totalDuration;
+    const isFinished = event.totalElapsedMs >= this.totalDurationMs;
 
     if (isFinished) {
       return {
@@ -37,5 +38,9 @@ export class RoundStrategy implements TimerStrategy {
       phase: TimerPhase.WORK,
       totalRounds: this.totalRounds,
     };
+  }
+
+  getTargetDurationMs(): number {
+    return this.totalDurationMs;
   }
 }
