@@ -43,8 +43,12 @@ export const FULL_TICK_STYLE = {
 
 /** Props for the InputThumbwheel component. */
 export interface InputThumbwheelProps {
+  /** Settled value controlled externally by initial prop or quick action buttons. */
   value: number;
+  /** Continuous integer stream dispatched from UI thread via useAnimatedReaction in real-time. */
   onChangeValue?: (value: number) => void;
+  /** Terminal event dispatched strictly upon deceleration halt and drag conclusion. */
+  onCommitValue?: (value: number) => void;
   min?: number;
   max?: number;
   step?: number;
@@ -143,7 +147,15 @@ export const AnimatedTick = React.memo(
 AnimatedTick.displayName = "AnimatedTick";
 
 const InputThumbwheel: React.FC<InputThumbwheelProps> = React.memo(
-  ({ value, onChangeValue, min = 0, max = 200, step = 1, testID }) => {
+  ({
+    value,
+    onChangeValue,
+    onCommitValue,
+    min = 0,
+    max = 200,
+    step = 1,
+    testID,
+  }) => {
     const [containerWidth, setContainerWidth] = useState(0);
     const scrollRef = useAnimatedRef<Animated.ScrollView>();
 
@@ -192,18 +204,23 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = React.memo(
     // Settle cleanly on integer mark when momentum or drag ends
     const settleToNearest = useCallback(
       (offsetX: number) => {
+        if (isProgrammatic.current) {
+          return;
+        }
+
         const closestIndex = Math.max(
           0,
           Math.min(Math.round(offsetX / TICK_WIDTH), totalTicks - 1)
         );
+        const finalValue = Number((min + closestIndex * step).toFixed(2));
 
         if (closestIndex !== lastReportedIndex.current) {
           lastReportedIndex.current = closestIndex;
-          const finalValue = Number((min + closestIndex * step).toFixed(2));
           onChangeValue?.(finalValue);
         }
+        onCommitValue?.(finalValue);
       },
-      [totalTicks, min, step, onChangeValue]
+      [totalTicks, min, step, onChangeValue, onCommitValue]
     );
 
     const resetWatchdog = useCallback(
