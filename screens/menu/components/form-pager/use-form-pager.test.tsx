@@ -238,5 +238,55 @@ describe("useFormPager", () => {
       );
       expect(onValueChange).toHaveBeenCalledWith(TimerMode.STOP_WATCH);
     });
+
+    it("commands setPageWithoutAnimation when transitionOptions.animated is false and suppresses scroll offset overrides", async () => {
+      const mockSetPage = jest.fn();
+      const mockSetPageWithoutAnimation = jest.fn();
+      const onValueChange = jest.fn();
+
+      const { result } = await renderHook(() =>
+        useFormPager(MOCK_OPTIONS, TimerMode.FOR_TIME, onValueChange)
+      );
+
+      (result.current.pagerRef as any).current = {
+        setPage: mockSetPage,
+        setPageWithoutAnimation: mockSetPageWithoutAnimation,
+      } as unknown as PagerView;
+
+      // Finish drag to index 3 (EMOM) with animated: false
+      await act(() => {
+        result.current.handleTabPress(3, { animated: false });
+      });
+
+      expect(mockSetPage).not.toHaveBeenCalled();
+      expect(mockSetPageWithoutAnimation).toHaveBeenCalledTimes(1);
+      expect(mockSetPageWithoutAnimation).toHaveBeenCalledWith(3);
+      expect(result.current.isProgrammaticTransition.value).toBe(true);
+      expect(result.current.isImmediateTransition.value).toBe(true);
+
+      // Intermediate scroll event from native momentum while settling is ignored
+      await act(() => {
+        result.current.scrollHandler({
+          offset: 0.5,
+          position: 1,
+        });
+      });
+      // scrollPosition must NOT jump back to 1.5
+      expect(result.current.scrollPosition.value).not.toBe(1.5);
+
+      // Landing on target page
+      await act(() => {
+        result.current.handlePageSelected({
+          nativeEvent: { position: 3 },
+        } as unknown as PagerViewOnPageSelectedEvent);
+      });
+
+      // Programmatic and immediate transition locks are released
+      expect(result.current.isProgrammaticTransition.value).toBe(false);
+      expect(result.current.isImmediateTransition.value).toBe(false);
+      expect(result.current.scrollPosition.value).toBe(3);
+      expect(result.current.currentIndexRef.current).toBe(3);
+      expect(onValueChange).toHaveBeenCalledWith(TimerMode.EMOM);
+    });
   });
 });

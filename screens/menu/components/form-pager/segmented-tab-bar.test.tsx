@@ -178,7 +178,9 @@ describe("SegmentedTabBar", () => {
         fireEvent.press(intervalTab);
       });
 
-      expect(onTabPress).toHaveBeenCalledWith(2, MOCK_OPTIONS[2]);
+      expect(onTabPress).toHaveBeenCalledWith(2, MOCK_OPTIONS[2], {
+        animated: true,
+      });
       expect(onValueChange).toHaveBeenCalledWith(TimerMode.INTERVAL);
       expect(hapticsSpy).toHaveBeenCalledTimes(1);
     });
@@ -201,7 +203,9 @@ describe("SegmentedTabBar", () => {
         fireEvent.press(emomTab);
       });
 
-      expect(onTabPress).toHaveBeenCalledWith(3, MOCK_OPTIONS[3]);
+      expect(onTabPress).toHaveBeenCalledWith(3, MOCK_OPTIONS[3], {
+        animated: true,
+      });
       expect(onValueChange).toHaveBeenCalledWith(TimerMode.EMOM);
 
       const stopwatchTab = screen.getByTestId("menu-tab-STOP_WATCH");
@@ -209,7 +213,9 @@ describe("SegmentedTabBar", () => {
         fireEvent.press(stopwatchTab);
       });
 
-      expect(onTabPress).toHaveBeenCalledWith(4, MOCK_OPTIONS[4]);
+      expect(onTabPress).toHaveBeenCalledWith(4, MOCK_OPTIONS[4], {
+        animated: true,
+      });
       expect(onValueChange).toHaveBeenCalledWith(TimerMode.STOP_WATCH);
     });
   });
