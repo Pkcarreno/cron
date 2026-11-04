@@ -1,3 +1,7 @@
+export interface TabTransitionOptions {
+  animated?: boolean;
+}
+
 export interface FormTabOption<T extends string> {
   value: T;
   label: string;

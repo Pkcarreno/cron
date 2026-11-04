@@ -20,7 +20,7 @@ import { colors } from "@/helpers/colors";
 import { TimerMode } from "@/helpers/timer/factory";
 
 import { TAB_FONT_SIZE } from "./shared";
-import type { FormTabOption } from "./types";
+import type { FormTabOption, TabTransitionOptions } from "./types";
 
 /**
  * Precomputed static typography widths derived from Geist 18px medium metrics
@@ -116,7 +116,11 @@ export interface SegmentedTabBarProps<T extends string = string> {
   options: readonly FormTabOption<T>[];
   selectedIndex?: number;
   scrollPosition?: SharedValue<number>;
-  onTabPress?: (index: number, option: FormTabOption<T>) => void;
+  onTabPress?: (
+    index: number,
+    option: FormTabOption<T>,
+    transitionOptions?: TabTransitionOptions
+  ) => void;
   onValueChange?: (value: T) => void;
   testID?: string;
   style?: StyleProp<ViewStyle>;
@@ -131,6 +135,7 @@ export const SegmentedTabBar = <T extends string>({
   testID,
   style,
 }: SegmentedTabBarProps<T>) => {
+  const hasExternalScrollPosition = Boolean(externalScrollPosition);
   const internalScrollPosition = useSharedValue(selectedIndex);
   const scrollPosition = externalScrollPosition ?? internalScrollPosition;
   const startTrackOffsetShared = useSharedValue(0);
@@ -190,27 +195,37 @@ export const SegmentedTabBar = <T extends string>({
   const activeDetentIndexShared = useSharedValue(selectedIndex);
 
   const handleCommitChange = useCallback(
-    (index: number) => {
+    (index: number, transitionOptions?: TabTransitionOptions) => {
       const selectedOption = options[index];
       if (selectedOption) {
-        onTabPress?.(index, selectedOption);
+        onTabPress?.(index, selectedOption, transitionOptions);
         onValueChange?.(selectedOption.value);
       }
     },
     [options, onTabPress, onValueChange]
   );
 
+  const applyStandaloneSpring = useCallback(
+    (targetIndex: number) => {
+      "worklet";
+      if (!hasExternalScrollPosition) {
+        scrollPosition.value = withSpring(targetIndex, {
+          dampingRatio: 1,
+          duration: 250,
+          reduceMotion: ReduceMotion.System,
+        });
+      }
+    },
+    [hasExternalScrollPosition, scrollPosition]
+  );
+
   const handlePressTab = useCallback(
     (index: number) => {
-      scrollPosition.value = withSpring(index, {
-        dampingRatio: 1,
-        duration: 250,
-        reduceMotion: ReduceMotion.System,
-      });
+      applyStandaloneSpring(index);
       Haptics.selectionAsync();
-      handleCommitChange(index);
+      handleCommitChange(index, { animated: true });
     },
-    [handleCommitChange, scrollPosition]
+    [applyStandaloneSpring, handleCommitChange]
   );
 
   const panGesture = useMemo(
@@ -281,7 +296,7 @@ export const SegmentedTabBar = <T extends string>({
             velocity: -event.velocityX / 100,
           });
 
-          scheduleOnRN(handleCommitChange, targetTabIndex);
+          scheduleOnRN(handleCommitChange, targetTabIndex, { animated: false });
         }),
     [
       handleCommitChange,
@@ -314,16 +329,13 @@ export const SegmentedTabBar = <T extends string>({
             tabWidths
           );
 
-          scrollPosition.value = withSpring(targetTabIndex, {
-            dampingRatio: 1,
-            duration: 250,
-            reduceMotion: ReduceMotion.System,
-          });
+          applyStandaloneSpring(targetTabIndex);
 
           scheduleOnRN(Haptics.selectionAsync);
-          scheduleOnRN(handleCommitChange, targetTabIndex);
+          scheduleOnRN(handleCommitChange, targetTabIndex, { animated: true });
         }),
     [
+      applyStandaloneSpring,
       handleCommitChange,
       tabIndices,
       tabOffsets,
