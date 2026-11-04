@@ -18,6 +18,15 @@ const mockBack = jest.fn();
 const mockPrepare = jest.fn(() => Promise.resolve());
 const mockDispose = jest.fn();
 const mockAttach = jest.fn(() => jest.fn());
+const mockActivateKeepAwakeAsync = jest.fn((_tag?: string) =>
+  Promise.resolve()
+);
+const mockDeactivateKeepAwake = jest.fn((_tag?: string) => Promise.resolve());
+
+jest.mock("expo-keep-awake", () => ({
+  activateKeepAwakeAsync: (tag?: string) => mockActivateKeepAwakeAsync(tag),
+  deactivateKeepAwake: (tag?: string) => mockDeactivateKeepAwake(tag),
+}));
 
 jest.mock("expo-router", () => ({
   Link: ({ children }: { children: React.ReactNode }) => children,
@@ -333,6 +342,59 @@ describe("Timer screen audio lifecycle", () => {
       // Workout finish event should transition screen to summary face
       expect(screen.getByText("session summary")).toBeTruthy();
       expect(screen.getByText("Back to menu")).toBeTruthy();
+    });
+  });
+
+  describe("Keep-awake screen lock lifecycle", () => {
+    it("activates keep awake with 'cron-timer' when timer is running and deactivates on unmount", async () => {
+      const store = createStore();
+      const screen = await renderWithProviders(<Timer />, { store });
+
+      expect(mockActivateKeepAwakeAsync).toHaveBeenCalledWith("cron-timer");
+      expect(mockDeactivateKeepAwake).not.toHaveBeenCalled();
+
+      await act(() => {
+        screen.unmount();
+      });
+
+      expect(mockDeactivateKeepAwake).toHaveBeenCalledWith("cron-timer");
+    });
+
+    it("deactivates keep awake when timer transitions to summary face on pause and reactivates on resume", async () => {
+      const store = createStore();
+      const screen = await renderWithProviders(<Timer />, { store });
+
+      expect(mockActivateKeepAwakeAsync).toHaveBeenCalledWith("cron-timer");
+      mockActivateKeepAwakeAsync.mockClear();
+      mockDeactivateKeepAwake.mockClear();
+
+      // Pause session
+      const pressable = screen.getByTestId("pressable-area");
+      await act(() => {
+        fireEvent.press(pressable);
+      });
+
+      expect(mockDeactivateKeepAwake).toHaveBeenCalledWith("cron-timer");
+      expect(mockActivateKeepAwakeAsync).not.toHaveBeenCalled();
+      mockDeactivateKeepAwake.mockClear();
+
+      // Resume session
+      const resumeButton = screen.getByText("Resume session");
+      await act(() => {
+        fireEvent.press(resumeButton);
+      });
+
+      expect(mockActivateKeepAwakeAsync).toHaveBeenCalledWith("cron-timer");
+    });
+
+    it("does not activate keep awake when shouldAutoStart is false until timer starts", async () => {
+      const store = createStore();
+      await renderWithProviders(<Timer.Root shouldAutoStart={false} />, {
+        store,
+      });
+
+      expect(mockActivateKeepAwakeAsync).not.toHaveBeenCalled();
+      expect(mockDeactivateKeepAwake).not.toHaveBeenCalled();
     });
   });
 });

@@ -61,6 +61,9 @@ We restructure the timer screen by adopting a **Compound Component** architectur
 - **Sub-Peak Luminance Capping**:
   - All static elements (mode labels, battery indicators, separators, and ambient clock) are clamped to `colors.neutral[400]` (`#A1A1AA`).
   - Canvas background is locked to pure `#000000`, keeping unused OLED pixels completely unpowered.
+- **Execution-Scoped Screen Wake Lock (`useTimerKeepAwake`)**:
+  - Screen sleep prevention (`expo-keep-awake`) is scoped strictly to active session execution (`TimerStatus.RUNNING`, spanning `PREPARATION`, `WORK`, and `REST`).
+  - When the session transitions to paused or finished (`SummaryFace`), the lock is automatically released, allowing OS display timeouts to resume and mitigating battery draw and OLED wear when unattended.
 
 ### 5. Physical Touch Mechanics in PressableArea
 

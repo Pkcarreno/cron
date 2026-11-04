@@ -1,4 +1,3 @@
-import { useKeepAwake } from "expo-keep-awake";
 import type { FC } from "react";
 import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -53,8 +52,6 @@ export const TimerFace: FC<Props> = ({
       ].filter(Boolean),
     [hours, lap, delta, isLowBattery]
   );
-
-  useKeepAwake();
 
   return (
     <View style={styles.container} testID="timer-screen" collapsable={false}>
