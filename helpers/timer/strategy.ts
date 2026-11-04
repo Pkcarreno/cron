@@ -15,7 +15,17 @@ export interface TimerState {
   isFinished: boolean;
 }
 
+export interface PhaseDetails {
+  currentRound: number;
+  isFinished: boolean;
+  phase: TimerPhase;
+  phaseDurationMs: number;
+  phaseRemainingMs: number;
+  totalRounds: number;
+}
+
 export interface TimerStrategy {
   calculateState: (event: TickEvent) => TimerState;
   getTargetDurationMs?: () => number;
+  getPhaseDetails?: (event: TickEvent) => PhaseDetails | null;
 }

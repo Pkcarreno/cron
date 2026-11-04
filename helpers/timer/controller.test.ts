@@ -853,17 +853,203 @@ describe("timerController", () => {
       controller.handleAppStateChange("background");
       jest.advanceTimersByTime(10_000);
 
-      expect(finishSpy).not.toHaveBeenCalled();
-
-      // Return to foreground
-      controller.handleAppStateChange("active");
-
+      // Completed milestone fires on schedule in background
       expect(finishSpy).toHaveBeenCalledTimes(1);
       expect(finishSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           fullyCompleted: true,
         })
       );
+
+      // Return to foreground maintains completed state without duplicate emission
+      controller.handleAppStateChange("active");
+      expect(finishSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("deterministic milestone scheduling and background audio cues (#117)", () => {
+    it("pauses high-cadence rendering loops without halting timer progression when backgrounded", () => {
+      const strategy = new IntervalStrategy(10_000, 5000, 2);
+      const controller = new TimerController(strategy, 5000);
+
+      const uiTickSpy = jest.fn();
+      const goSpy = jest.fn();
+      controller.on(TimerEventType.UI_TICK, uiTickSpy);
+      controller.on(TimerEventType.GO, goSpy);
+
+      controller.start();
+      jest.advanceTimersByTime(500);
+      expect(uiTickSpy).toHaveBeenCalled();
+      const uiTicksBeforeBg = uiTickSpy.mock.calls.length;
+
+      // App transitions to background
+      controller.handleAppStateChange("background");
+      expect(controller.getIsVisualUpdatesPaused()).toBe(true);
+
+      // Milestone scheduler holds the background timers
+      expect(controller.getScheduledMilestones()).not.toBeNull();
+
+      // Advance through remainder of preparation (4500ms)
+      jest.advanceTimersByTime(4500);
+
+      // High-cadence UI rendering ticks are suppressed
+      expect(uiTickSpy.mock.calls.length).toBe(uiTicksBeforeBg);
+
+      // But GO transition fires on schedule
+      expect(goSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("pre-warms audio DAC ~1500 ms before countdown beeps trigger to prevent cold-start clipping", () => {
+      const strategy = new UpStrategy(10_000);
+      const controller = new TimerController(strategy, 5000);
+
+      const warmupSpy = jest.fn();
+      const beepSpy = jest.fn();
+      const goSpy = jest.fn();
+
+      controller.on(TimerEventType.TRANSITION_APPROACHING, warmupSpy);
+      controller.on(TimerEventType.BEEP, beepSpy);
+      controller.on(TimerEventType.GO, goSpy);
+
+      controller.start();
+      controller.handleAppStateChange("background");
+
+      // In 5000ms prep with countdown beeps at 2000ms (3s left), 3000ms, 4000ms:
+      // Audio DAC prewarm triggers at 500ms (5000 - 4500 = 500ms, exactly 1500ms before beep 3)
+      jest.advanceTimersByTime(500);
+      expect(warmupSpy).toHaveBeenCalledTimes(1);
+      expect(beepSpy).not.toHaveBeenCalled();
+
+      // At 2000ms: beep(3) fires (exactly 1500ms after warmup)
+      jest.advanceTimersByTime(1500);
+      expect(beepSpy).toHaveBeenCalledWith(3);
+
+      // At 3000ms: beep(2) fires
+      jest.advanceTimersByTime(1000);
+      expect(beepSpy).toHaveBeenCalledWith(2);
+
+      // At 4000ms: beep(1) fires
+      jest.advanceTimersByTime(1000);
+      expect(beepSpy).toHaveBeenCalledWith(1);
+
+      // At 5000ms: GO fires
+      jest.advanceTimersByTime(1000);
+      expect(goSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("plays 3-2-1 countdown beeps and interval phase transitions accurately on schedule while backgrounded", () => {
+      // 0ms prep, 5000ms work, 4000ms rest, 1 round
+      const strategy = new IntervalStrategy(5000, 4000, 1);
+      const controller = new TimerController(strategy, 0);
+
+      const beepSpy = jest.fn();
+      const phaseChangeSpy = jest.fn();
+      const finishSpy = jest.fn();
+
+      controller.on(TimerEventType.BEEP, beepSpy);
+      controller.on(TimerEventType.PHASE_CHANGE, phaseChangeSpy);
+      controller.on(TimerEventType.COMPLETED, finishSpy);
+
+      controller.start();
+      controller.handleAppStateChange("background");
+
+      // Work phase (5000ms):
+      // Countdown beeps at 2000ms (3), 3000ms (2), 4000ms (1)
+      jest.advanceTimersByTime(2000);
+      expect(beepSpy).toHaveBeenCalledWith(3);
+
+      jest.advanceTimersByTime(1000);
+      expect(beepSpy).toHaveBeenCalledWith(2);
+
+      jest.advanceTimersByTime(1000);
+      expect(beepSpy).toHaveBeenCalledWith(1);
+
+      // At 5000ms: Transition to REST
+      jest.advanceTimersByTime(1000);
+      expect(phaseChangeSpy).toHaveBeenCalledWith(TimerPhase.REST);
+
+      // Rest phase (4000ms):
+      // Countdown beeps at 6000ms (3), 7000ms (2), 8000ms (1)
+      jest.advanceTimersByTime(1000);
+      expect(beepSpy).toHaveBeenCalledWith(3);
+
+      jest.advanceTimersByTime(1000);
+      expect(beepSpy).toHaveBeenCalledWith(2);
+
+      jest.advanceTimersByTime(1000);
+      expect(beepSpy).toHaveBeenCalledWith(1);
+
+      // At 9000ms: Workout completes
+      jest.advanceTimersByTime(1000);
+      expect(finishSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fullyCompleted: true,
+        })
+      );
+    });
+
+    it("clears milestone timers on pause and reschedules with remaining duration on resume in background", () => {
+      const strategy = new DownStrategy(10_000);
+      const controller = new TimerController(strategy, 0);
+
+      const warmupSpy = jest.fn();
+      const beepSpy = jest.fn();
+      const finishSpy = jest.fn();
+
+      controller.on(TimerEventType.TRANSITION_APPROACHING, warmupSpy);
+      controller.on(TimerEventType.BEEP, beepSpy);
+      controller.on(TimerEventType.COMPLETED, finishSpy);
+
+      controller.start();
+      controller.handleAppStateChange("background");
+
+      // Advance 2000ms into 10s countdown (8s remaining)
+      jest.advanceTimersByTime(2000);
+
+      // Pause while in background
+      controller.pause();
+      expect(controller.getScheduledMilestones()).toBeNull();
+
+      // Advance while paused: no events fire
+      jest.advanceTimersByTime(30_000);
+      expect(warmupSpy).not.toHaveBeenCalled();
+      expect(beepSpy).not.toHaveBeenCalled();
+      expect(finishSpy).not.toHaveBeenCalled();
+
+      // Resume while still in background: reschedules for remaining 8000ms
+      controller.start();
+      expect(controller.getScheduledMilestones()).not.toBeNull();
+      // Target is now + 8000ms. Warmup is at now + 8000 - 4500 = 3500ms
+      jest.advanceTimersByTime(3500);
+      expect(warmupSpy).toHaveBeenCalledTimes(1);
+
+      // Countdown beep 3 at now + 8000 - 3000 = 5000ms (1500ms after warmup)
+      jest.advanceTimersByTime(1500);
+      expect(beepSpy).toHaveBeenCalledWith(3);
+    });
+
+    it("reconciles elapsed time to exact millisecond and resumes UI rendering on foreground return", () => {
+      const strategy = new DownStrategy(30_000);
+      const controller = new TimerController(strategy, 0);
+
+      const uiTickSpy = jest.fn();
+      controller.on(TimerEventType.UI_TICK, uiTickSpy);
+
+      controller.start();
+      controller.handleAppStateChange("background");
+
+      // Advance by arbitrary non-integer seconds in background
+      jest.advanceTimersByTime(12_345);
+
+      // Return to foreground
+      controller.handleAppStateChange("active");
+      expect(controller.getIsVisualUpdatesPaused()).toBe(false);
+      expect(controller.getScheduledMilestones()).toBeNull();
+
+      // UI tick reconciled to exact millisecond
+      const lastState = uiTickSpy.mock.calls.at(-1)?.[0] as TimerState;
+      expect(lastState.displayTimeMs).toBe(17_655);
+      expect(controller.getSummary().totalSessionTimeMs).toBe(12_345);
     });
   });
 });

@@ -1,4 +1,8 @@
-import type { TimerState, TimerStrategy } from "@/helpers/timer/strategy";
+import type {
+  PhaseDetails,
+  TimerState,
+  TimerStrategy,
+} from "@/helpers/timer/strategy";
 import { TimerPhase } from "@/helpers/timer/strategy";
 import type { TickEvent } from "@/helpers/timer/tick-engine";
 
@@ -36,6 +40,33 @@ export class RoundStrategy implements TimerStrategy {
       displayTimeMs,
       isFinished: false,
       phase: TimerPhase.WORK,
+      totalRounds: this.totalRounds,
+    };
+  }
+
+  getPhaseDetails(event: TickEvent): PhaseDetails {
+    if (event.totalElapsedMs >= this.totalDurationMs) {
+      return {
+        currentRound: this.totalRounds,
+        isFinished: true,
+        phase: TimerPhase.DONE,
+        phaseDurationMs: 0,
+        phaseRemainingMs: 0,
+        totalRounds: this.totalRounds,
+      };
+    }
+
+    const currentRound =
+      Math.floor(event.totalElapsedMs / this.roundTimeMs) + 1;
+    const timeInCurrentRound = event.totalElapsedMs % this.roundTimeMs;
+    const phaseRemainingMs = this.roundTimeMs - timeInCurrentRound;
+
+    return {
+      currentRound,
+      isFinished: false,
+      phase: TimerPhase.WORK,
+      phaseDurationMs: this.roundTimeMs,
+      phaseRemainingMs,
       totalRounds: this.totalRounds,
     };
   }
