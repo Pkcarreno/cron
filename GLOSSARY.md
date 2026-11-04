@@ -81,3 +81,13 @@ Canonical vocabulary for the `cron` high-intensity interval training (HIIT) time
 - **Adaptive Tick Sampling**: Dynamic frequency governor in `TickEngine` alternating between an energy-efficient 20 Hz (50 ms) default interval loop and a 120 Hz continuous `requestAnimationFrame` loop, reducing JavaScript thread duty cycle by >80% during extended workouts.
 - **OLED Orbital Protector** (`OledBurnInProtector`): Reanimated wrapper applying imperceptible cyclic micro-translations (±1–2 px every 90 s) to periodically rotate electrical current across adjacent subpixels, preventing permanent burn-in on OLED panels during multi-hour screen-on sessions.
 - **Sub-Peak Luminance Capping**: Display standard clamping static user interface chrome (badges, labels, local clock) to `colors.neutral[400]` (`#A1A1AA`) over an absolute `#000000` true-black canvas, reducing power draw and organic diode degradation.
+
+---
+
+## 9. Background & Live Activity Architecture (`helpers/background/` & `modules/cron-foreground-service/`)
+
+- **Live Activity Driver** (`LiveActivityDriver`): Platform-agnostic presenter interface decoupling the workout session state from platform-specific background display channels (Android Foreground Service, iOS ActivityKit / Dynamic Island).
+- **Foreground Timer Service** (`CronForegroundService`): Local Android foreground service leveraging native `NotificationCompat.Builder` and hardware chronometer (`setUsesChronometer(true)`) to continuously render countdowns in system UI with zero JavaScript thread duty cycle.
+- **Target-Based Milestone Scheduling** (`TargetMilestoneScheduler`): Deterministic event dispatch technique computing exact wall-clock timestamps for phase transitions, audio prewarm, and countdown beeps, eliminating polling jitter and CPU wakeups in background.
+- **Audio Ducking Drain Window**: Controlled acoustic delay (~200ms) after audio cue termination that ensures speaker hardware FIFO buffers completely clear before restoring external background music (e.g. Spotify) to full volume.
+- **Permission Fallback Guard**: Defensive background lifecycle handler that automatically pauses active timer sessions if notification permissions are denied, preventing disorientation while providing clear in-app guidance upon return.
