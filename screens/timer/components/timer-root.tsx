@@ -40,6 +40,7 @@ import { TimerGestureOverlay } from "@/screens/timer/components/timer-gesture-ov
 import { TimerHeader } from "@/screens/timer/components/timer-header";
 import type { TimerActions } from "@/screens/timer/context";
 import { TimerContext } from "@/screens/timer/context";
+import { useTimerKeepAwake } from "@/screens/timer/hooks/use-timer-keep-awake";
 import { FeedbackService } from "@/services/audio/feedback-service";
 
 export interface TimerRootProps {
@@ -86,6 +87,8 @@ export const TimerRoot: FC<TimerRootProps> = ({
   const [startedAt, setStartedAt] = useAtom(timerStartedAtAtom);
   const [endedAt, setEndedAt] = useAtom(timerEndedAtAtom);
   const setIsLowBattery = useSetAtom(isLowBatteryAtom);
+
+  useTimerKeepAwake(status === TimerStatus.RUNNING);
 
   const isLowBattery = useIsLowBattery();
 
