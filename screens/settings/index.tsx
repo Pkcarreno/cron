@@ -113,7 +113,7 @@ const PreparationSelectorItem = () => {
       min={1}
       max={99}
       valueSuffix="sec"
-      onChangeValue={handlePreparationTimeChange}
+      onChange={handlePreparationTimeChange}
     >
       {(triggerProps) => (
         <MenuPressableItem {...triggerProps}>

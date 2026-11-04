@@ -14,12 +14,11 @@ import type { TriggerRenderProp } from "./sheet";
 import { Sheet, SheetContent, SheetTrigger } from "./sheet";
 import { Text } from "./text";
 
-type OnChangeValueType = (value: number) => void;
+type OnChangeType = (value: number) => void;
 
 export interface InputNumberProps {
   value: number;
-  onChange?: OnChangeValueType;
-  onChangeValue?: OnChangeValueType;
+  onChange?: OnChangeType;
   editable?: PressableProps["disabled"];
   suffix?: string;
   valueSuffix?: string;
@@ -125,7 +124,7 @@ const styles = StyleSheet.create({
 
 type NumberPickerSheetBaseProps = Pick<
   InputNumberProps,
-  "value" | "onChange" | "onChangeValue" | "valueSuffix" | "min" | "max"
+  "value" | "onChange" | "valueSuffix" | "min" | "max"
 >;
 
 export type NumberPickerSheetProps = NumberPickerSheetBaseProps &
@@ -143,7 +142,6 @@ export type NumberPickerSheetProps = NumberPickerSheetBaseProps &
 export const NumberPickerSheet: React.FC<NumberPickerSheetProps> = ({
   value,
   onChange,
-  onChangeValue,
   valueSuffix,
   min = 0,
   max = 99,
@@ -164,9 +162,8 @@ export const NumberPickerSheet: React.FC<NumberPickerSheetProps> = ({
 
   const handleSave = useCallback(() => {
     onChange?.(draftValue);
-    onChangeValue?.(draftValue);
     setOpenSheet(false);
-  }, [draftValue, onChange, onChangeValue]);
+  }, [draftValue, onChange]);
 
   return (
     <Sheet open={openSheet} onOpenChange={handleOpenChange}>
@@ -197,7 +194,12 @@ const HeaderValueDisplay = memo(
         {value}
       </Text>
       {suffix && (
-        <Text colorSubtone="500" weight="700" size={18}>
+        <Text
+          style={sheetFormStyles.suffix}
+          colorSubtone="500"
+          weight="700"
+          size={18}
+        >
           {suffix}
         </Text>
       )}
@@ -278,6 +280,7 @@ QuickActionsRow.displayName = "QuickActionsRow";
 
 export interface NumberPickerFormProps {
   value: number;
+  /** Callback for confirmed changes, such as quick actions or thumbwheel stop. */
   onChange: (value: number) => void;
   onSave?: () => void;
   valueSuffix?: string;
@@ -295,6 +298,25 @@ export const NumberPickerForm: React.FC<NumberPickerFormProps> = ({
 }) => {
   // Lock natural content height on initial mount to prevent TrueSheet requestLayout thrashing
   const [lockedHeight, setLockedHeight] = useState<number | undefined>();
+  const [prevValue, setPrevValue] = useState(value);
+  const [displayValue, setDisplayValue] = useState(value);
+
+  if (value !== prevValue) {
+    setPrevValue(value);
+    setDisplayValue(value);
+  }
+
+  const handleContinuousChange = useCallback((nextValue: number) => {
+    setDisplayValue(nextValue);
+  }, []);
+
+  const handleCommit = useCallback(
+    (nextValue: number) => {
+      setDisplayValue(nextValue);
+      onChange(nextValue);
+    },
+    [onChange]
+  );
 
   const handleContainerLayout = useCallback(
     (e: LayoutChangeEvent) => {
@@ -318,14 +340,15 @@ export const NumberPickerForm: React.FC<NumberPickerFormProps> = ({
         lockedHeight ? { height: lockedHeight } : undefined,
       ]}
     >
-      <HeaderValueDisplay value={value} suffix={valueSuffix} />
+      <HeaderValueDisplay value={displayValue} suffix={valueSuffix} />
 
       <View style={sheetFormStyles.content}>
         <View style={sheetFormStyles.inputWrapper}>
           <InputThumbwheel
             testID="thumbwheel-picker"
             value={value}
-            onChangeValue={onChange}
+            onChangeValue={handleContinuousChange}
+            onCommitValue={handleCommit}
             min={min}
             max={max}
           />
@@ -335,7 +358,7 @@ export const NumberPickerForm: React.FC<NumberPickerFormProps> = ({
           value={value}
           min={min}
           max={max}
-          onChange={onChange}
+          onChange={handleCommit}
         />
       </View>
       <View style={sheetFormStyles.footer}>
@@ -349,6 +372,11 @@ export const NumberPickerForm: React.FC<NumberPickerFormProps> = ({
   );
 };
 
+const tabularTextStyles = {
+  fontVariant: ["tabular-nums"] as const,
+  includeFontPadding: false,
+};
+
 const sheetFormStyles = StyleSheet.create({
   content: {
     gap: 8,
@@ -358,6 +386,7 @@ const sheetFormStyles = StyleSheet.create({
     alignItems: "baseline",
     flexDirection: "row",
     gap: 8,
+    height: 56,
     justifyContent: "center",
   },
   inputWrapper: {},
@@ -373,7 +402,12 @@ const sheetFormStyles = StyleSheet.create({
   root: {
     gap: 16,
   },
+  suffix: {
+    ...tabularTextStyles,
+    lineHeight: 24,
+  },
   value: {
-    fontVariant: ["tabular-nums"],
+    ...tabularTextStyles,
+    lineHeight: 56,
   },
 });

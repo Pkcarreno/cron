@@ -248,6 +248,20 @@ describe("InputThumbwheel", () => {
       return { container, scrollView, tree };
     };
 
+    it("provides explicit snapToOffsets to eliminate fractional density cumulative drift", () => {
+      const { scrollView } = renderThumbwheel({
+        max: 10,
+        min: 0,
+        step: 1,
+        testID: "thumbwheel-test",
+        value: 0,
+      });
+
+      expect(scrollView.props.snapToOffsets).toEqual([
+        0, 20, 40, 60, 80, 100, 120, 140, 160, 180, 200,
+      ]);
+    });
+
     it("settles directly onto nearest tick on momentum scroll end without secondary programmatic scrolling", () => {
       const onChangeValue = jest.fn();
       const { scrollView } = renderThumbwheel({
@@ -449,6 +463,91 @@ describe("InputThumbwheel", () => {
 
       // Settles immediately
       expect(onChangeValue).toHaveBeenCalledWith(13);
+    });
+
+    it("supports dual-channel dispatch: emits onCommitValue when deceleration halts", () => {
+      const onChangeValue = jest.fn();
+      const onCommitValue = jest.fn();
+      const { scrollView } = renderThumbwheel({
+        max: 60,
+        min: 0,
+        onChangeValue,
+        onCommitValue,
+        step: 1,
+        testID: "thumbwheel-test",
+        value: 10,
+      });
+
+      rendererAct(() => {
+        scrollView.props.onMomentumScrollEnd({
+          nativeEvent: {
+            contentOffset: { x: 300, y: 0 },
+          },
+        });
+      });
+
+      expect(onChangeValue).toHaveBeenCalledWith(15);
+      expect(onCommitValue).toHaveBeenCalledWith(15);
+    });
+
+    it("dispatches onCommitValue when Android boundary watchdog timer expires", () => {
+      const onCommitValue = jest.fn();
+      const { scrollView } = renderThumbwheel({
+        max: 99,
+        min: 0,
+        onCommitValue,
+        step: 1,
+        testID: "thumbwheel-test",
+        value: 10,
+      });
+
+      rendererAct(() => {
+        scrollView.props.onScrollBeginDrag();
+        scrollView.props.onScrollEndDrag({
+          nativeEvent: {
+            contentOffset: { x: 0, y: 0 },
+            velocity: { x: -2, y: 0 },
+          },
+        });
+      });
+
+      rendererAct(() => {
+        jest.advanceTimersByTime(150);
+      });
+
+      expect(onCommitValue).toHaveBeenCalledWith(0);
+    });
+
+    it("ignores external value changes while user is actively interacting to prevent backward drift", () => {
+      const { scrollView, tree } = renderThumbwheel({
+        max: 60,
+        min: 0,
+        step: 1,
+        testID: "thumbwheel-test",
+        value: 10,
+      });
+
+      rendererAct(() => {
+        scrollView.props.onScrollBeginDrag();
+      });
+
+      // External prop updates while user is interacting
+      rendererAct(() => {
+        tree.update(
+          <InputThumbwheel
+            value={5}
+            min={0}
+            max={60}
+            step={1}
+            testID="thumbwheel-test"
+          />
+        );
+      });
+
+      // No programmatic scrolling triggered during active interaction
+      rendererAct(() => {
+        jest.advanceTimersByTime(350);
+      });
     });
   });
 });

@@ -16,7 +16,7 @@ export type InputTimeProps = InputNumberProps;
 
 export const InputTime: React.FC<InputTimeProps> = ({
   value,
-  onChangeValue,
+  onChange,
   ...props
 }) => {
   const { minutes, seconds } = useMemo(() => {
@@ -30,9 +30,9 @@ export const InputTime: React.FC<InputTimeProps> = ({
 
   const updateMs = useCallback(
     (newMinutes: number, newSeconds: number) => {
-      onChangeValue?.(convertTimeToMs(newMinutes, newSeconds));
+      onChange?.(convertTimeToMs(newMinutes, newSeconds));
     },
-    [onChangeValue]
+    [onChange]
   );
 
   const handleMinutesChange = useCallback(
@@ -61,7 +61,7 @@ export const InputTime: React.FC<InputTimeProps> = ({
         <Col span={1}>
           <InputNumber
             value={minutes}
-            onChangeValue={handleMinutesChange}
+            onChange={handleMinutesChange}
             suffix="M"
             valueSuffix="min"
             min={0}
@@ -72,7 +72,7 @@ export const InputTime: React.FC<InputTimeProps> = ({
         <Col span={1}>
           <InputNumber
             value={seconds}
-            onChangeValue={handleSecondsChange}
+            onChange={handleSecondsChange}
             suffix="S"
             valueSuffix="sec"
             min={0}

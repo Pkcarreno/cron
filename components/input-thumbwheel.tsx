@@ -43,8 +43,12 @@ export const FULL_TICK_STYLE = {
 
 /** Props for the InputThumbwheel component. */
 export interface InputThumbwheelProps {
+  /** Settled value controlled externally by initial prop or quick action buttons. */
   value: number;
+  /** Continuous integer updates during active drag and momentum scroll. */
   onChangeValue?: (value: number) => void;
+  /** Final settled value emitted when movement stops on a tick. */
+  onCommitValue?: (value: number) => void;
   min?: number;
   max?: number;
   step?: number;
@@ -143,7 +147,15 @@ export const AnimatedTick = React.memo(
 AnimatedTick.displayName = "AnimatedTick";
 
 const InputThumbwheel: React.FC<InputThumbwheelProps> = React.memo(
-  ({ value, onChangeValue, min = 0, max = 200, step = 1, testID }) => {
+  ({
+    value,
+    onChangeValue,
+    onCommitValue,
+    min = 0,
+    max = 200,
+    step = 1,
+    testID,
+  }) => {
     const [containerWidth, setContainerWidth] = useState(0);
     const scrollRef = useAnimatedRef<Animated.ScrollView>();
 
@@ -189,21 +201,31 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = React.memo(
       }
     }, []);
 
+    const indexToValue = useCallback(
+      (index: number) => Number((min + index * step).toFixed(2)),
+      [min, step]
+    );
+
     // Settle cleanly on integer mark when momentum or drag ends
     const settleToNearest = useCallback(
       (offsetX: number) => {
+        if (isProgrammatic.current) {
+          return;
+        }
+
         const closestIndex = Math.max(
           0,
           Math.min(Math.round(offsetX / TICK_WIDTH), totalTicks - 1)
         );
+        const finalValue = indexToValue(closestIndex);
 
         if (closestIndex !== lastReportedIndex.current) {
           lastReportedIndex.current = closestIndex;
-          const finalValue = Number((min + closestIndex * step).toFixed(2));
           onChangeValue?.(finalValue);
         }
+        onCommitValue?.(finalValue);
       },
-      [totalTicks, min, step, onChangeValue]
+      [totalTicks, indexToValue, onChangeValue, onCommitValue]
     );
 
     const resetWatchdog = useCallback(
@@ -226,11 +248,11 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = React.memo(
         }
         if (newIndex !== lastReportedIndex.current) {
           lastReportedIndex.current = newIndex;
-          const newValue = Number((min + newIndex * step).toFixed(2));
+          const newValue = indexToValue(newIndex);
           onChangeValue?.(newValue);
         }
       },
-      [min, step, onChangeValue]
+      [indexToValue, onChangeValue]
     );
 
     // Pure 120fps UI runtime scroll tracking: ZERO bridge traffic inside onScroll
@@ -350,6 +372,11 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = React.memo(
       [clearWatchdog, settleToNearest]
     );
 
+    const snapToOffsets = useMemo(
+      () => data.map((itemIndex) => itemIndex * TICK_WIDTH),
+      [data]
+    );
+
     // Memoize ticks so React reconciliation takes 0ms when parent re-renders value
     const renderedTicks = useMemo(
       () =>
@@ -398,6 +425,7 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = React.memo(
             horizontal
             showsHorizontalScrollIndicator={false}
             nestedScrollEnabled={true}
+            snapToOffsets={snapToOffsets}
             snapToInterval={TICK_WIDTH}
             decelerationRate="fast"
             bounces={true}
