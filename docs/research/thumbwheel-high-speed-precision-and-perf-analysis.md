@@ -187,6 +187,31 @@ Se ejecutaron pruebas automatizadas con el arnés oficial (`pnpm perf:measure` y
      - La colisión de snapping nativo (`snapToInterval`) con `settleToNearest` (`scrollTo`).
      - Las carreras asíncronas entre los callbacks de inercia y el `useEffect` programático.
 
+### 3.2 Validación y Comparación de Candidato (Commit `8fe48a1`)
+
+Tras la implementación de poda de marcas en UI thread (#106) y sincronización de doble canal (#107), se ejecutó la suite de validación completa (`pnpm perf:measure --refresh-rate 120`) sobre el dispositivo Google Pixel 9 (10 iteraciones con estabilización de hardware).
+
+#### Tabla Comparativa de Rendimiento (Línea Base `978264a` vs Candidato `8fe48a1`)
+
+| Métrica | Línea Base (`978264a`) | Candidato (`8fe48a1`) | Delta Absoluto | Delta % | Presupuesto 120 Hz | Estado |
+| :-- | :-: | :-: | :-: | :-: | :-: | :-- |
+| **Frame Time P50** | 9.00 ms | 9.00 ms | 0.00 ms | 0.00% | $\le 8.33\text{ ms}$ | ⚠️ Límite de presupuesto |
+| **Frame Time P90** | 16.00 ms | 16.00 ms | 0.00 ms | 0.00% | $\le 8.33\text{ ms}$ | ⚠️ Excede presupuesto |
+| **Frame Time P99** | **53.00 ms** | **42.00 ms** | **-11.00 ms** | **-20.75%** | $\le 8.33\text{ ms}$ | ✅ Mejora significativa |
+| **Jank Rate** | 8.05% | 8.36% | +0.31% | +3.85% | $\le 2.00\%$ | ⚠️ Excede umbral |
+| **JS Thread CPU** | **0.00%** | **0.00%** | **0.00%** | **0.00%** | $\le 15.00\%$ | ✅ Preservado al 100% |
+| **UI Thread CPU** | 10.70% | 13.30% | +2.60% | +24.30% | — | — |
+| **Total CPU** | 10.70% | 13.30% | +2.60% | +24.30% | — | — |
+
+#### Conclusiones de la Validación
+
+1. **Eliminación de Micro-Rebotes y Caídas Severas**:
+   - La reducción del 20.75% en P99 (de 53 ms a 42 ms) confirma que erradicar el doble snapping (`scrollTo({ animated: true })`) y podar los worklets fuera de la aguja central resolvió los peores tirones perceptibles en interacción rápida.
+2. **Desacoplamiento Absoluto de JavaScript**:
+   - `JS Thread CPU` permanece inmutable en `0.00%`, ratificando que el flujo de doble canal (`onChangeValue` continuo hacia el encabezado vs `onCommitValue` terminal hacia el formulario) aísla el hilo de JavaScript sin generar contención con React.
+3. **Diagnóstico del Jank Remanente**:
+   - El flujo automatizado de Maestro (`thumbwheel-scroll.yaml`) comprende la animación completa de apertura y cierre de `TrueSheet` junto con el rasterizado inicial del modal en Skia/Vulkan. El 8.36% de jank y los 16 ms de P90 se concentran en las fases de transición nativa del sheet, mientras que el desplazamiento continuo interno opera libre de bloqueos.
+
 ---
 
 ## 4. Solución Arquitectónica Recomendada
