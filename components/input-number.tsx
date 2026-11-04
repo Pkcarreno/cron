@@ -19,8 +19,6 @@ type OnChangeValueType = (value: number) => void;
 export interface InputNumberProps {
   value: number;
   onChange?: OnChangeValueType;
-  onChangeValue?: OnChangeValueType;
-  onCommitValue?: OnChangeValueType;
   editable?: PressableProps["disabled"];
   suffix?: string;
   valueSuffix?: string;
@@ -126,13 +124,7 @@ const styles = StyleSheet.create({
 
 type NumberPickerSheetBaseProps = Pick<
   InputNumberProps,
-  | "value"
-  | "onChange"
-  | "onChangeValue"
-  | "onCommitValue"
-  | "valueSuffix"
-  | "min"
-  | "max"
+  "value" | "onChange" | "valueSuffix" | "min" | "max"
 >;
 
 export type NumberPickerSheetProps = NumberPickerSheetBaseProps &
@@ -150,8 +142,6 @@ export type NumberPickerSheetProps = NumberPickerSheetBaseProps &
 export const NumberPickerSheet: React.FC<NumberPickerSheetProps> = ({
   value,
   onChange,
-  onChangeValue,
-  onCommitValue,
   valueSuffix,
   min = 0,
   max = 99,
@@ -172,10 +162,8 @@ export const NumberPickerSheet: React.FC<NumberPickerSheetProps> = ({
 
   const handleSave = useCallback(() => {
     onChange?.(draftValue);
-    onChangeValue?.(draftValue);
-    onCommitValue?.(draftValue);
     setOpenSheet(false);
-  }, [draftValue, onChange, onChangeValue, onCommitValue]);
+  }, [draftValue, onChange]);
 
   return (
     <Sheet open={openSheet} onOpenChange={handleOpenChange}>
@@ -295,10 +283,6 @@ export interface NumberPickerFormProps {
   value: number;
   /** Callback invoked when a value is committed (e.g. quick actions or thumbwheel settle). */
   onChange: (value: number) => void;
-  /** Optional continuous integer change stream during active thumbwheel scroll. */
-  onChangeValue?: (value: number) => void;
-  /** Optional terminal event callback dispatched upon thumbwheel settle. */
-  onCommitValue?: (value: number) => void;
   onSave?: () => void;
   valueSuffix?: string;
   min?: number;
@@ -308,8 +292,6 @@ export interface NumberPickerFormProps {
 export const NumberPickerForm: React.FC<NumberPickerFormProps> = ({
   value,
   onChange,
-  onChangeValue,
-  onCommitValue,
   onSave,
   valueSuffix,
   min = 0,
@@ -325,21 +307,16 @@ export const NumberPickerForm: React.FC<NumberPickerFormProps> = ({
     setDisplayValue(value);
   }
 
-  const handleContinuousChange = useCallback(
-    (nextValue: number) => {
-      setDisplayValue(nextValue);
-      onChangeValue?.(nextValue);
-    },
-    [onChangeValue]
-  );
+  const handleContinuousChange = useCallback((nextValue: number) => {
+    setDisplayValue(nextValue);
+  }, []);
 
   const handleCommit = useCallback(
     (nextValue: number) => {
       setDisplayValue(nextValue);
       onChange(nextValue);
-      onCommitValue?.(nextValue);
     },
-    [onChange, onCommitValue]
+    [onChange]
   );
 
   const handleContainerLayout = useCallback(

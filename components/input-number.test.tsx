@@ -48,10 +48,10 @@ describe("InputNumber integration", () => {
   });
 
   it("simulates user touch gestures: opening sheet, tapping quick actions, and saving", async () => {
-    const onChangeValue = jest.fn();
+    const onChange = jest.fn();
 
     const screen = await renderWithProviders(
-      <InputNumber value={10} onChangeValue={onChangeValue} suffix="sec" />
+      <InputNumber value={10} onChange={onChange} suffix="sec" />
     );
 
     // 1. Simulate tapping the trigger to open number picker sheet
@@ -76,14 +76,14 @@ describe("InputNumber integration", () => {
       fireEvent.press(screen.getByText("Save"));
     });
 
-    expect(onChangeValue).toHaveBeenCalledWith(15);
+    expect(onChange).toHaveBeenCalledWith(15);
   });
 
   it("disables subtraction quick actions when current value is at min bound", async () => {
-    const onChangeValue = jest.fn();
+    const onChange = jest.fn();
 
     const screen = await renderWithProviders(
-      <InputNumber value={0} min={0} max={60} onChangeValue={onChangeValue} />
+      <InputNumber value={0} min={0} max={60} onChange={onChange} />
     );
 
     // Open sheet

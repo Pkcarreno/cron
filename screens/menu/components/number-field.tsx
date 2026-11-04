@@ -6,7 +6,7 @@ import { InputNumber } from "@/components/input-number";
 import { useFieldContext } from "@/screens/menu/form-context";
 
 export const NumberField = (
-  props: Omit<InputNumberProps, "value" | "onChangeValue">
+  props: Omit<InputNumberProps, "value" | "onChange">
 ) => {
   const field = useFieldContext<number>();
 
@@ -23,7 +23,7 @@ export const NumberField = (
         <Col span={1}>
           <InputNumber
             value={field.state.value}
-            onChangeValue={handleChange}
+            onChange={handleChange}
             {...props}
           />
         </Col>
