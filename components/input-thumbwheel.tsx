@@ -45,9 +45,9 @@ export const FULL_TICK_STYLE = {
 export interface InputThumbwheelProps {
   /** Settled value controlled externally by initial prop or quick action buttons. */
   value: number;
-  /** Continuous integer stream dispatched from UI thread via useAnimatedReaction in real-time. */
+  /** Continuous integer updates during active drag and momentum scroll. */
   onChangeValue?: (value: number) => void;
-  /** Terminal event dispatched strictly upon deceleration halt and drag conclusion. */
+  /** Final settled value emitted when movement stops on a tick. */
   onCommitValue?: (value: number) => void;
   min?: number;
   max?: number;
@@ -201,6 +201,11 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = React.memo(
       }
     }, []);
 
+    const indexToValue = useCallback(
+      (index: number) => Number((min + index * step).toFixed(2)),
+      [min, step]
+    );
+
     // Settle cleanly on integer mark when momentum or drag ends
     const settleToNearest = useCallback(
       (offsetX: number) => {
@@ -212,7 +217,7 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = React.memo(
           0,
           Math.min(Math.round(offsetX / TICK_WIDTH), totalTicks - 1)
         );
-        const finalValue = Number((min + closestIndex * step).toFixed(2));
+        const finalValue = indexToValue(closestIndex);
 
         if (closestIndex !== lastReportedIndex.current) {
           lastReportedIndex.current = closestIndex;
@@ -220,7 +225,7 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = React.memo(
         }
         onCommitValue?.(finalValue);
       },
-      [totalTicks, min, step, onChangeValue, onCommitValue]
+      [totalTicks, indexToValue, onChangeValue, onCommitValue]
     );
 
     const resetWatchdog = useCallback(
@@ -243,11 +248,11 @@ const InputThumbwheel: React.FC<InputThumbwheelProps> = React.memo(
         }
         if (newIndex !== lastReportedIndex.current) {
           lastReportedIndex.current = newIndex;
-          const newValue = Number((min + newIndex * step).toFixed(2));
+          const newValue = indexToValue(newIndex);
           onChangeValue?.(newValue);
         }
       },
-      [min, step, onChangeValue]
+      [indexToValue, onChangeValue]
     );
 
     // Pure 120fps UI runtime scroll tracking: ZERO bridge traffic inside onScroll

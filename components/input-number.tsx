@@ -14,11 +14,11 @@ import type { TriggerRenderProp } from "./sheet";
 import { Sheet, SheetContent, SheetTrigger } from "./sheet";
 import { Text } from "./text";
 
-type OnChangeValueType = (value: number) => void;
+type OnChangeType = (value: number) => void;
 
 export interface InputNumberProps {
   value: number;
-  onChange?: OnChangeValueType;
+  onChange?: OnChangeType;
   editable?: PressableProps["disabled"];
   suffix?: string;
   valueSuffix?: string;
@@ -279,9 +279,8 @@ const QuickActionsRow = memo(
 QuickActionsRow.displayName = "QuickActionsRow";
 
 export interface NumberPickerFormProps {
-  /** Settled value of the picker. */
   value: number;
-  /** Callback invoked when a value is committed (e.g. quick actions or thumbwheel settle). */
+  /** Callback for confirmed changes, such as quick actions or thumbwheel stop. */
   onChange: (value: number) => void;
   onSave?: () => void;
   valueSuffix?: string;
@@ -373,6 +372,11 @@ export const NumberPickerForm: React.FC<NumberPickerFormProps> = ({
   );
 };
 
+const tabularTextStyles = {
+  fontVariant: ["tabular-nums"] as const,
+  includeFontPadding: false,
+};
+
 const sheetFormStyles = StyleSheet.create({
   content: {
     gap: 8,
@@ -399,13 +403,11 @@ const sheetFormStyles = StyleSheet.create({
     gap: 16,
   },
   suffix: {
-    fontVariant: ["tabular-nums"],
-    includeFontPadding: false,
+    ...tabularTextStyles,
     lineHeight: 24,
   },
   value: {
-    fontVariant: ["tabular-nums"],
-    includeFontPadding: false,
+    ...tabularTextStyles,
     lineHeight: 56,
   },
 });
