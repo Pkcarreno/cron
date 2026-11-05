@@ -2,6 +2,7 @@ import { act, cleanup } from "@testing-library/react-native";
 import { createStore } from "jotai";
 import { AppState } from "react-native";
 
+import type { LiveActivityDriver } from "@/helpers/background/live-activity-driver";
 import type {
   SessionSummary,
   TimerController,
@@ -598,6 +599,59 @@ describe("useTimer integration", () => {
 
         expect(disposeSpy).toHaveBeenCalled();
       }
+    });
+
+    it("coordinates with liveActivityDriver through workout lifecycle", async () => {
+      const store = createStore();
+      store.set(preparationTimeMsAtom, 0);
+
+      const mockDriver: jest.Mocked<LiveActivityDriver> = {
+        attachController: jest.fn((_controller) => jest.fn()),
+        pause: jest.fn((_elapsedDisplayTime) => Promise.resolve()),
+        resume: jest.fn((_session) => Promise.resolve()),
+        start: jest.fn((_session) => Promise.resolve()),
+        stop: jest.fn(() => Promise.resolve()),
+        update: jest.fn((_session) => Promise.resolve()),
+      };
+
+      const config: TimerConfig = {
+        mode: TimerMode.INTERVAL,
+        restMs: 15_000,
+        totalRounds: 4,
+        workMs: 30_000,
+      };
+
+      const { result } = await renderHookWithProviders(
+        () => useTimer(config, { liveActivityDriver: mockDriver }),
+        { store }
+      );
+
+      await act(() => {
+        result.current.start();
+      });
+
+      expect(mockDriver.start).toHaveBeenCalledTimes(1);
+
+      await act(() => {
+        result.current.pause();
+      });
+
+      expect(mockDriver.pause).toHaveBeenCalledTimes(1);
+      expect(result.current.status).toBe(TimerStatus.PAUSED);
+
+      await act(() => {
+        result.current.start();
+      });
+
+      expect(mockDriver.resume).toHaveBeenCalledTimes(1);
+      expect(result.current.status).toBe(TimerStatus.RUNNING);
+
+      await act(() => {
+        result.current.reset();
+      });
+
+      expect(mockDriver.stop).toHaveBeenCalledTimes(1);
+      expect(result.current.status).toBe(TimerStatus.READY);
     });
   });
 });

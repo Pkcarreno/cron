@@ -1,0 +1,7 @@
+{
+  "name": "cron-foreground-service",
+  "version": "1.0.0",
+  "description": "Android Foreground Service for live workout countdowns in cron",
+  "main": "index.ts",
+  "types": "index.ts"
+}

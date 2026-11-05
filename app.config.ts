@@ -100,7 +100,12 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
         ? []
         : ["android.permission.INTERNET"],
     package: Env.EXPO_PUBLIC_PACKAGE,
-    permissions: ["android.permission.VIBRATE"],
+    permissions: [
+      "android.permission.VIBRATE",
+      "android.permission.FOREGROUND_SERVICE",
+      "android.permission.FOREGROUND_SERVICE_HEALTH",
+      "android.permission.POST_NOTIFICATIONS",
+    ],
     predictiveBackGestureEnabled: true,
     versionCode: Env.EXPO_PUBLIC_BUILD_NUMBER,
   },

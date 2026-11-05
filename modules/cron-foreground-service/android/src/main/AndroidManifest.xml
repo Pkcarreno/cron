@@ -1,0 +1,23 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="cron.foregroundservice">
+
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+  <application>
+    <service
+        android:name=".CronForegroundService"
+        android:enabled="true"
+        android:exported="false"
+        android:foregroundServiceType="health" />
+    <receiver
+        android:name=".CronActionReceiver"
+        android:enabled="true"
+        android:exported="false">
+      <intent-filter>
+        <action android:name="cron.foregroundservice.NOTIFICATION_ACTION" />
+      </intent-filter>
+    </receiver>
+  </application>
+</manifest>

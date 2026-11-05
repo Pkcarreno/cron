@@ -14,35 +14,45 @@ export enum TimerMode {
 }
 
 export const createTimerStrategy = (config: TimerConfig): TimerStrategy => {
+  let strategy: TimerStrategy;
+
   switch (config.mode) {
     case TimerMode.AMRAP: {
-      return new DownStrategy(config.durationMs);
+      strategy = new DownStrategy(config.durationMs);
+      break;
     }
 
     case TimerMode.FOR_TIME: {
-      return new UpStrategy(config.timecapMs);
+      strategy = new UpStrategy(config.timecapMs);
+      break;
     }
 
     case TimerMode.EMOM: {
-      return new RoundStrategy(config.roundDurationMs, config.totalRounds);
+      strategy = new RoundStrategy(config.roundDurationMs, config.totalRounds);
+      break;
     }
 
     case TimerMode.INTERVAL: {
-      return new IntervalStrategy(
+      strategy = new IntervalStrategy(
         config.workMs,
         config.restMs,
         config.totalRounds
       );
+      break;
     }
 
     case TimerMode.STOP_WATCH: {
-      return new StopwatchStrategy();
+      strategy = new StopwatchStrategy();
+      break;
     }
 
     default: {
       throw new Error("Timer mode not supported.");
     }
   }
+
+  strategy.mode = config.mode;
+  return strategy;
 };
 
 export interface AmrapConfig {
