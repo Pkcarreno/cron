@@ -106,6 +106,7 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
       "android.permission.FOREGROUND_SERVICE_HEALTH",
       "android.permission.HIGH_SAMPLING_RATE_SENSORS",
       "android.permission.POST_NOTIFICATIONS",
+      "android.permission.WAKE_LOCK",
     ],
     predictiveBackGestureEnabled: true,
     versionCode: Env.EXPO_PUBLIC_BUILD_NUMBER,

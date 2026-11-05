@@ -17,13 +17,32 @@ export interface NotificationActionEvent {
   action: NotificationActionType;
 }
 
+export interface ScheduledMilestonesPayload {
+  warmupDelayMs?: number;
+  countdownBeeps?: {
+    delayMs: number;
+    secondRemaining: number;
+  }[];
+  transitionDelayMs: number;
+}
+
+export type MilestoneType = "warmup" | "beep" | "transition";
+
+export interface MilestoneEvent {
+  type: MilestoneType;
+  secondRemaining?: number;
+}
+
 declare class CronForegroundNativeModule extends NativeModule<{
   onNotificationAction: (event: NotificationActionEvent) => void;
+  onMilestone: (event: MilestoneEvent) => void;
 }> {
   start(payload: ForegroundNotificationPayload): Promise<boolean>;
   update(payload: ForegroundNotificationPayload): Promise<boolean>;
   stop(): Promise<boolean>;
   isServiceRunning(): Promise<boolean>;
+  scheduleMilestones(payload: ScheduledMilestonesPayload): Promise<boolean>;
+  clearMilestones(): Promise<boolean>;
 }
 
 let nativeModule: CronForegroundNativeModule | null = null;
@@ -46,6 +65,7 @@ export const getNativeModule = (): CronForegroundNativeModule | null => {
 
 let emitter: EventEmitter<{
   onNotificationAction: (event: NotificationActionEvent) => void;
+  onMilestone: (event: MilestoneEvent) => void;
 }> | null = null;
 
 const getEmitter = () => {
@@ -95,6 +115,24 @@ export const isForegroundServiceRunning = async (): Promise<boolean> => {
   return await mod.isServiceRunning();
 };
 
+export const scheduleNativeMilestones = async (
+  payload: ScheduledMilestonesPayload
+): Promise<boolean> => {
+  const mod = getNativeModule();
+  if (!mod) {
+    return false;
+  }
+  return await mod.scheduleMilestones(payload);
+};
+
+export const clearNativeMilestones = async (): Promise<boolean> => {
+  const mod = getNativeModule();
+  if (!mod) {
+    return false;
+  }
+  return await mod.clearMilestones();
+};
+
 export const addNotificationActionListener = (
   listener: (event: NotificationActionEvent) => void
 ): EventSubscription => {
@@ -107,4 +145,18 @@ export const addNotificationActionListener = (
     };
   }
   return eventEmitter.addListener("onNotificationAction", listener);
+};
+
+export const addMilestoneListener = (
+  listener: (event: MilestoneEvent) => void
+): EventSubscription => {
+  const eventEmitter = getEmitter();
+  if (!eventEmitter) {
+    return {
+      remove: () => {
+        // No-op when event emitter is unavailable
+      },
+    };
+  }
+  return eventEmitter.addListener("onMilestone", listener);
 };

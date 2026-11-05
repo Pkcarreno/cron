@@ -10,6 +10,7 @@ import android.content.pm.ServiceInfo
 import android.graphics.Color
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -44,6 +45,7 @@ class CronForegroundService : Service() {
     private var currentIsPaused: Boolean = false
     private var currentColorHex: String = "#008153"
     private var currentSecondaryLabel: String? = null
+    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -64,6 +66,7 @@ class CronForegroundService : Service() {
                 return START_NOT_STICKY
             }
             ACTION_START, ACTION_UPDATE -> {
+                acquireWakeLock()
                 extractPayload(intent)
                 try {
                     val notification = buildNotification()
@@ -96,6 +99,35 @@ class CronForegroundService : Service() {
         return START_NOT_STICKY
     }
 
+    private fun acquireWakeLock() {
+        if (wakeLock == null) {
+            try {
+                val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager
+                wakeLock = powerManager?.newWakeLock(
+                    PowerManager.PARTIAL_WAKE_LOCK,
+                    "cron:foreground_service_wakelock"
+                )?.apply {
+                    setReferenceCounted(false)
+                    acquire()
+                }
+            } catch (e: Exception) {
+                Log.e("CronForegroundService", "Error acquiring wakelock: ${e.message}", e)
+            }
+        }
+    }
+
+    private fun releaseWakeLock() {
+        try {
+            if (wakeLock?.isHeld == true) {
+                wakeLock?.release()
+            }
+        } catch (e: Exception) {
+            Log.e("CronForegroundService", "Error releasing wakelock: ${e.message}", e)
+        } finally {
+            wakeLock = null
+        }
+    }
+
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
         stopForegroundNotification()
@@ -103,6 +135,8 @@ class CronForegroundService : Service() {
 
     override fun onDestroy() {
         isRunning = false
+        releaseWakeLock()
+        CronForegroundModule.clearMilestones()
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
         manager?.cancel(NOTIFICATION_ID)
         super.onDestroy()
@@ -115,6 +149,9 @@ class CronForegroundService : Service() {
         currentSecondaryLabel = intent.getStringExtra(EXTRA_SECONDARY_LABEL)
         if (intent.hasExtra(EXTRA_IS_PAUSED)) {
             currentIsPaused = intent.getBooleanExtra(EXTRA_IS_PAUSED, false)
+            if (currentIsPaused) {
+                CronForegroundModule.clearMilestones()
+            }
         }
         if (intent.hasExtra(EXTRA_TARGET_TIMESTAMP_MS)) {
             currentTargetTimestampMs = intent.getLongExtra(EXTRA_TARGET_TIMESTAMP_MS, 0L)
@@ -223,6 +260,8 @@ class CronForegroundService : Service() {
 
     private fun stopForegroundNotification() {
         isRunning = false
+        releaseWakeLock()
+        CronForegroundModule.clearMilestones()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)
         } else {

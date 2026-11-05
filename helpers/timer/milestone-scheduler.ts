@@ -1,3 +1,12 @@
+import type { EventSubscription } from "expo-modules-core";
+
+import type { MilestoneEvent } from "@/modules/cron-foreground-service";
+import {
+  addMilestoneListener,
+  clearNativeMilestones,
+  scheduleNativeMilestones,
+} from "@/modules/cron-foreground-service";
+
 /**
  * Constants governing deterministic target-based milestone scheduling.
  * ADR 0010: Prewarm wakes DAC ~1500 ms before cues; Countdown window spans 3000 ms.
@@ -92,14 +101,58 @@ export interface MilestoneSchedulerCallbacks {
 /**
  * Deterministic milestone scheduler managing wall-clock single-shot timers
  * when high-frequency UI rendering loops are suspended in the background.
+ * Bridges to the native Android foreground service to bypass JS timer freeze.
  */
 export class MilestoneScheduler {
   private callbacks: MilestoneSchedulerCallbacks;
   private activeMilestones: PhaseMilestones | null = null;
   private activeTimeouts = new Set<ReturnType<typeof setTimeout>>();
+  private milestoneSubscription: EventSubscription | null = null;
+
+  private triggeredBeeps = new Set<number>();
+  private hasTriggeredWarmup = false;
+  private hasTriggeredTransition = false;
 
   constructor(callbacks: MilestoneSchedulerCallbacks) {
     this.callbacks = callbacks;
+    this.milestoneSubscription = addMilestoneListener((event) => {
+      this.handleNativeMilestone(event);
+    });
+  }
+
+  private handleNativeMilestone(event: MilestoneEvent): void {
+    if (!this.activeMilestones) {
+      return;
+    }
+
+    switch (event.type) {
+      case "warmup": {
+        if (!this.hasTriggeredWarmup) {
+          this.hasTriggeredWarmup = true;
+          this.callbacks.onWarmup();
+        }
+        break;
+      }
+      case "beep": {
+        const second = event.secondRemaining ?? 0;
+        if (!this.triggeredBeeps.has(second)) {
+          this.triggeredBeeps.add(second);
+          this.callbacks.onCountdownBeep(second);
+        }
+        break;
+      }
+      case "transition": {
+        if (!this.hasTriggeredTransition) {
+          this.hasTriggeredTransition = true;
+          this.clearMilestones();
+          this.callbacks.onTransition();
+        }
+        break;
+      }
+      default: {
+        break;
+      }
+    }
   }
 
   public getActiveMilestones(): PhaseMilestones | null {
@@ -116,33 +169,56 @@ export class MilestoneScheduler {
   ): void {
     this.clearMilestones();
     this.activeMilestones = milestones;
+    this.triggeredBeeps.clear();
+    this.hasTriggeredWarmup = false;
+    this.hasTriggeredTransition = false;
 
-    // 1. Warmup timer
+    // 1. Dispatch native background scheduling (Android WakeLock + OS Handler)
+    void scheduleNativeMilestones({
+      countdownBeeps: milestones.countdownBeeps.map((beep) => ({
+        delayMs: Math.max(0, beep.targetTimestampMs - now),
+        secondRemaining: beep.secondRemaining,
+      })),
+      transitionDelayMs: Math.max(0, milestones.transitionTimestampMs - now),
+      warmupDelayMs: Math.max(0, milestones.warmupTimestampMs - now),
+    });
+
+    // 2. Schedule JS timeouts (drives foreground execution, iOS, Web, and Jest)
+    // 2.1 Warmup timer
     if (now < milestones.transitionTimestampMs) {
       const warmupDelay = Math.max(0, milestones.warmupTimestampMs - now);
       const timerId = setTimeout(() => {
         this.activeTimeouts.delete(timerId);
-        this.callbacks.onWarmup();
+        if (!this.hasTriggeredWarmup) {
+          this.hasTriggeredWarmup = true;
+          this.callbacks.onWarmup();
+        }
       }, warmupDelay);
       this.activeTimeouts.add(timerId);
     }
 
-    // 2. Countdown beep timers
+    // 2.2 Countdown beep timers
     for (const beep of milestones.countdownBeeps) {
       const beepDelay = Math.max(0, beep.targetTimestampMs - now);
       const timerId = setTimeout(() => {
         this.activeTimeouts.delete(timerId);
-        this.callbacks.onCountdownBeep(beep.secondRemaining);
+        if (!this.triggeredBeeps.has(beep.secondRemaining)) {
+          this.triggeredBeeps.add(beep.secondRemaining);
+          this.callbacks.onCountdownBeep(beep.secondRemaining);
+        }
       }, beepDelay);
       this.activeTimeouts.add(timerId);
     }
 
-    // 3. Transition timer
+    // 2.3 Transition timer
     const transitionDelay = Math.max(0, milestones.transitionTimestampMs - now);
     const timerId = setTimeout(() => {
       this.activeTimeouts.delete(timerId);
-      this.activeMilestones = null;
-      this.callbacks.onTransition();
+      if (!this.hasTriggeredTransition) {
+        this.hasTriggeredTransition = true;
+        this.clearMilestones();
+        this.callbacks.onTransition();
+      }
     }, transitionDelay);
     this.activeTimeouts.add(timerId);
   }
@@ -153,9 +229,12 @@ export class MilestoneScheduler {
     }
     this.activeTimeouts.clear();
     this.activeMilestones = null;
+    void clearNativeMilestones();
   }
 
   public dispose(): void {
     this.clearMilestones();
+    this.milestoneSubscription?.remove();
+    this.milestoneSubscription = null;
   }
 }

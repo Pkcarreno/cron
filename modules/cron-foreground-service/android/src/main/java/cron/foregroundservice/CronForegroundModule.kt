@@ -1,6 +1,8 @@
 package cron.foregroundservice
 
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.core.content.ContextCompat
 import expo.modules.kotlin.modules.Module
@@ -13,18 +15,45 @@ class CronForegroundModule : Module() {
         fun notifyAction(action: String) {
             instance?.sendEvent("onNotificationAction", mapOf("action" to action))
         }
+
+        fun notifyMilestone(type: String, secondRemaining: Int) {
+            instance?.sendEvent(
+                "onMilestone",
+                mapOf(
+                    "type" to type,
+                    "secondRemaining" to secondRemaining
+                )
+            )
+        }
+
+        fun clearMilestones() {
+            instance?.clearScheduledMilestones()
+        }
+    }
+
+    private val handler = Handler(Looper.getMainLooper())
+    private val scheduledRunnables = mutableListOf<Runnable>()
+
+    internal fun clearScheduledMilestones() {
+        synchronized(scheduledRunnables) {
+            for (runnable in scheduledRunnables) {
+                handler.removeCallbacks(runnable)
+            }
+            scheduledRunnables.clear()
+        }
     }
 
     override fun definition() = ModuleDefinition {
         Name("CronForegroundService")
 
-        Events("onNotificationAction")
+        Events("onNotificationAction", "onMilestone")
 
         OnCreate {
             instance = this@CronForegroundModule
         }
 
         OnDestroy {
+            clearScheduledMilestones()
             if (instance === this@CronForegroundModule) {
                 instance = null
             }
@@ -61,6 +90,7 @@ class CronForegroundModule : Module() {
         }
 
         AsyncFunction("stop") {
+            clearScheduledMilestones()
             val context = appContext.reactContext ?: return@AsyncFunction false
             val intent = Intent(context, CronForegroundService::class.java).apply {
                 action = CronForegroundService.ACTION_STOP
@@ -76,6 +106,51 @@ class CronForegroundModule : Module() {
 
         AsyncFunction("isServiceRunning") {
             CronForegroundService.isRunning
+        }
+
+        AsyncFunction("scheduleMilestones") { payload: Map<String, Any?> ->
+            clearScheduledMilestones()
+
+            val warmupDelayMs = (payload["warmupDelayMs"] as? Number)?.toLong()
+            val transitionDelayMs = (payload["transitionDelayMs"] as? Number)?.toLong()
+            @Suppress("UNCHECKED_CAST")
+            val beeps = payload["countdownBeeps"] as? List<Map<String, Any?>>
+
+            synchronized(scheduledRunnables) {
+                if (warmupDelayMs != null && warmupDelayMs > 0) {
+                    val runnable = Runnable {
+                        notifyMilestone("warmup", 0)
+                    }
+                    scheduledRunnables.add(runnable)
+                    handler.postDelayed(runnable, warmupDelayMs)
+                }
+
+                if (beeps != null) {
+                    for (beep in beeps) {
+                        val delayMs = (beep["delayMs"] as? Number)?.toLong() ?: continue
+                        val second = (beep["secondRemaining"] as? Number)?.toInt() ?: continue
+                        val runnable = Runnable {
+                            notifyMilestone("beep", second)
+                        }
+                        scheduledRunnables.add(runnable)
+                        handler.postDelayed(runnable, delayMs)
+                    }
+                }
+
+                if (transitionDelayMs != null && transitionDelayMs >= 0) {
+                    val runnable = Runnable {
+                        notifyMilestone("transition", 0)
+                    }
+                    scheduledRunnables.add(runnable)
+                    handler.postDelayed(runnable, transitionDelayMs)
+                }
+            }
+            true
+        }
+
+        AsyncFunction("clearMilestones") {
+            clearScheduledMilestones()
+            true
         }
     }
 

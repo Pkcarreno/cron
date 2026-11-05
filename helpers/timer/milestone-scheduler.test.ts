@@ -12,6 +12,11 @@ import {
   calculatePhaseMilestones,
   MilestoneScheduler,
 } from "@/helpers/timer/milestone-scheduler";
+import * as ForegroundModule from "@/modules/cron-foreground-service";
+
+const noopMilestoneListener = (
+  _event: ForegroundModule.MilestoneEvent
+): void => {};
 
 describe("milestoneScheduler", () => {
   beforeEach(() => {
@@ -216,6 +221,62 @@ describe("milestoneScheduler", () => {
       expect(onWarmup).not.toHaveBeenCalled();
       expect(onCountdownBeep).not.toHaveBeenCalled();
       expect(onTransition).not.toHaveBeenCalled();
+    });
+
+    it("handles native milestones and deduplicates against JS timeouts", () => {
+      let triggerNativeMilestone = noopMilestoneListener;
+
+      jest
+        .spyOn(ForegroundModule, "addMilestoneListener")
+        .mockImplementation((listener) => {
+          triggerNativeMilestone = listener;
+          return { remove: jest.fn() };
+        });
+
+      const onWarmup = jest.fn();
+      const onCountdownBeep = jest.fn();
+      const onTransition = jest.fn();
+
+      const scheduler = new MilestoneScheduler({
+        onCountdownBeep,
+        onTransition,
+        onWarmup,
+      });
+
+      const milestones = calculatePhaseMilestones({
+        hasCountdownBeeps: true,
+        now: 0,
+        phaseDurationMs: 10_000,
+        phaseRemainingMs: 10_000,
+      });
+
+      scheduler.scheduleMilestones(milestones, 0);
+
+      // Trigger native warmup
+      triggerNativeMilestone({ type: "warmup" });
+      expect(onWarmup).toHaveBeenCalledTimes(1);
+
+      // Advance timers past warmup delay - should not double trigger warmup
+      jest.advanceTimersByTime(6000);
+      expect(onWarmup).toHaveBeenCalledTimes(1);
+
+      // Trigger native beep 3
+      triggerNativeMilestone({ secondRemaining: 3, type: "beep" });
+      expect(onCountdownBeep).toHaveBeenCalledWith(3);
+
+      // Advance timers past beep 3 (7000ms) but before beep 2 (8000ms) - should not double trigger beep 3
+      jest.advanceTimersByTime(1500);
+      expect(onCountdownBeep).toHaveBeenCalledTimes(1);
+
+      // Trigger native transition
+      triggerNativeMilestone({ type: "transition" });
+      expect(onTransition).toHaveBeenCalledTimes(1);
+
+      // Advance timers to transition - should not double trigger transition
+      jest.advanceTimersByTime(5000);
+      expect(onTransition).toHaveBeenCalledTimes(1);
+
+      scheduler.dispose();
     });
   });
 });
