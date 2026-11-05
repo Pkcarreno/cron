@@ -187,11 +187,11 @@ class CronForegroundService : Service() {
             .setContentText(currentSubtitle)
             .setSmallIcon(getSmallIconResId())
             .setColor(parsedColor)
-            .setColorized(true)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setCategory(NotificationCompat.CATEGORY_WORKOUT)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(currentSubtitle))
 
         // Launch app on notification body tap
         val launchIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
@@ -218,12 +218,16 @@ class CronForegroundService : Service() {
             builder.setChronometerCountDown(true)
         }
 
-        // Request Live Update promotion (Android 16+ Status Bar Chip)
+        // Request Live Update promotion (Android 16+ Promoted Ongoing / Status Bar Chip)
+        // 1. EXTRA_REQUEST_PROMOTED_ONGOING ("android.requestPromotedOngoing") for Android 16 (API 36+)
+        builder.extras.putBoolean("android.requestPromotedOngoing", true)
+
+        // 2. Also invoke setRequestPromotedOngoing via reflection if available on newer AndroidX or platform builder
         try {
             val method = builder.javaClass.getMethod("setRequestPromotedOngoing", Boolean::class.javaPrimitiveType)
             method.invoke(builder, true)
         } catch (_: Exception) {
-            // Ignored on Android < 16
+            // Fallback handled by extras bundle above
         }
 
         // Primary Action: Pause / Resume
