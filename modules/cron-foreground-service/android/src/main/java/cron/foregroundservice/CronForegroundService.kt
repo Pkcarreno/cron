@@ -218,6 +218,14 @@ class CronForegroundService : Service() {
             builder.setChronometerCountDown(true)
         }
 
+        // Request Live Update promotion (Android 16+ Status Bar Chip)
+        try {
+            val method = builder.javaClass.getMethod("setRequestPromotedOngoing", Boolean::class.javaPrimitiveType)
+            method.invoke(builder, true)
+        } catch (_: Exception) {
+            // Ignored on Android < 16
+        }
+
         // Primary Action: Pause / Resume
         val primaryActionIntent = Intent(this, CronActionReceiver::class.java).apply {
             action = ACTION_NOTIFICATION_ACTION

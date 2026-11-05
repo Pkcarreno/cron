@@ -737,9 +737,7 @@ export class TimerController {
 
     const hasCountdownBeeps =
       phaseDetails.phaseDurationMs >= 3000 &&
-      (phaseDetails.phase === TimerPhase.PREPARATION ||
-        phaseDetails.phase === TimerPhase.WORK ||
-        phaseDetails.phase === TimerPhase.REST);
+      phaseDetails.phase === TimerPhase.PREPARATION;
 
     const now = Date.now();
     const milestones = calculatePhaseMilestones({

@@ -948,7 +948,7 @@ describe("timerController", () => {
       expect(goSpy).toHaveBeenCalledTimes(1);
     });
 
-    it("plays 3-2-1 countdown beeps and interval phase transitions accurately on schedule while backgrounded", () => {
+    it("transitions interval phases accurately on schedule without countdown beeps during work/rest while backgrounded", () => {
       // 0ms prep, 5000ms work, 4000ms rest, 1 round
       const strategy = new IntervalStrategy(5000, 4000, 1);
       const controller = new TimerController(strategy, 0);
@@ -964,58 +964,46 @@ describe("timerController", () => {
       controller.start();
       controller.handleAppStateChange("background");
 
-      // Work phase (5000ms):
-      // Countdown beeps at 2000ms (3), 3000ms (2), 4000ms (1)
-      jest.advanceTimersByTime(2000);
-      expect(beepSpy).toHaveBeenCalledWith(3);
-
-      jest.advanceTimersByTime(1000);
-      expect(beepSpy).toHaveBeenCalledWith(2);
-
-      jest.advanceTimersByTime(1000);
-      expect(beepSpy).toHaveBeenCalledWith(1);
+      // Work phase (5000ms): no countdown beeps during work
+      jest.advanceTimersByTime(4500);
+      expect(beepSpy).not.toHaveBeenCalled();
 
       // At 5000ms: Transition to REST
-      jest.advanceTimersByTime(1000);
+      jest.advanceTimersByTime(500);
       expect(phaseChangeSpy).toHaveBeenCalledWith(TimerPhase.REST);
+      expect(beepSpy).not.toHaveBeenCalled();
 
-      // Rest phase (4000ms):
-      // Countdown beeps at 6000ms (3), 7000ms (2), 8000ms (1)
-      jest.advanceTimersByTime(1000);
-      expect(beepSpy).toHaveBeenCalledWith(3);
-
-      jest.advanceTimersByTime(1000);
-      expect(beepSpy).toHaveBeenCalledWith(2);
-
-      jest.advanceTimersByTime(1000);
-      expect(beepSpy).toHaveBeenCalledWith(1);
+      // Rest phase (4000ms): no countdown beeps during rest
+      jest.advanceTimersByTime(3500);
+      expect(beepSpy).not.toHaveBeenCalled();
 
       // At 9000ms: Workout completes
-      jest.advanceTimersByTime(1000);
+      jest.advanceTimersByTime(500);
       expect(finishSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           fullyCompleted: true,
         })
       );
+      expect(beepSpy).not.toHaveBeenCalled();
     });
 
     it("clears milestone timers on pause and reschedules with remaining duration on resume in background", () => {
-      const strategy = new DownStrategy(10_000);
-      const controller = new TimerController(strategy, 0);
+      const strategy = new UpStrategy(10_000);
+      const controller = new TimerController(strategy, 5000);
 
       const warmupSpy = jest.fn();
       const beepSpy = jest.fn();
-      const finishSpy = jest.fn();
+      const goSpy = jest.fn();
 
       controller.on(TimerEventType.TRANSITION_APPROACHING, warmupSpy);
       controller.on(TimerEventType.BEEP, beepSpy);
-      controller.on(TimerEventType.COMPLETED, finishSpy);
+      controller.on(TimerEventType.GO, goSpy);
 
       controller.start();
       controller.handleAppStateChange("background");
 
-      // Advance 2000ms into 10s countdown (8s remaining)
-      jest.advanceTimersByTime(2000);
+      // Advance 300ms into 5s prep (4700ms remaining, warmup is at 500ms so it hasn't fired yet)
+      jest.advanceTimersByTime(300);
 
       // Pause while in background
       controller.pause();
@@ -1025,16 +1013,17 @@ describe("timerController", () => {
       jest.advanceTimersByTime(30_000);
       expect(warmupSpy).not.toHaveBeenCalled();
       expect(beepSpy).not.toHaveBeenCalled();
-      expect(finishSpy).not.toHaveBeenCalled();
+      expect(goSpy).not.toHaveBeenCalled();
 
-      // Resume while still in background: reschedules for remaining 8000ms
+      // Resume while still in background: reschedules for remaining 4700ms
       controller.start();
       expect(controller.getScheduledMilestones()).not.toBeNull();
-      // Target is now + 8000ms. Warmup is at now + 8000 - 4500 = 3500ms
-      jest.advanceTimersByTime(3500);
+
+      // Warmup at 4700 - 4500 = 200ms from resume
+      jest.advanceTimersByTime(200);
       expect(warmupSpy).toHaveBeenCalledTimes(1);
 
-      // Countdown beep 3 at now + 8000 - 3000 = 5000ms (1500ms after warmup)
+      // Countdown beep 3 at 4700 - 3000 = 1700ms from resume (+1500ms)
       jest.advanceTimersByTime(1500);
       expect(beepSpy).toHaveBeenCalledWith(3);
     });
