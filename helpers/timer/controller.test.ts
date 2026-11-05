@@ -1081,6 +1081,28 @@ describe("timerController", () => {
       );
     });
 
+    it("starts driver with count-up isCountDown false for STOP_WATCH mode", () => {
+      const strategy = new StopwatchStrategy();
+      const mockDriver = createMockDriver();
+
+      const controller = new TimerController(strategy, 0, {
+        liveActivityDriver: mockDriver,
+        mode: TimerMode.STOP_WATCH,
+      });
+
+      controller.start();
+
+      expect(mockDriver.start).toHaveBeenCalledTimes(1);
+      expect(mockDriver.start).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isCountDown: false,
+          isPaused: false,
+          mode: TimerMode.STOP_WATCH,
+          phase: TimerPhase.WORK,
+        })
+      );
+    });
+
     it("pauses driver with formatted display string when paused", () => {
       const strategy = new DownStrategy(60_000);
       strategy.mode = TimerMode.AMRAP;

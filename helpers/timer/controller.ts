@@ -778,6 +778,9 @@ export class TimerController {
     return this.milestoneScheduler;
   }
 
+  /**
+   * Attaches a LiveActivityDriver to synchronize timer lifecycle events with background surfaces.
+   */
   public attachLiveActivityDriver(driver: LiveActivityDriver): () => void {
     this.driverTeardown?.();
     this.liveActivityDriver = driver;
@@ -792,6 +795,9 @@ export class TimerController {
     };
   }
 
+  /**
+   * Retrieves the currently attached LiveActivityDriver instance, if any.
+   */
   public getLiveActivityDriver(): LiveActivityDriver | null {
     return this.liveActivityDriver;
   }
@@ -841,6 +847,9 @@ export class TimerController {
     }
   }
 
+  /**
+   * Evaluates the phase and duration metadata of the immediate next phase.
+   */
   public getNextPhaseDetails(
     elapsedMs?: number
   ): { phase: TimerPhase; durationMs: number } | null {
@@ -877,6 +886,9 @@ export class TimerController {
     return null;
   }
 
+  /**
+   * Constructs an ActiveSessionPayload representing the current timer state for background display.
+   */
   public buildActiveSessionPayload(
     isPaused = false
   ): ActiveSessionPayload | null {
@@ -887,10 +899,15 @@ export class TimerController {
 
     const mode =
       this.configuredMode ?? this.strategy.mode ?? TimerMode.INTERVAL;
+    const isCountDown = mode !== TimerMode.STOP_WATCH;
     const nextPhaseInfo = this.getNextPhaseDetails();
-    const targetTimestampMs = isPaused
-      ? 0
-      : Date.now() + phaseDetails.phaseRemainingMs;
+
+    let targetTimestampMs = 0;
+    if (!isPaused) {
+      targetTimestampMs = isCountDown
+        ? Date.now() + phaseDetails.phaseRemainingMs
+        : Date.now() - phaseDetails.phaseRemainingMs;
+    }
     const capDurationMs =
       typeof this.strategy.getTargetDurationMs === "function"
         ? this.strategy.getTargetDurationMs()
@@ -905,6 +922,7 @@ export class TimerController {
       capDurationMs,
       currentRound,
       displayTimeMs: phaseDetails.phaseRemainingMs,
+      isCountDown,
       isPaused,
       mode,
       nextPhase: nextPhaseInfo?.phase,

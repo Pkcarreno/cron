@@ -31,6 +31,7 @@ class CronForegroundService : Service() {
         const val EXTRA_SUBTITLE = "subtitle"
         const val EXTRA_TARGET_TIMESTAMP_MS = "targetTimestampMs"
         const val EXTRA_IS_PAUSED = "isPaused"
+        const val EXTRA_IS_COUNT_DOWN = "isCountDown"
         const val EXTRA_COLOR = "color"
         const val EXTRA_SECONDARY_LABEL = "secondaryLabel"
         const val EXTRA_ACTION = "action"
@@ -43,6 +44,7 @@ class CronForegroundService : Service() {
     private var currentSubtitle: String = ""
     private var currentTargetTimestampMs: Long = 0L
     private var currentIsPaused: Boolean = false
+    private var currentIsCountDown: Boolean = true
     private var currentColorHex: String = "#008153"
     private var currentSecondaryLabel: String? = null
     private var wakeLock: PowerManager.WakeLock? = null
@@ -153,6 +155,9 @@ class CronForegroundService : Service() {
                 CronForegroundModule.clearMilestones()
             }
         }
+        if (intent.hasExtra(EXTRA_IS_COUNT_DOWN)) {
+            currentIsCountDown = intent.getBooleanExtra(EXTRA_IS_COUNT_DOWN, true)
+        }
         if (intent.hasExtra(EXTRA_TARGET_TIMESTAMP_MS)) {
             currentTargetTimestampMs = intent.getLongExtra(EXTRA_TARGET_TIMESTAMP_MS, 0L)
         }
@@ -207,7 +212,7 @@ class CronForegroundService : Service() {
             builder.setContentIntent(pendingIntent)
         }
 
-        // Hardware chronometer countdown
+        // Hardware chronometer
         if (currentIsPaused || currentTargetTimestampMs <= 0L) {
             builder.setUsesChronometer(false)
             builder.setShowWhen(false)
@@ -215,7 +220,7 @@ class CronForegroundService : Service() {
             builder.setWhen(currentTargetTimestampMs)
             builder.setShowWhen(true)
             builder.setUsesChronometer(true)
-            builder.setChronometerCountDown(true)
+            builder.setChronometerCountDown(currentIsCountDown)
         }
 
         // Request Live Update promotion (Android 16+ Promoted Ongoing / Status Bar Chip)

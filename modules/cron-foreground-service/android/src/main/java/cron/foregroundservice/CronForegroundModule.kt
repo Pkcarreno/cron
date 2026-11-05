@@ -160,6 +160,7 @@ class CronForegroundModule : Module() {
         (payload["color"] as? String)?.let { intent.putExtra(CronForegroundService.EXTRA_COLOR, it) }
         (payload["secondaryLabel"] as? String)?.let { intent.putExtra(CronForegroundService.EXTRA_SECONDARY_LABEL, it) }
         (payload["isPaused"] as? Boolean)?.let { intent.putExtra(CronForegroundService.EXTRA_IS_PAUSED, it) }
+        (payload["isCountDown"] as? Boolean)?.let { intent.putExtra(CronForegroundService.EXTRA_IS_COUNT_DOWN, it) }
 
         val targetTimestamp = (payload["targetTimestampMs"] as? Number)?.toLong()
         if (targetTimestamp != null) {

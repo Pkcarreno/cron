@@ -3,6 +3,7 @@ import { Platform } from "react-native";
 import type { TimerController } from "@/helpers/timer/controller";
 import { TimerMode } from "@/helpers/timer/factory";
 import { TimerPhase } from "@/helpers/timer/strategy";
+import type { ForegroundNotificationPayload } from "@/modules/cron-foreground-service";
 import {
   addNotificationActionListener,
   startForegroundService,
@@ -12,8 +13,9 @@ import {
 
 import { IosNoopLiveActivityDriver } from "./ios-noop-driver";
 
-export { IosNoopLiveActivityDriver } from "./ios-noop-driver";
-
+/**
+ * Platform-agnostic state payload dispatched to active background session drivers.
+ */
 export interface ActiveSessionPayload {
   mode: TimerMode;
   phase: TimerPhase;
@@ -22,6 +24,7 @@ export interface ActiveSessionPayload {
   phaseDurationMs: number;
   targetTimestampMs: number;
   isPaused: boolean;
+  isCountDown?: boolean;
   headline?: string;
   subtitle?: string;
   accentColor?: string;
@@ -32,6 +35,10 @@ export interface ActiveSessionPayload {
   capDurationMs?: number;
 }
 
+/**
+ * Presenter interface decoupling the workout session state from platform-specific
+ * background display channels (Android Foreground Service, iOS ActivityKit).
+ */
 export interface LiveActivityDriver {
   start: (session: ActiveSessionPayload) => Promise<void>;
   update: (session: ActiveSessionPayload) => Promise<void>;
@@ -48,6 +55,9 @@ const formatCapDuration = (capDurationMs: number): string => {
   return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 };
 
+/**
+ * Formats the primary notification headline according to the active workout mode.
+ */
 export const formatHeadline = (payload: {
   mode: TimerMode;
   phase: TimerPhase;
@@ -84,6 +94,9 @@ export const formatHeadline = (payload: {
   }
 };
 
+/**
+ * Formats the notification subtitle with immediate next phase or pause context.
+ */
 export const formatSubtitle = (options: {
   isPaused?: boolean;
   pausedElapsedDisplayTime?: string;
@@ -107,6 +120,9 @@ export const formatSubtitle = (options: {
   return "";
 };
 
+/**
+ * Maps the active timer phase to its corresponding theme hex accent color.
+ */
 export const getPhaseAccentColor = (phase: TimerPhase): string => {
   switch (phase) {
     case TimerPhase.WORK: {
@@ -122,6 +138,9 @@ export const getPhaseAccentColor = (phase: TimerPhase): string => {
   }
 };
 
+/**
+ * Determines the contextual secondary action label for checkpoint-based modes.
+ */
 export const getSecondaryActionLabel = (
   mode: TimerMode
 ): string | undefined => {
@@ -138,6 +157,35 @@ export const getSecondaryActionLabel = (
   }
 };
 
+const resolveForegroundNotificationPayload = (
+  session: ActiveSessionPayload
+): ForegroundNotificationPayload => {
+  const headline = session.headline ?? formatHeadline(session);
+  const subtitle =
+    session.subtitle ??
+    formatSubtitle({
+      isPaused: session.isPaused,
+      nextPhase: session.nextPhase,
+      nextPhaseDurationMs: session.nextPhaseDurationMs,
+    });
+  const color = session.accentColor ?? getPhaseAccentColor(session.phase);
+  const secondaryLabel =
+    session.secondaryActionLabel ?? getSecondaryActionLabel(session.mode);
+
+  return {
+    color,
+    headline,
+    isCountDown: session.isCountDown,
+    isPaused: session.isPaused,
+    secondaryLabel,
+    subtitle,
+    targetTimestampMs: session.targetTimestampMs,
+  };
+};
+
+/**
+ * Android Foreground Service live activity driver.
+ */
 export class AndroidForegroundDriver implements LiveActivityDriver {
   private lastSessionPayload: ActiveSessionPayload | null = null;
   private isServiceActive = false;
@@ -146,27 +194,7 @@ export class AndroidForegroundDriver implements LiveActivityDriver {
   public async start(session: ActiveSessionPayload): Promise<void> {
     this.lastSessionPayload = session;
     this.isServiceActive = true;
-
-    const headline = session.headline ?? formatHeadline(session);
-    const subtitle =
-      session.subtitle ??
-      formatSubtitle({
-        isPaused: session.isPaused,
-        nextPhase: session.nextPhase,
-        nextPhaseDurationMs: session.nextPhaseDurationMs,
-      });
-    const color = session.accentColor ?? getPhaseAccentColor(session.phase);
-    const secondaryLabel =
-      session.secondaryActionLabel ?? getSecondaryActionLabel(session.mode);
-
-    await startForegroundService({
-      color,
-      headline,
-      isPaused: session.isPaused,
-      secondaryLabel,
-      subtitle,
-      targetTimestampMs: session.targetTimestampMs,
-    });
+    await startForegroundService(resolveForegroundNotificationPayload(session));
   }
 
   public async update(session: ActiveSessionPayload): Promise<void> {
@@ -176,26 +204,9 @@ export class AndroidForegroundDriver implements LiveActivityDriver {
       return this.start(session);
     }
 
-    const headline = session.headline ?? formatHeadline(session);
-    const subtitle =
-      session.subtitle ??
-      formatSubtitle({
-        isPaused: session.isPaused,
-        nextPhase: session.nextPhase,
-        nextPhaseDurationMs: session.nextPhaseDurationMs,
-      });
-    const color = session.accentColor ?? getPhaseAccentColor(session.phase);
-    const secondaryLabel =
-      session.secondaryActionLabel ?? getSecondaryActionLabel(session.mode);
-
-    await updateForegroundService({
-      color,
-      headline,
-      isPaused: session.isPaused,
-      secondaryLabel,
-      subtitle,
-      targetTimestampMs: session.targetTimestampMs,
-    });
+    await updateForegroundService(
+      resolveForegroundNotificationPayload(session)
+    );
   }
 
   public async pause(elapsedDisplayTime: string): Promise<void> {
@@ -263,6 +274,9 @@ export class AndroidForegroundDriver implements LiveActivityDriver {
   }
 }
 
+/**
+ * Creates the appropriate LiveActivityDriver implementation for the current platform.
+ */
 export const createLiveActivityDriver = (
   platform: string = Platform.OS
 ): LiveActivityDriver => {

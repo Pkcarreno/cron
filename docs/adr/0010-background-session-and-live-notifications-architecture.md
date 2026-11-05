@@ -106,7 +106,7 @@ To guarantee that audio cues and phase transitions fire with microsecond precisi
    $$
 2. **Scheduled Execution**:
    - At $T_{\text{prewarm}}$: Calls `feedbackService.warmUp()`, which eagerly wakes the hardware DAC and claims transient ducking focus via `react-native-audio-api`.
-   - At $T_{\text{countdown}}$: Dispatches the canonical 3-2-1 countdown beeps onto `audioContext.currentTime`.
+   - At $T_{\text{countdown}}$: Strictly during the initial `PREPARATION` phase countdown ($\ge 3000\,\text{ms}$), dispatches the canonical 3-2-1 countdown beeps onto `audioContext.currentTime`. Internal workout transitions (`WORK` $\leftrightarrow$ `REST`) omit intermediate countdown beeps to prevent audio pollution during active exercise.
    - At $T_{\text{transition}}$: Executes strategy recalculation, emits `PHASE_CHANGE` / `ROUND_CHANGE`, plays the transition tone (`GO` / `REST`), and calls `driver.update()` with the next phase's metadata.
 
 ---

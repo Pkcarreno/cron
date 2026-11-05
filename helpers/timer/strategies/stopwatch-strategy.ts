@@ -19,7 +19,14 @@ export class StopwatchStrategy implements TimerStrategy {
   }
 
   // oxlint-disable eslint/class-methods-use-this
-  getPhaseDetails(_event: TickEvent): PhaseDetails | null {
-    return null;
+  getPhaseDetails(event: TickEvent): PhaseDetails {
+    return {
+      currentRound: 1,
+      isFinished: false,
+      phase: TimerPhase.WORK,
+      phaseDurationMs: 0,
+      phaseRemainingMs: event.totalElapsedMs,
+      totalRounds: 1,
+    };
   }
 }

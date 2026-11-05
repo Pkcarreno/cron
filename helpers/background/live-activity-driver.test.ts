@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
+import { IosNoopLiveActivityDriver } from "@/helpers/background/ios-noop-driver";
 import {
   AndroidForegroundDriver,
   createLiveActivityDriver,
@@ -7,7 +8,6 @@ import {
   formatSubtitle,
   getPhaseAccentColor,
   getSecondaryActionLabel,
-  IosNoopLiveActivityDriver,
 } from "@/helpers/background/live-activity-driver";
 import { TimerMode } from "@/helpers/timer/factory";
 import { TimerPhase } from "@/helpers/timer/strategy";

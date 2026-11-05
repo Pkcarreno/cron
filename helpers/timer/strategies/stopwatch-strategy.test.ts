@@ -19,4 +19,21 @@ describe("stopwatchStrategy", () => {
     expect(state.phase).toBe(TimerPhase.WORK);
     expect(state.isFinished).toBeFalsy();
   });
+
+  it("returns active PhaseDetails with elapsed time for background live notifications", () => {
+    const strategy = new StopwatchStrategy();
+    const phaseDetails = strategy.getPhaseDetails({
+      deltaMs: 1000,
+      totalElapsedMs: 42_000,
+    });
+
+    expect(phaseDetails).toEqual({
+      currentRound: 1,
+      isFinished: false,
+      phase: TimerPhase.WORK,
+      phaseDurationMs: 0,
+      phaseRemainingMs: 42_000,
+      totalRounds: 1,
+    });
+  });
 });
