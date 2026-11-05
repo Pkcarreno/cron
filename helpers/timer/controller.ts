@@ -1,7 +1,16 @@
 import type { AppStateStatus } from "react-native";
 import { AppState } from "react-native";
 
-import type { TimerState, TimerStrategy } from "@/helpers/timer/strategy";
+import type { PhaseMilestones } from "@/helpers/timer/milestone-scheduler";
+import {
+  calculatePhaseMilestones,
+  MilestoneScheduler,
+} from "@/helpers/timer/milestone-scheduler";
+import type {
+  PhaseDetails,
+  TimerState,
+  TimerStrategy,
+} from "@/helpers/timer/strategy";
 import { TimerPhase } from "@/helpers/timer/strategy";
 import type { TickEvent } from "@/helpers/timer/tick-engine";
 import { TickEngine } from "@/helpers/timer/tick-engine";
@@ -63,12 +72,15 @@ export interface TimerControllerOptions {
   uiTickResolutionMs?: number;
   appState?: typeof AppState;
   highPrecision?: boolean;
+  milestoneScheduler?: MilestoneScheduler;
 }
 
 export class TimerController {
   private engine: TickEngine;
   private strategy: TimerStrategy;
+  private milestoneScheduler: MilestoneScheduler;
   private preparationTimeMs: number;
+
   private uiTickResolutionMs: number | null = null;
   private previousState: TimerState | null = null;
   private lastUiTickState: TimerState | null = null;
@@ -105,6 +117,23 @@ export class TimerController {
   ) {
     this.strategy = strategy;
     this.preparationTimeMs = preparationTimeMs;
+
+    this.milestoneScheduler =
+      options && typeof options === "object" && options.milestoneScheduler
+        ? options.milestoneScheduler
+        : new MilestoneScheduler({
+            onCountdownBeep: (secondRemaining: number) => {
+              this.hasEmittedApproachingTransition = false;
+              this.emit(TimerEventType.BEEP, secondRemaining);
+            },
+            onTransition: () => {
+              this.handleBackgroundTransition();
+            },
+            onWarmup: () => {
+              this.hasEmittedApproachingTransition = true;
+              this.emit(TimerEventType.TRANSITION_APPROACHING);
+            },
+          });
 
     let highPrecision = false;
 
@@ -179,8 +208,12 @@ export class TimerController {
     if (wasActive && !isNowActive) {
       this.isVisualUpdatesPaused = true;
       this.engine.pauseLoop();
+      if (this.engine.getIsRunning()) {
+        this.scheduleBackgroundMilestones();
+      }
     } else if (!wasActive && isNowActive) {
       this.isVisualUpdatesPaused = false;
+      this.milestoneScheduler.clearMilestones();
       if (this.engine.getIsRunning()) {
         this.catchUp();
         if (!this.previousState?.isFinished) {
@@ -196,7 +229,7 @@ export class TimerController {
     }
 
     const catchUpEvent = this.engine.catchUp();
-    if (catchUpEvent && this.previousState) {
+    if (catchUpEvent && this.previousState && !this.isVisualUpdatesPaused) {
       this.updateUiTickSnapshot(this.previousState);
       this.emit(TimerEventType.UI_TICK, this.previousState);
     }
@@ -488,6 +521,7 @@ export class TimerController {
   }
 
   public dispose() {
+    this.milestoneScheduler.dispose();
     this.engine.pause();
     this.appStateSubscription?.remove();
     this.appStateSubscription = null;
@@ -532,19 +566,40 @@ export class TimerController {
     }
   }
 
+  private getInitialState(): TimerState {
+    if (this.preparationTimeMs > 0) {
+      return {
+        currentRound: 0,
+        displayTimeMs: this.preparationTimeMs,
+        isFinished: false,
+        phase: TimerPhase.PREPARATION,
+        totalRounds: 0,
+      };
+    }
+    return this.strategy.calculateState({ deltaMs: 0, totalElapsedMs: 0 });
+  }
+
   public start() {
+    if (!this.previousState) {
+      this.previousState = this.getInitialState();
+    }
     this.emit(TimerEventType.START);
     this.engine.start();
+    if (this.isVisualUpdatesPaused) {
+      this.scheduleBackgroundMilestones();
+    }
   }
 
   public pause() {
     this.hasEmittedApproachingTransition = false;
+    this.milestoneScheduler.clearMilestones();
     this.emit(TimerEventType.PAUSE);
     this.engine.pause();
   }
 
   public reset() {
     this.hasEmittedApproachingTransition = false;
+    this.milestoneScheduler.clearMilestones();
     this.emit(TimerEventType.RESET);
     this.checkpoints = [];
     this.previousState = null;
@@ -553,5 +608,104 @@ export class TimerController {
     this.lastEmittedQuantizedStep = null;
     this.lastKnownElapsedMs = 0;
     this.engine.reset();
+  }
+
+  public getPhaseDetails(elapsedMs?: number): PhaseDetails | null {
+    const currentElapsed = elapsedMs ?? this.engine.getElapsedMs();
+
+    if (currentElapsed < this.preparationTimeMs) {
+      return {
+        currentRound: 0,
+        isFinished: false,
+        phase: TimerPhase.PREPARATION,
+        phaseDurationMs: this.preparationTimeMs,
+        phaseRemainingMs: this.preparationTimeMs - currentElapsed,
+        totalRounds: 0,
+      };
+    }
+
+    const adjustedElapsedMs = currentElapsed - this.preparationTimeMs;
+    const adjustedTick: TickEvent = {
+      deltaMs: 0,
+      totalElapsedMs: adjustedElapsedMs,
+    };
+
+    if (typeof this.strategy.getPhaseDetails === "function") {
+      return this.strategy.getPhaseDetails(adjustedTick);
+    }
+
+    const state = this.strategy.calculateState(adjustedTick);
+    if (state.isFinished) {
+      return {
+        currentRound: state.currentRound,
+        isFinished: true,
+        phase: state.phase,
+        phaseDurationMs: 0,
+        phaseRemainingMs: 0,
+        totalRounds: state.totalRounds,
+      };
+    }
+
+    return {
+      currentRound: state.currentRound,
+      isFinished: state.isFinished,
+      phase: state.phase,
+      phaseDurationMs: state.displayTimeMs,
+      phaseRemainingMs: state.displayTimeMs,
+      totalRounds: state.totalRounds,
+    };
+  }
+
+  private scheduleBackgroundMilestones(): void {
+    if (!this.engine.getIsRunning() || !this.isVisualUpdatesPaused) {
+      return;
+    }
+
+    const phaseDetails = this.getPhaseDetails();
+    if (
+      !phaseDetails ||
+      phaseDetails.isFinished ||
+      phaseDetails.phaseRemainingMs <= 0
+    ) {
+      return;
+    }
+
+    const hasCountdownBeeps =
+      phaseDetails.phaseDurationMs >= 3000 &&
+      (phaseDetails.phase === TimerPhase.PREPARATION ||
+        phaseDetails.phase === TimerPhase.WORK ||
+        phaseDetails.phase === TimerPhase.REST);
+
+    const now = Date.now();
+    const milestones = calculatePhaseMilestones({
+      hasCountdownBeeps,
+      now,
+      phaseDurationMs: phaseDetails.phaseDurationMs,
+      phaseRemainingMs: phaseDetails.phaseRemainingMs,
+    });
+
+    this.milestoneScheduler.scheduleMilestones(milestones, now);
+  }
+
+  private handleBackgroundTransition(): void {
+    this.hasEmittedApproachingTransition = false;
+    this.catchUp();
+
+    if (this.previousState?.isFinished) {
+      this.milestoneScheduler.clearMilestones();
+      return;
+    }
+
+    if (this.isVisualUpdatesPaused && this.engine.getIsRunning()) {
+      this.scheduleBackgroundMilestones();
+    }
+  }
+
+  public getScheduledMilestones(): PhaseMilestones | null {
+    return this.milestoneScheduler.getActiveMilestones();
+  }
+
+  public getMilestoneScheduler(): MilestoneScheduler {
+    return this.milestoneScheduler;
   }
 }

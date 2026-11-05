@@ -1,4 +1,8 @@
-import type { TimerState, TimerStrategy } from "@/helpers/timer/strategy";
+import type {
+  PhaseDetails,
+  TimerState,
+  TimerStrategy,
+} from "@/helpers/timer/strategy";
 import { TimerPhase } from "@/helpers/timer/strategy";
 import type { TickEvent } from "@/helpers/timer/tick-engine";
 
@@ -12,5 +16,10 @@ export class StopwatchStrategy implements TimerStrategy {
       phase: TimerPhase.WORK,
       totalRounds: 1,
     };
+  }
+
+  // oxlint-disable eslint/class-methods-use-this
+  getPhaseDetails(_event: TickEvent): PhaseDetails | null {
+    return null;
   }
 }

@@ -540,4 +540,67 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
       }).not.toThrow();
     });
   });
+
+  describe("Background milestone acoustic feedback (#117)", () => {
+    it("coordinates DAC warmUp, countdown beeps, and transition sounds while backgrounded", () => {
+      const strategy = new IntervalStrategy(5000, 4000, 1);
+      const controller = new TimerController(strategy, 5000);
+
+      const service = new FeedbackService({
+        audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
+        store: testStore,
+      });
+      service.attach(controller);
+
+      jest.useFakeTimers();
+      controller.start();
+      controller.handleAppStateChange("background");
+
+      // In preparation phase (5000ms):
+      // DAC prewarm at 500ms (1500ms before countdown beeps)
+      jest.advanceTimersByTime(500);
+      expect(mockAudioEngine.warmUp).toHaveBeenCalledTimes(1);
+
+      // Countdown beeps at 2000ms (3), 3000ms (2), 4000ms (1)
+      jest.advanceTimersByTime(1500);
+      expect(mockAudioEngine.playSound).toHaveBeenCalledWith(
+        CANONICAL_SOUNDS.COUNTDOWN_BEEP
+      );
+
+      jest.advanceTimersByTime(1000);
+      expect(mockAudioEngine.playSound).toHaveBeenCalledWith(
+        CANONICAL_SOUNDS.COUNTDOWN_BEEP
+      );
+
+      jest.advanceTimersByTime(1000);
+      expect(mockAudioEngine.playSound).toHaveBeenCalledWith(
+        CANONICAL_SOUNDS.COUNTDOWN_BEEP
+      );
+
+      // Transition to WORK (GO) at 5000ms
+      jest.advanceTimersByTime(1000);
+      expect(mockAudioEngine.playSound).toHaveBeenCalledWith(
+        CANONICAL_SOUNDS.GO
+      );
+
+      // In WORK phase (5000ms):
+      // Countdown beeps at 7000ms, 8000ms, 9000ms
+      // Transition to REST at 10000ms
+      jest.advanceTimersByTime(5000);
+      expect(mockAudioEngine.playSound).toHaveBeenCalledWith(
+        CANONICAL_SOUNDS.REST
+      );
+
+      // In REST phase (4000ms):
+      // Workout completion at 14000ms
+      jest.advanceTimersByTime(4000);
+      expect(mockAudioEngine.playSound).toHaveBeenCalledWith(
+        CANONICAL_SOUNDS.FINISH
+      );
+
+      controller.dispose();
+      service.dispose();
+      jest.useRealTimers();
+    });
+  });
 });
