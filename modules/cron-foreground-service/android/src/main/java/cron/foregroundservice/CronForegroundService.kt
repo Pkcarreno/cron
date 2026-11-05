@@ -10,8 +10,10 @@ import android.content.pm.ServiceInfo
 import android.graphics.Color
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+
 
 class CronForegroundService : Service() {
     companion object {
@@ -63,24 +65,30 @@ class CronForegroundService : Service() {
             }
             ACTION_START, ACTION_UPDATE -> {
                 extractPayload(intent)
-                val notification = buildNotification()
+                try {
+                    val notification = buildNotification()
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                        startForeground(
-                            NOTIFICATION_ID,
-                            notification,
-                            ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH
-                        )
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                            startForeground(
+                                NOTIFICATION_ID,
+                                notification,
+                                ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH
+                            )
+                        } else {
+                            startForeground(NOTIFICATION_ID, notification)
+                        }
                     } else {
                         startForeground(NOTIFICATION_ID, notification)
                     }
-                } else {
-                    startForeground(NOTIFICATION_ID, notification)
-                }
 
-                if (intent.action == ACTION_UPDATE) {
-                    NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, notification)
+                    if (intent.action == ACTION_UPDATE) {
+                        NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, notification)
+                    }
+                } catch (e: SecurityException) {
+                    Log.e("CronForegroundService", "SecurityException in startForeground: ${e.message}", e)
+                } catch (e: Exception) {
+                    Log.e("CronForegroundService", "Exception in startForeground: ${e.message}", e)
                 }
             }
         }
@@ -208,8 +216,8 @@ class CronForegroundService : Service() {
     private fun getSmallIconResId(): Int {
         val customIcon = resources.getIdentifier("notification_icon", "drawable", packageName)
         if (customIcon != 0) return customIcon
-        val appIcon = applicationInfo.icon
-        if (appIcon != 0) return appIcon
+        val customIcon2 = resources.getIdentifier("ic_notification", "drawable", packageName)
+        if (customIcon2 != 0) return customIcon2
         return android.R.drawable.ic_media_play
     }
 

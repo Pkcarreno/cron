@@ -1,6 +1,7 @@
 package cron.foregroundservice
 
 import android.content.Intent
+import android.util.Log
 import androidx.core.content.ContextCompat
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -35,8 +36,13 @@ class CronForegroundModule : Module() {
                 action = CronForegroundService.ACTION_START
                 putPayload(this, payload)
             }
-            ContextCompat.startForegroundService(context, intent)
-            true
+            try {
+                ContextCompat.startForegroundService(context, intent)
+                true
+            } catch (e: Exception) {
+                Log.e("CronForegroundModule", "Failed to start foreground service: ${e.message}", e)
+                false
+            }
         }
 
         AsyncFunction("update") { payload: Map<String, Any?> ->
@@ -45,8 +51,13 @@ class CronForegroundModule : Module() {
                 action = CronForegroundService.ACTION_UPDATE
                 putPayload(this, payload)
             }
-            ContextCompat.startForegroundService(context, intent)
-            true
+            try {
+                ContextCompat.startForegroundService(context, intent)
+                true
+            } catch (e: Exception) {
+                Log.e("CronForegroundModule", "Failed to update foreground service: ${e.message}", e)
+                false
+            }
         }
 
         AsyncFunction("stop") {
@@ -54,8 +65,13 @@ class CronForegroundModule : Module() {
             val intent = Intent(context, CronForegroundService::class.java).apply {
                 action = CronForegroundService.ACTION_STOP
             }
-            context.stopService(intent)
-            true
+            try {
+                context.stopService(intent)
+                true
+            } catch (e: Exception) {
+                Log.e("CronForegroundModule", "Failed to stop foreground service: ${e.message}", e)
+                false
+            }
         }
 
         AsyncFunction("isServiceRunning") {
