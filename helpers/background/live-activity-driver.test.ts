@@ -39,7 +39,7 @@ describe("liveActivityDriver", () => {
   });
 
   describe("formatHeadline", () => {
-    it("formats preparation phase with phase duration", () => {
+    it("formats preparation phase cleanly without static duration", () => {
       const headline = formatHeadline({
         currentRound: 0,
         mode: TimerMode.INTERVAL,
@@ -47,10 +47,10 @@ describe("liveActivityDriver", () => {
         phaseDurationMs: 10_000,
         totalRounds: 8,
       });
-      expect(headline).toBe("PREPARATION | 00:10");
+      expect(headline).toBe("PREPARATION");
     });
 
-    it("formats interval and emom rounds with active phase and duration", () => {
+    it("formats interval and emom rounds with active phase", () => {
       const workHeadline = formatHeadline({
         currentRound: 3,
         mode: TimerMode.INTERVAL,
@@ -58,7 +58,7 @@ describe("liveActivityDriver", () => {
         phaseDurationMs: 20_000,
         totalRounds: 8,
       });
-      expect(workHeadline).toBe("Round 3/8 | WORK | 00:20");
+      expect(workHeadline).toBe("Round 3/8 | WORK");
 
       const restHeadline = formatHeadline({
         currentRound: 3,
@@ -67,7 +67,7 @@ describe("liveActivityDriver", () => {
         phaseDurationMs: 10_000,
         totalRounds: 8,
       });
-      expect(restHeadline).toBe("Round 3/8 | REST | 00:10");
+      expect(restHeadline).toBe("Round 3/8 | REST");
 
       const emomHeadline = formatHeadline({
         currentRound: 2,
@@ -76,10 +76,10 @@ describe("liveActivityDriver", () => {
         phaseDurationMs: 60_000,
         totalRounds: 5,
       });
-      expect(emomHeadline).toBe("Round 2/5 | WORK | 01:00");
+      expect(emomHeadline).toBe("Round 2/5 | WORK");
     });
 
-    it("formats AMRAP with active round and cap duration", () => {
+    it("formats AMRAP with active round", () => {
       const amrapHeadline = formatHeadline({
         capDurationMs: 600_000,
         currentRound: 5,
@@ -87,7 +87,7 @@ describe("liveActivityDriver", () => {
         phase: TimerPhase.WORK,
         totalRounds: 1,
       });
-      expect(amrapHeadline).toBe("Round 5 | WORK | 10:00");
+      expect(amrapHeadline).toBe("Round 5 | WORK");
     });
 
     it("formats Stopwatch with active lap or base state", () => {
@@ -108,7 +108,7 @@ describe("liveActivityDriver", () => {
       expect(lapHeadline).toBe("Lap 4 | STOPWATCH");
     });
 
-    it("formats For Time with and without cap duration", () => {
+    it("formats For Time simply as WORK", () => {
       const withCap = formatHeadline({
         capDurationMs: 1_200_000,
         currentRound: 1,
@@ -116,7 +116,7 @@ describe("liveActivityDriver", () => {
         phase: TimerPhase.WORK,
         totalRounds: 1,
       });
-      expect(withCap).toBe("WORK | 20:00");
+      expect(withCap).toBe("WORK");
 
       const noCap = formatHeadline({
         currentRound: 1,
@@ -137,7 +137,7 @@ describe("liveActivityDriver", () => {
         phaseDurationMs: 10_000,
         totalRounds: 8,
       });
-      expect(chip).toBe("PREP | 0:10");
+      expect(chip).toBe("PREP");
     });
 
     it("formats compact chip for interval and emom", () => {
@@ -148,7 +148,7 @@ describe("liveActivityDriver", () => {
         phaseDurationMs: 20_000,
         totalRounds: 8,
       });
-      expect(workChip).toBe("3 | WORK | 0:20");
+      expect(workChip).toBe("3 | WORK");
 
       const restChip = formatChip({
         currentRound: 3,
@@ -157,7 +157,7 @@ describe("liveActivityDriver", () => {
         phaseDurationMs: 10_000,
         totalRounds: 8,
       });
-      expect(restChip).toBe("3 | REST | 0:10");
+      expect(restChip).toBe("3 | REST");
 
       const emomChip = formatChip({
         currentRound: 4,
@@ -166,7 +166,7 @@ describe("liveActivityDriver", () => {
         phaseDurationMs: 60_000,
         totalRounds: 10,
       });
-      expect(emomChip).toBe("4 | WORK | 1:00");
+      expect(emomChip).toBe("4 | WORK");
     });
 
     it("formats compact chip for AMRAP, For Time, and Stopwatch", () => {
@@ -177,7 +177,7 @@ describe("liveActivityDriver", () => {
         phase: TimerPhase.WORK,
         totalRounds: 1,
       });
-      expect(amrapChip).toBe("3 | WORK | 10:00");
+      expect(amrapChip).toBe("3 | WORK");
 
       const forTimeCapChip = formatChip({
         capDurationMs: 900_000,
@@ -186,7 +186,7 @@ describe("liveActivityDriver", () => {
         phase: TimerPhase.WORK,
         totalRounds: 1,
       });
-      expect(forTimeCapChip).toBe("WORK | 15:00");
+      expect(forTimeCapChip).toBe("WORK");
 
       const forTimeNoCapChip = formatChip({
         currentRound: 1,
@@ -325,10 +325,10 @@ describe("liveActivityDriver", () => {
 
       expect(startSpy).toHaveBeenCalledWith({
         color: "#008153",
-        headline: "Round 3/8 | WORK | 01:00",
+        headline: "Round 3/8 | WORK",
         isPaused: false,
         secondaryLabel: undefined,
-        subText: "3 | WORK | 1:00",
+        subText: undefined,
         subtitle: "Interval. Next: REST (00:30)",
         targetTimestampMs: 1_700_000_000_000,
       });
@@ -366,10 +366,10 @@ describe("liveActivityDriver", () => {
 
       expect(updateSpy).toHaveBeenCalledWith({
         color: "#008153",
-        headline: "Round 2 | WORK | 10:00",
+        headline: "Round 2 | WORK",
         isPaused: false,
         secondaryLabel: "Record Round",
-        subText: "2 | WORK | 10:00",
+        subText: undefined,
         subtitle: "AMRAP. Cap: 10:00",
         targetTimestampMs: 1_700_000_000_000,
       });
@@ -398,10 +398,10 @@ describe("liveActivityDriver", () => {
 
       expect(updateSpy).toHaveBeenCalledWith({
         color: "#008153",
-        headline: "Round 3/8 | WORK | 01:00",
+        headline: "Round 3/8 | WORK",
         isPaused: true,
         secondaryLabel: undefined,
-        subText: "3 | WORK | 1:00",
+        subText: undefined,
         subtitle: "Interval. Paused at 02:45",
         targetTimestampMs: 0,
       });

@@ -80,23 +80,23 @@ All notification text is strictly in English matching the application domain sta
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│ [Small Icon]  cron  •  [CHIP / SubText]  •  [Hardware Chronometer]     │
+│ [Small Icon]  cron  •  [Hardware Chronometer: MM:SS]                   │
 │                                                                        │
-│ HEADLINE:  [Round / Progression] | [Phase / Mode] | [Duration / Cap]   │
+│ HEADLINE:  [Round / Progression] | [Phase / Mode]                      │
 │ SUBTITLE:  [Mode]. [Next Phase Context / Cap / Paused State]           │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-1. **Headline (Expanded Notification Card Title)**:
+1. **Headline (Notification Content Title)**:
    - High-detail context when the user pulls down the notification shade.
+   - Formula: `[Round / Progression] | [Phase / Mode]`.
    - Separator: `|`.
-   - Time format: `MM:SS` (or `HH:MM:SS` if exceeding 60 minutes).
-   - Omission rule: Inexistent dimensions are omitted cleanly without trailing pipes.
-2. **Chip (Android SubText / Status Bar Promoted Chip)**:
-   - Ultra-compact format saving horizontal pixels on narrow status bars and lockscreen chips.
-   - Separator: `|`.
-   - Time format: `M:SS` (single digit for minutes < 10, e.g., `0:20`, `1:00`).
-   - Omission rule: Inexistent dimensions are omitted cleanly.
+   - Omission rule: Inexistent dimensions are omitted cleanly without trailing pipes (e.g., `Round 3/8 | WORK`, `Round 3 | WORK`, `WORK`, `PREPARATION`, `STOPWATCH`).
+   - Notice on Time: Static duration/cap values are explicitly omitted from the headline. Android's native hardware chronometer (`setUsesChronometer(true)`) renders the live elapsed or remaining time directly adjacent to the title (`[Headline] • [Chronometer]`), avoiding redundant or conflicting time displays.
+2. **Chip (Compact Format & Status Bar Promoted Chip)**:
+   - Ultra-compact format for narrow spaces: `[Round] | [Phase]` (e.g., `3 | WORK`, `PREP`, `2 | STOPWATCH`).
+   - In Android notification cards, `subText` is intentionally omitted (`undefined`) to avoid duplicating the headline as a secondary line inside the notification shade.
+   - For Android 16 Status Bar Live Updates, omitting static string overrides allows the system to prioritize the live ticking hardware chronometer chip.
 3. **Subtitle (Content Text / Body)**:
    - Always prefixed with the timer mode name and a period (`Interval. `, `EMOM. `, `AMRAP. `, `For Time. `, `Stopwatch. `).
    - When active with upcoming phase: `[Mode]. Next: [PHASE] (MM:SS)`.
@@ -110,14 +110,14 @@ All notification text is strictly in English matching the application domain sta
 
 #### 2.2.2. Per-Strategy Presentation Matrix
 
-| Strategy / Phase | Headline (`MM:SS`) | Chip / SubText (`M:SS`) | Subtitle (Active) | Subtitle (Paused) |
+| Strategy / Phase | Headline | Chip (`formatChip`) | Subtitle (Active) | Subtitle (Paused) |
 | :-- | :-- | :-- | :-- | :-- |
-| **PREPARATION** (Any mode) | `PREPARATION \| 00:10` | `PREP \| 0:10` | `[Mode]. Next: WORK (00:20)` | `[Mode]. Paused at 00:05` |
-| **INTERVAL (Work)** | `Round 3/8 \| WORK \| 00:20` | `3 \| WORK \| 0:20` | `Interval. Next: REST (00:10)` | `Interval. Paused at 04:12` |
-| **INTERVAL (Rest)** | `Round 3/8 \| REST \| 00:10` | `3 \| REST \| 0:10` | `Interval. Next: WORK (00:20)` | `Interval. Paused at 04:25` |
-| **EMOM (Time-Agnostic)** | `Round 4/10 \| WORK \| 01:00` | `4 \| WORK \| 1:00` | `EMOM. Next: WORK (01:00)` | `EMOM. Paused at 03:40` |
-| **AMRAP (Open Rounds)** | `Round 3 \| WORK \| 10:00` | `3 \| WORK \| 10:00` | `AMRAP. Cap: 10:00` | `AMRAP. Paused at 06:15` |
-| **FOR TIME (With Cap)** | `WORK \| 15:00` | `WORK \| 15:00` | `For Time. Cap: 15:00` | `For Time. Paused at 07:30` |
+| **PREPARATION** (Any mode) | `PREPARATION` | `PREP` | `[Mode]. Next: WORK (00:20)` | `[Mode]. Paused at 00:05` |
+| **INTERVAL (Work)** | `Round 3/8 \| WORK` | `3 \| WORK` | `Interval. Next: REST (00:10)` | `Interval. Paused at 04:12` |
+| **INTERVAL (Rest)** | `Round 3/8 \| REST` | `3 \| REST` | `Interval. Next: WORK (00:20)` | `Interval. Paused at 04:25` |
+| **EMOM (Time-Agnostic)** | `Round 4/10 \| WORK` | `4 \| WORK` | `EMOM. Next: WORK (01:00)` | `EMOM. Paused at 03:40` |
+| **AMRAP (Open Rounds)** | `Round 3 \| WORK` | `3 \| WORK` | `AMRAP. Cap: 10:00` | `AMRAP. Paused at 06:15` |
+| **FOR TIME (With Cap)** | `WORK` | `WORK` | `For Time. Cap: 15:00` | `For Time. Paused at 07:30` |
 | **FOR TIME (No Cap)** | `WORK` | `WORK` | `For Time.` | `For Time. Paused at 02:10` |
 | **STOPWATCH (Base)** | `STOPWATCH` | `STOPWATCH` | `Stopwatch.` | `Stopwatch. Paused at 01:23` |
 | **STOPWATCH (Laps)** | `Lap 2 \| STOPWATCH` | `2 \| STOPWATCH` | `Stopwatch.` | `Stopwatch. Paused at 01:23` |

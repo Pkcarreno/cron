@@ -93,27 +93,19 @@ export const formatHeadline = (payload: {
   capDurationMs?: number;
 }): string => {
   if (payload.phase === TimerPhase.PREPARATION) {
-    const duration = formatClockDuration(payload.phaseDurationMs ?? 0);
-    return `PREPARATION | ${duration}`;
+    return "PREPARATION";
   }
 
   switch (payload.mode) {
     case TimerMode.INTERVAL:
     case TimerMode.EMOM: {
-      const duration = formatClockDuration(payload.phaseDurationMs ?? 0);
-      return `Round ${payload.currentRound}/${payload.totalRounds} | ${payload.phase} | ${duration}`;
+      return `Round ${payload.currentRound}/${payload.totalRounds} | ${payload.phase}`;
     }
     case TimerMode.AMRAP: {
       const activeRound = Math.max(1, payload.currentRound);
-      const capMs = payload.capDurationMs ?? payload.phaseDurationMs ?? 0;
-      const duration = formatClockDuration(capMs);
-      return `Round ${activeRound} | WORK | ${duration}`;
+      return `Round ${activeRound} | WORK`;
     }
     case TimerMode.FOR_TIME: {
-      if (payload.capDurationMs && payload.capDurationMs > 0) {
-        const duration = formatClockDuration(payload.capDurationMs);
-        return `WORK | ${duration}`;
-      }
       return "WORK";
     }
     case TimerMode.STOP_WATCH: {
@@ -129,7 +121,7 @@ export const formatHeadline = (payload: {
 };
 
 /**
- * Formats the compact chip badge (Android subText) using single-digit minutes when < 10.
+ * Formats the compact chip badge using single-digit values when applicable.
  */
 export const formatChip = (payload: {
   mode: TimerMode;
@@ -140,27 +132,19 @@ export const formatChip = (payload: {
   capDurationMs?: number;
 }): string => {
   if (payload.phase === TimerPhase.PREPARATION) {
-    const duration = formatClockDuration(payload.phaseDurationMs ?? 0, true);
-    return `PREP | ${duration}`;
+    return "PREP";
   }
 
   switch (payload.mode) {
     case TimerMode.INTERVAL:
     case TimerMode.EMOM: {
-      const duration = formatClockDuration(payload.phaseDurationMs ?? 0, true);
-      return `${payload.currentRound} | ${payload.phase} | ${duration}`;
+      return `${payload.currentRound} | ${payload.phase}`;
     }
     case TimerMode.AMRAP: {
       const activeRound = Math.max(1, payload.currentRound);
-      const capMs = payload.capDurationMs ?? payload.phaseDurationMs ?? 0;
-      const duration = formatClockDuration(capMs, true);
-      return `${activeRound} | WORK | ${duration}`;
+      return `${activeRound} | WORK`;
     }
     case TimerMode.FOR_TIME: {
-      if (payload.capDurationMs && payload.capDurationMs > 0) {
-        const duration = formatClockDuration(payload.capDurationMs, true);
-        return `WORK | ${duration}`;
-      }
       return "WORK";
     }
     case TimerMode.STOP_WATCH: {
@@ -277,7 +261,7 @@ const resolveForegroundNotificationPayload = (
   session: ActiveSessionPayload
 ): ForegroundNotificationPayload => {
   const headline = session.headline ?? formatHeadline(session);
-  const subText = session.subText ?? formatChip(session);
+  const { subText } = session;
   const subtitle =
     session.subtitle ??
     formatSubtitle({
