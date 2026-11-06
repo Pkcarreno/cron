@@ -6,10 +6,12 @@ import { Platform } from "react-native";
  * Payload configuration dispatched to the native Android Foreground Service.
  */
 export interface ForegroundNotificationPayload {
-  /** Main title displayed on the ongoing notification card (e.g., "WORK — Round 3/8"). */
+  /** Main title displayed on the ongoing notification card (e.g., "Round 3/8 | WORK | 00:20"). */
   headline?: string;
-  /** Subtitle providing secondary or next phase context (e.g., "Next: REST (30s)"). */
+  /** Subtitle providing secondary or next phase context (e.g., "Interval. Next: REST (00:10)"). */
   subtitle?: string;
+  /** Compact chip text displayed in Android subText header (e.g., "3 | WORK | 0:20"). */
+  subText?: string;
   /** Target timestamp in epoch milliseconds for hardware chronometer calculations. */
   targetTimestampMs?: number;
   /** Indicates whether workout progression is actively paused. */

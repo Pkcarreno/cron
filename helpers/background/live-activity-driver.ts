@@ -3,7 +3,6 @@ import { Platform } from "react-native";
 import type { TimerController } from "@/helpers/timer/controller";
 import { TimerMode } from "@/helpers/timer/factory";
 import { TimerPhase } from "@/helpers/timer/strategy";
-import { formatTimeForDisplay } from "@/helpers/timer/utils/formatter";
 import type { ForegroundNotificationPayload } from "@/modules/cron-foreground-service";
 import {
   addNotificationActionListener,
@@ -26,6 +25,7 @@ export interface ActiveSessionPayload {
   targetTimestampMs: number;
   isPaused: boolean;
   isCountDown?: boolean;
+  subText?: string;
   headline?: string;
   subtitle?: string;
   accentColor?: string;
@@ -49,45 +49,78 @@ export interface LiveActivityDriver {
   attachController?: (controller: TimerController) => () => void;
 }
 
-const formatCapDuration = (capDurationMs: number): string => {
-  const totalSeconds = Math.floor(capDurationMs / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
+/**
+ * Formats a duration in milliseconds to clock time (MM:SS or HH:MM:SS),
+ * optionally using a single digit for minutes < 10 for compact horizontal chips.
+ */
+export const formatClockDuration = (
+  ms: number,
+  compactMinutes = false
+): string => {
+  if (ms <= 0) {
+    return compactMinutes ? "0:00" : "00:00";
+  }
+  const totalSeconds = Math.ceil(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-  return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+
+  const paddedSeconds = seconds.toString().padStart(2, "0");
+
+  if (hours > 0) {
+    const paddedMinutes = minutes.toString().padStart(2, "0");
+    const formattedHours = hours.toString().padStart(2, "0");
+    return `${formattedHours}:${paddedMinutes}:${paddedSeconds}`;
+  }
+
+  const formattedMinutes = compactMinutes
+    ? minutes.toString()
+    : minutes.toString().padStart(2, "0");
+
+  return `${formattedMinutes}:${paddedSeconds}`;
 };
 
 /**
  * Formats the primary notification headline according to the active workout mode.
+ * Enforces standard pipe separators without em-dashes and formats durations as MM:SS.
  */
 export const formatHeadline = (payload: {
   mode: TimerMode;
   phase: TimerPhase;
   currentRound: number;
   totalRounds: number;
+  phaseDurationMs?: number;
   capDurationMs?: number;
 }): string => {
   if (payload.phase === TimerPhase.PREPARATION) {
-    return "PREPARATION";
+    const duration = formatClockDuration(payload.phaseDurationMs ?? 0);
+    return `PREPARATION | ${duration}`;
   }
 
   switch (payload.mode) {
     case TimerMode.INTERVAL:
     case TimerMode.EMOM: {
-      return `${payload.phase} — Round ${payload.currentRound}/${payload.totalRounds}`;
+      const duration = formatClockDuration(payload.phaseDurationMs ?? 0);
+      return `Round ${payload.currentRound}/${payload.totalRounds} | ${payload.phase} | ${duration}`;
     }
     case TimerMode.AMRAP: {
       const activeRound = Math.max(1, payload.currentRound);
-      return `AMRAP — Round ${activeRound}`;
-    }
-    case TimerMode.STOP_WATCH: {
-      const activeLap = Math.max(1, payload.currentRound);
-      return `STOPWATCH — Lap ${activeLap}`;
+      const capMs = payload.capDurationMs ?? payload.phaseDurationMs ?? 0;
+      const duration = formatClockDuration(capMs);
+      return `Round ${activeRound} | WORK | ${duration}`;
     }
     case TimerMode.FOR_TIME: {
       if (payload.capDurationMs && payload.capDurationMs > 0) {
-        return `FOR TIME — Cap ${formatCapDuration(payload.capDurationMs)}`;
+        const duration = formatClockDuration(payload.capDurationMs);
+        return `WORK | ${duration}`;
       }
-      return "FOR TIME";
+      return "WORK";
+    }
+    case TimerMode.STOP_WATCH: {
+      if (payload.currentRound > 1) {
+        return `Lap ${payload.currentRound} | STOPWATCH`;
+      }
+      return "STOPWATCH";
     }
     default: {
       return payload.phase;
@@ -96,16 +129,93 @@ export const formatHeadline = (payload: {
 };
 
 /**
+ * Formats the compact chip badge (Android subText) using single-digit minutes when < 10.
+ */
+export const formatChip = (payload: {
+  mode: TimerMode;
+  phase: TimerPhase;
+  currentRound: number;
+  totalRounds: number;
+  phaseDurationMs?: number;
+  capDurationMs?: number;
+}): string => {
+  if (payload.phase === TimerPhase.PREPARATION) {
+    const duration = formatClockDuration(payload.phaseDurationMs ?? 0, true);
+    return `PREP | ${duration}`;
+  }
+
+  switch (payload.mode) {
+    case TimerMode.INTERVAL:
+    case TimerMode.EMOM: {
+      const duration = formatClockDuration(payload.phaseDurationMs ?? 0, true);
+      return `${payload.currentRound} | ${payload.phase} | ${duration}`;
+    }
+    case TimerMode.AMRAP: {
+      const activeRound = Math.max(1, payload.currentRound);
+      const capMs = payload.capDurationMs ?? payload.phaseDurationMs ?? 0;
+      const duration = formatClockDuration(capMs, true);
+      return `${activeRound} | WORK | ${duration}`;
+    }
+    case TimerMode.FOR_TIME: {
+      if (payload.capDurationMs && payload.capDurationMs > 0) {
+        const duration = formatClockDuration(payload.capDurationMs, true);
+        return `WORK | ${duration}`;
+      }
+      return "WORK";
+    }
+    case TimerMode.STOP_WATCH: {
+      if (payload.currentRound > 1) {
+        return `${payload.currentRound} | STOPWATCH`;
+      }
+      return "STOPWATCH";
+    }
+    default: {
+      return payload.phase;
+    }
+  }
+};
+
+/**
+ * Returns the standardized mode prefix for the subtitle.
+ */
+export const formatModePrefix = (mode: TimerMode): string => {
+  switch (mode) {
+    case TimerMode.INTERVAL: {
+      return "Interval. ";
+    }
+    case TimerMode.EMOM: {
+      return "EMOM. ";
+    }
+    case TimerMode.AMRAP: {
+      return "AMRAP. ";
+    }
+    case TimerMode.FOR_TIME: {
+      return "For Time. ";
+    }
+    case TimerMode.STOP_WATCH: {
+      return "Stopwatch. ";
+    }
+    default: {
+      return "";
+    }
+  }
+};
+
+/**
  * Formats the notification subtitle with immediate next phase or pause context.
  */
 export const formatSubtitle = (options: {
+  mode?: TimerMode;
   isPaused?: boolean;
   pausedElapsedDisplayTime?: string;
   nextPhase?: TimerPhase | null;
   nextPhaseDurationMs?: number | null;
+  capDurationMs?: number | null;
 }): string => {
+  const prefix = options.mode ? formatModePrefix(options.mode) : "";
+
   if (options.isPaused && options.pausedElapsedDisplayTime) {
-    return `Paused at ${options.pausedElapsedDisplayTime}`;
+    return `${prefix}Paused at ${options.pausedElapsedDisplayTime}`;
   }
 
   if (
@@ -114,17 +224,16 @@ export const formatSubtitle = (options: {
     options.nextPhaseDurationMs !== undefined &&
     options.nextPhaseDurationMs > 0
   ) {
-    const { hours, minutes, seconds } = formatTimeForDisplay(
-      options.nextPhaseDurationMs,
-      true
-    );
-    const duration = hours
-      ? `${hours}:${minutes}:${seconds}`
-      : `${minutes}:${seconds}`;
-    return `Next: ${options.nextPhase} (${duration})`;
+    const duration = formatClockDuration(options.nextPhaseDurationMs);
+    return `${prefix}Next: ${options.nextPhase} (${duration})`;
   }
 
-  return "";
+  if (options.capDurationMs && options.capDurationMs > 0) {
+    const duration = formatClockDuration(options.capDurationMs);
+    return `${prefix}Cap: ${duration}`;
+  }
+
+  return prefix.trimEnd();
 };
 
 /**
@@ -168,10 +277,13 @@ const resolveForegroundNotificationPayload = (
   session: ActiveSessionPayload
 ): ForegroundNotificationPayload => {
   const headline = session.headline ?? formatHeadline(session);
+  const subText = session.subText ?? formatChip(session);
   const subtitle =
     session.subtitle ??
     formatSubtitle({
+      capDurationMs: session.capDurationMs,
       isPaused: session.isPaused,
+      mode: session.mode,
       nextPhase: session.nextPhase,
       nextPhaseDurationMs: session.nextPhaseDurationMs,
     });
@@ -185,6 +297,7 @@ const resolveForegroundNotificationPayload = (
     isCountDown: session.isCountDown,
     isPaused: session.isPaused,
     secondaryLabel,
+    subText,
     subtitle,
     targetTimestampMs: session.targetTimestampMs,
   };
@@ -221,10 +334,16 @@ export class AndroidForegroundDriver implements LiveActivityDriver {
       return;
     }
 
+    const pausedSubtitle = formatSubtitle({
+      isPaused: true,
+      mode: this.lastSessionPayload.mode,
+      pausedElapsedDisplayTime: elapsedDisplayTime,
+    });
+
     const pausedSession: ActiveSessionPayload = {
       ...this.lastSessionPayload,
       isPaused: true,
-      subtitle: `Paused at ${elapsedDisplayTime}`,
+      subtitle: pausedSubtitle,
       targetTimestampMs: 0,
     };
 

@@ -29,6 +29,7 @@ class CronForegroundService : Service() {
 
         const val EXTRA_HEADLINE = "headline"
         const val EXTRA_SUBTITLE = "subtitle"
+        const val EXTRA_SUB_TEXT = "subText"
         const val EXTRA_TARGET_TIMESTAMP_MS = "targetTimestampMs"
         const val EXTRA_IS_PAUSED = "isPaused"
         const val EXTRA_IS_COUNT_DOWN = "isCountDown"
@@ -42,6 +43,7 @@ class CronForegroundService : Service() {
 
     private var currentHeadline: String = "Workout Active"
     private var currentSubtitle: String = ""
+    private var currentSubText: String? = null
     private var currentTargetTimestampMs: Long = 0L
     private var currentIsPaused: Boolean = false
     private var currentIsCountDown: Boolean = true
@@ -148,6 +150,9 @@ class CronForegroundService : Service() {
         intent.getStringExtra(EXTRA_HEADLINE)?.let { currentHeadline = it }
         intent.getStringExtra(EXTRA_SUBTITLE)?.let { currentSubtitle = it }
         intent.getStringExtra(EXTRA_COLOR)?.let { currentColorHex = it }
+        if (intent.hasExtra(EXTRA_SUB_TEXT)) {
+            currentSubText = intent.getStringExtra(EXTRA_SUB_TEXT)
+        }
         currentSecondaryLabel = intent.getStringExtra(EXTRA_SECONDARY_LABEL)
         if (intent.hasExtra(EXTRA_IS_PAUSED)) {
             currentIsPaused = intent.getBooleanExtra(EXTRA_IS_PAUSED, false)
@@ -197,6 +202,10 @@ class CronForegroundService : Service() {
             .setCategory(NotificationCompat.CATEGORY_WORKOUT)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setStyle(NotificationCompat.BigTextStyle().bigText(currentSubtitle))
+
+        if (!currentSubText.isNullOrBlank()) {
+            builder.setSubText(currentSubText)
+        }
 
         // Launch app on notification body tap
         val launchIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
