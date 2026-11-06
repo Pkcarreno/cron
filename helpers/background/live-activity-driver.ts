@@ -60,12 +60,9 @@ export interface LiveActivityDriver {
  * Formats a duration in milliseconds to clock time (MM:SS or HH:MM:SS),
  * optionally using a single digit for minutes < 10 for compact horizontal chips.
  */
-export const formatClockDuration = (
-  ms: number,
-  compactMinutes = false
-): string => {
+export const formatClockDuration = (ms: number, isCompact = false): string => {
   if (ms <= 0) {
-    return compactMinutes ? "0:00" : "00:00";
+    return isCompact ? "0:00" : "00:00";
   }
   const totalSeconds = Math.ceil(ms / 1000);
   const hours = Math.floor(totalSeconds / 3600);
@@ -80,7 +77,7 @@ export const formatClockDuration = (
     return `${formattedHours}:${paddedMinutes}:${paddedSeconds}`;
   }
 
-  const formattedMinutes = compactMinutes
+  const formattedMinutes = isCompact
     ? minutes.toString()
     : minutes.toString().padStart(2, "0");
 

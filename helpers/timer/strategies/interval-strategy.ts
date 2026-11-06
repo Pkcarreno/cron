@@ -115,12 +115,4 @@ export class IntervalStrategy implements TimerStrategy {
   getTargetDurationMs(): number {
     return this.totalDurationMs;
   }
-
-  getWorkTimeMs(): number {
-    return this.workTimeMs;
-  }
-
-  getRestTimeMs(): number {
-    return this.restTimeMs;
-  }
 }

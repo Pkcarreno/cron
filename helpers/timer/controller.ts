@@ -233,17 +233,24 @@ export class TimerController {
       this.isVisualUpdatesPaused = true;
       this.engine.pauseLoop();
       if (this.engine.getIsRunning()) {
-        this.scheduleBackgroundMilestones();
-        this.dispatchDriverUpdate();
-
         if (this.liveActivityDriver?.hasNotificationPermission) {
           void (async () => {
             const hasPermission =
               await this.liveActivityDriver?.hasNotificationPermission?.();
-            if (hasPermission === false && this.engine.getIsRunning()) {
-              this.pause();
+            if (hasPermission === false) {
+              if (this.engine.getIsRunning()) {
+                this.pause();
+              }
+              return;
+            }
+            if (this.engine.getIsRunning()) {
+              this.scheduleBackgroundMilestones();
+              this.dispatchDriverUpdate();
             }
           })();
+        } else {
+          this.scheduleBackgroundMilestones();
+          this.dispatchDriverUpdate();
         }
       }
     } else if (!wasActive && isNowActive) {

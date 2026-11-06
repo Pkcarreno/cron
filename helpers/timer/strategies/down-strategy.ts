@@ -1,4 +1,3 @@
-import type { TimerMode } from "@/helpers/timer/factory";
 import type {
   PhaseDetails,
   TimerState,
@@ -8,7 +7,6 @@ import { TimerPhase } from "@/helpers/timer/strategy";
 import type { TickEvent } from "@/helpers/timer/tick-engine";
 
 export class DownStrategy implements TimerStrategy {
-  public mode?: TimerMode;
   private targetTimeMs: number;
 
   constructor(targetTimeMs: number) {

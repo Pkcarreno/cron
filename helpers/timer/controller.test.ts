@@ -1230,7 +1230,7 @@ describe("timerController", () => {
       );
     });
 
-    it("dispatches driver update on background transition", () => {
+    it("dispatches driver update on background transition", async () => {
       const strategy = new IntervalStrategy(2000, 1000, 2);
       const mockDriver = createMockDriver();
 
@@ -1241,6 +1241,7 @@ describe("timerController", () => {
 
       controller.start();
       controller.handleAppStateChange("background");
+      await Promise.resolve();
 
       // Advance by 2000ms (end of WORK phase in background)
       jest.advanceTimersByTime(2000);
@@ -1274,6 +1275,7 @@ describe("timerController", () => {
       await Promise.resolve();
 
       expect(controller.getIsRunning()).toBe(false);
+      expect(controller.getScheduledMilestones()).toBeNull();
     });
 
     it("dispatches driver update on checkpoint in AMRAP and Stopwatch", () => {

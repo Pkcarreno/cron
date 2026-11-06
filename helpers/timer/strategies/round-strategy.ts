@@ -91,8 +91,4 @@ export class RoundStrategy implements TimerStrategy {
   getTargetDurationMs(): number {
     return this.totalDurationMs;
   }
-
-  getRoundTimeMs(): number {
-    return this.roundTimeMs;
-  }
 }
