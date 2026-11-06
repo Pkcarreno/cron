@@ -3,6 +3,7 @@ import { Platform } from "react-native";
 import type { TimerController } from "@/helpers/timer/controller";
 import { TimerMode } from "@/helpers/timer/factory";
 import { TimerPhase } from "@/helpers/timer/strategy";
+import { formatTimeForDisplay } from "@/helpers/timer/utils/formatter";
 import type { ForegroundNotificationPayload } from "@/modules/cron-foreground-service";
 import {
   addNotificationActionListener,
@@ -113,8 +114,14 @@ export const formatSubtitle = (options: {
     options.nextPhaseDurationMs !== undefined &&
     options.nextPhaseDurationMs > 0
   ) {
-    const seconds = Math.round(options.nextPhaseDurationMs / 1000);
-    return `Next: ${options.nextPhase} (${seconds}s)`;
+    const { hours, minutes, seconds } = formatTimeForDisplay(
+      options.nextPhaseDurationMs,
+      true
+    );
+    const duration = hours
+      ? `${hours}:${minutes}:${seconds}`
+      : `${minutes}:${seconds}`;
+    return `Next: ${options.nextPhase} (${duration})`;
   }
 
   return "";

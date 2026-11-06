@@ -235,35 +235,6 @@ class CronForegroundService : Service() {
             // Fallback handled by extras bundle above
         }
 
-        // Primary Action: Pause / Resume
-        val primaryActionIntent = Intent(this, CronActionReceiver::class.java).apply {
-            action = ACTION_NOTIFICATION_ACTION
-            putExtra(EXTRA_ACTION, if (currentIsPaused) "resume" else "pause")
-        }
-        val primaryPendingIntent = PendingIntent.getBroadcast(
-            this,
-            1,
-            primaryActionIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        builder.addAction(0, if (currentIsPaused) "Resume" else "Pause", primaryPendingIntent)
-
-        // Secondary Action: Lap / Record Round (AMRAP & Stopwatch)
-        val secondary = currentSecondaryLabel
-        if (!secondary.isNullOrBlank()) {
-            val secondaryActionIntent = Intent(this, CronActionReceiver::class.java).apply {
-                action = ACTION_NOTIFICATION_ACTION
-                putExtra(EXTRA_ACTION, "checkpoint")
-            }
-            val secondaryPendingIntent = PendingIntent.getBroadcast(
-                this,
-                2,
-                secondaryActionIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            builder.addAction(0, secondary, secondaryPendingIntent)
-        }
-
         return builder.build()
     }
 

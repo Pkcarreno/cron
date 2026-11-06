@@ -1103,6 +1103,37 @@ describe("timerController", () => {
       );
     });
 
+    it("handles count-up vs count-down correctly for FOR_TIME mode during prep and work", () => {
+      const strategy = new UpStrategy(600_000);
+      const mockDriver = createMockDriver();
+
+      const controller = new TimerController(strategy, 5000, {
+        liveActivityDriver: mockDriver,
+        mode: TimerMode.FOR_TIME,
+      });
+
+      controller.start();
+
+      // In PREPARATION: must be isCountDown: true
+      expect(mockDriver.start).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isCountDown: true,
+          mode: TimerMode.FOR_TIME,
+          phase: TimerPhase.PREPARATION,
+        })
+      );
+
+      // Transition to WORK: must be isCountDown: false
+      jest.advanceTimersByTime(5000);
+      expect(mockDriver.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isCountDown: false,
+          mode: TimerMode.FOR_TIME,
+          phase: TimerPhase.WORK,
+        })
+      );
+    });
+
     it("pauses driver with formatted display string when paused", () => {
       const strategy = new DownStrategy(60_000);
       strategy.mode = TimerMode.AMRAP;

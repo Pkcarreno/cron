@@ -110,14 +110,14 @@ describe("liveActivityDriver", () => {
         nextPhase: TimerPhase.REST,
         nextPhaseDurationMs: 30_000,
       });
-      expect(restSubtitle).toBe("Next: REST (30s)");
+      expect(restSubtitle).toBe("Next: REST (00:30)");
 
       const workSubtitle = formatSubtitle({
         isPaused: false,
         nextPhase: TimerPhase.WORK,
         nextPhaseDurationMs: 60_000,
       });
-      expect(workSubtitle).toBe("Next: WORK (60s)");
+      expect(workSubtitle).toBe("Next: WORK (01:00)");
     });
 
     it("returns empty string when there is no next phase", () => {
@@ -184,7 +184,7 @@ describe("liveActivityDriver", () => {
         headline: "WORK — Round 3/8",
         isPaused: false,
         secondaryLabel: undefined,
-        subtitle: "Next: REST (30s)",
+        subtitle: "Next: REST (00:30)",
         targetTimestampMs: 1_700_000_000_000,
       });
       expect(driver.getIsActive()).toBe(true);

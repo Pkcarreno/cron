@@ -899,14 +899,23 @@ export class TimerController {
 
     const mode =
       this.configuredMode ?? this.strategy.mode ?? TimerMode.INTERVAL;
-    const isCountDown = mode !== TimerMode.STOP_WATCH;
+    const isPreparation = phaseDetails.phase === TimerPhase.PREPARATION;
+    const isCountDown =
+      isPreparation ||
+      (mode !== TimerMode.STOP_WATCH && mode !== TimerMode.FOR_TIME);
     const nextPhaseInfo = this.getNextPhaseDetails();
 
     let targetTimestampMs = 0;
     if (!isPaused) {
-      targetTimestampMs = isCountDown
-        ? Date.now() + phaseDetails.phaseRemainingMs
-        : Date.now() - phaseDetails.phaseRemainingMs;
+      if (isCountDown) {
+        targetTimestampMs = Date.now() + phaseDetails.phaseRemainingMs;
+      } else {
+        const elapsedInPhase =
+          phaseDetails.phaseDurationMs > 0
+            ? phaseDetails.phaseDurationMs - phaseDetails.phaseRemainingMs
+            : phaseDetails.phaseRemainingMs;
+        targetTimestampMs = Date.now() - elapsedInPhase;
+      }
     }
     const capDurationMs =
       typeof this.strategy.getTargetDurationMs === "function"
