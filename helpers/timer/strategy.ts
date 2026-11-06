@@ -1,4 +1,3 @@
-import type { TimerMode } from "@/helpers/timer/factory";
 import type { TickEvent } from "@/helpers/timer/tick-engine";
 
 export enum TimerPhase {
@@ -32,5 +31,4 @@ export interface TimerStrategy {
   getNextPhaseDetails?: (
     event: TickEvent
   ) => { phase: TimerPhase; durationMs: number } | null;
-  mode?: TimerMode;
 }

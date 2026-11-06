@@ -14,7 +14,7 @@ import {
 } from "@/helpers/background/live-activity-driver";
 import { TimerMode } from "@/helpers/timer/factory";
 import { TimerPhase } from "@/helpers/timer/strategy";
-import * as Module from "@/modules/cron-foreground-service";
+import * as Module from "@/modules/cron-foreground-service/index";
 
 describe("liveActivityDriver", () => {
   describe("formatClockDuration", () => {
@@ -463,6 +463,22 @@ describe("liveActivityDriver", () => {
 
       detach();
       expect(removeSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("provides milestone bridge and checks notification permission", async () => {
+      const driver = new AndroidForegroundDriver();
+      const bridge = driver.getMilestoneBridge();
+      expect(bridge).toBeDefined();
+      expect(typeof bridge.scheduleMilestones).toBe("function");
+      expect(typeof bridge.clearMilestones).toBe("function");
+      expect(typeof bridge.addMilestoneListener).toBe("function");
+
+      const permissionSpy = jest
+        .spyOn(Module, "hasNotificationPermission")
+        .mockResolvedValue(true);
+      const hasPermission = await driver.hasNotificationPermission();
+      expect(hasPermission).toBe(true);
+      expect(permissionSpy).toHaveBeenCalledTimes(1);
     });
   });
 

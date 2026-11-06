@@ -61,6 +61,7 @@ declare class CronForegroundNativeModule extends NativeModule<{
   update(payload: ForegroundNotificationPayload): Promise<boolean>;
   stop(): Promise<boolean>;
   isServiceRunning(): Promise<boolean>;
+  hasNotificationPermission(): Promise<boolean>;
   scheduleMilestones(payload: ScheduledMilestonesPayload): Promise<boolean>;
   clearMilestones(): Promise<boolean>;
 }
@@ -145,6 +146,20 @@ export const isForegroundServiceRunning = async (): Promise<boolean> => {
     return false;
   }
   return await mod.isServiceRunning();
+};
+
+/**
+ * Checks whether notification permission is granted on the device.
+ */
+export const hasNotificationPermission = async (): Promise<boolean> => {
+  if (Platform.OS !== "android") {
+    return true;
+  }
+  const mod = getNativeModule();
+  if (!mod) {
+    return false;
+  }
+  return await mod.hasNotificationPermission();
 };
 
 /**

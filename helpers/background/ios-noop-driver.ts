@@ -37,4 +37,12 @@ export class IosNoopLiveActivityDriver implements LiveActivityDriver {
       // No-op for iOS stub
     };
   }
+
+  public getMilestoneBridge(): null {
+    return null;
+  }
+
+  public hasNotificationPermission(): Promise<boolean> {
+    return Promise.resolve(true);
+  }
 }

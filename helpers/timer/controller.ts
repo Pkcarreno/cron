@@ -208,6 +208,10 @@ export class TimerController {
     return this.engine.getIsHighPrecision();
   }
 
+  public getIsRunning(): boolean {
+    return this.engine.getIsRunning();
+  }
+
   public getIsVisualUpdatesPaused(): boolean {
     return this.isVisualUpdatesPaused;
   }
@@ -231,6 +235,16 @@ export class TimerController {
       if (this.engine.getIsRunning()) {
         this.scheduleBackgroundMilestones();
         this.dispatchDriverUpdate();
+
+        if (this.liveActivityDriver?.hasNotificationPermission) {
+          void (async () => {
+            const hasPermission =
+              await this.liveActivityDriver?.hasNotificationPermission?.();
+            if (hasPermission === false && this.engine.getIsRunning()) {
+              this.pause();
+            }
+          })();
+        }
       }
     } else if (!wasActive && isNowActive) {
       this.isVisualUpdatesPaused = false;
@@ -645,7 +659,7 @@ export class TimerController {
       const displayMs = this.previousState?.displayTimeMs ?? 0;
       const formatted = formatTimeForDisplay(
         displayMs,
-        (this.configuredMode ?? this.strategy.mode) === TimerMode.STOP_WATCH
+        this.configuredMode === TimerMode.STOP_WATCH
       );
       const displayString = formatted.hours
         ? `${formatted.hours}:${formatted.minutes}:${formatted.seconds}`
@@ -784,11 +798,13 @@ export class TimerController {
   public attachLiveActivityDriver(driver: LiveActivityDriver): () => void {
     this.driverTeardown?.();
     this.liveActivityDriver = driver;
+    this.milestoneScheduler.setBridge(driver.getMilestoneBridge?.() ?? null);
     this.driverTeardown = driver.attachController?.(this) ?? null;
 
     return () => {
       this.driverTeardown?.();
       this.driverTeardown = null;
+      this.milestoneScheduler.setBridge(null);
       if (this.liveActivityDriver === driver) {
         this.liveActivityDriver = null;
       }
@@ -897,8 +913,7 @@ export class TimerController {
       return null;
     }
 
-    const mode =
-      this.configuredMode ?? this.strategy.mode ?? TimerMode.INTERVAL;
+    const mode = this.configuredMode ?? TimerMode.INTERVAL;
     const isPreparation = phaseDetails.phase === TimerPhase.PREPARATION;
     const isCountDown =
       isPreparation ||

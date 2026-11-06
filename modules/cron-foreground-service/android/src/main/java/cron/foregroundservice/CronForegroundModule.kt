@@ -108,6 +108,11 @@ class CronForegroundModule : Module() {
             CronForegroundService.isRunning
         }
 
+        AsyncFunction("hasNotificationPermission") {
+            val context = appContext.reactContext ?: return@AsyncFunction false
+            androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+        }
+
         AsyncFunction("scheduleMilestones") { payload: Map<String, Any?> ->
             clearScheduledMilestones()
 

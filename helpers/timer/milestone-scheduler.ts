@@ -1,12 +1,3 @@
-import type { EventSubscription } from "expo-modules-core";
-
-import type { MilestoneEvent } from "@/modules/cron-foreground-service";
-import {
-  addMilestoneListener,
-  clearNativeMilestones,
-  scheduleNativeMilestones,
-} from "@/modules/cron-foreground-service";
-
 /**
  * Constants governing deterministic target-based milestone scheduling.
  * ADR 0010: Prewarm wakes DAC ~1500 ms before cues; Countdown window spans 3000 ms.
@@ -35,6 +26,35 @@ export interface CalculatePhaseMilestonesOptions {
   now?: number;
   phaseDurationMs: number;
   phaseRemainingMs: number;
+}
+
+export interface NativeMilestoneScheduleItem {
+  delayMs: number;
+  secondRemaining: number;
+}
+
+export interface NativeMilestoneSchedulePayload {
+  countdownBeeps?: NativeMilestoneScheduleItem[];
+  transitionDelayMs: number;
+  warmupDelayMs?: number;
+}
+
+export interface NativeMilestoneEvent {
+  type: "warmup" | "beep" | "transition";
+  secondRemaining?: number;
+}
+
+/**
+ * Platform bridge interface decoupling native hardware scheduling from core timer domain.
+ */
+export interface NativeMilestoneBridge {
+  scheduleMilestones: (
+    payload: NativeMilestoneSchedulePayload
+  ) => Promise<unknown>;
+  clearMilestones: () => Promise<unknown>;
+  addMilestoneListener: (listener: (event: NativeMilestoneEvent) => void) => {
+    remove: () => void;
+  };
 }
 
 /**
@@ -101,26 +121,42 @@ export interface MilestoneSchedulerCallbacks {
 /**
  * Deterministic milestone scheduler managing wall-clock single-shot timers
  * when high-frequency UI rendering loops are suspended in the background.
- * Bridges to the native Android foreground service to bypass JS timer freeze.
+ * Optionally bridges to a platform-native milestone driver to bypass JS timer freeze.
  */
 export class MilestoneScheduler {
   private callbacks: MilestoneSchedulerCallbacks;
+  private bridge: NativeMilestoneBridge | null = null;
   private activeMilestones: PhaseMilestones | null = null;
   private activeTimeouts = new Set<ReturnType<typeof setTimeout>>();
-  private milestoneSubscription: EventSubscription | null = null;
+  private milestoneSubscription: { remove: () => void } | null = null;
 
   private triggeredBeeps = new Set<number>();
   private hasTriggeredWarmup = false;
   private hasTriggeredTransition = false;
 
-  constructor(callbacks: MilestoneSchedulerCallbacks) {
+  constructor(
+    callbacks: MilestoneSchedulerCallbacks,
+    bridge?: NativeMilestoneBridge | null
+  ) {
     this.callbacks = callbacks;
-    this.milestoneSubscription = addMilestoneListener((event) => {
-      this.handleNativeMilestone(event);
-    });
+    if (bridge) {
+      this.setBridge(bridge);
+    }
   }
 
-  private handleNativeMilestone(event: MilestoneEvent): void {
+  public setBridge(bridge: NativeMilestoneBridge | null): void {
+    this.milestoneSubscription?.remove();
+    this.milestoneSubscription = null;
+    this.bridge = bridge;
+
+    if (bridge) {
+      this.milestoneSubscription = bridge.addMilestoneListener((event) => {
+        this.handleNativeMilestone(event);
+      });
+    }
+  }
+
+  private handleNativeMilestone(event: NativeMilestoneEvent): void {
     if (!this.activeMilestones) {
       return;
     }
@@ -173,15 +209,17 @@ export class MilestoneScheduler {
     this.hasTriggeredWarmup = false;
     this.hasTriggeredTransition = false;
 
-    // 1. Dispatch native background scheduling (Android WakeLock + OS Handler)
-    void scheduleNativeMilestones({
-      countdownBeeps: milestones.countdownBeeps.map((beep) => ({
-        delayMs: Math.max(0, beep.targetTimestampMs - now),
-        secondRemaining: beep.secondRemaining,
-      })),
-      transitionDelayMs: Math.max(0, milestones.transitionTimestampMs - now),
-      warmupDelayMs: Math.max(0, milestones.warmupTimestampMs - now),
-    });
+    // 1. Dispatch native background scheduling if bridge is configured (e.g. Android Handler loop)
+    if (this.bridge) {
+      void this.bridge.scheduleMilestones({
+        countdownBeeps: milestones.countdownBeeps.map((beep) => ({
+          delayMs: Math.max(0, beep.targetTimestampMs - now),
+          secondRemaining: beep.secondRemaining,
+        })),
+        transitionDelayMs: Math.max(0, milestones.transitionTimestampMs - now),
+        warmupDelayMs: Math.max(0, milestones.warmupTimestampMs - now),
+      });
+    }
 
     // 2. Schedule JS timeouts (drives foreground execution, iOS, Web, and Jest)
     // 2.1 Warmup timer
@@ -229,12 +267,15 @@ export class MilestoneScheduler {
     }
     this.activeTimeouts.clear();
     this.activeMilestones = null;
-    void clearNativeMilestones();
+    if (this.bridge) {
+      void this.bridge.clearMilestones();
+    }
   }
 
   public dispose(): void {
     this.clearMilestones();
     this.milestoneSubscription?.remove();
     this.milestoneSubscription = null;
+    this.bridge = null;
   }
 }

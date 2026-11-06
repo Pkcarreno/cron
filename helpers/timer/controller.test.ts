@@ -20,6 +20,8 @@ import { StopwatchStrategy } from "./strategies/stopwatch-strategy";
 
 const createMockDriver = (): jest.Mocked<LiveActivityDriver> => ({
   attachController: jest.fn((_controller) => jest.fn()),
+  getMilestoneBridge: jest.fn(() => null),
+  hasNotificationPermission: jest.fn(() => Promise.resolve(true)),
   pause: jest.fn((_elapsedDisplayTime) => Promise.resolve()),
   resume: jest.fn((_session) => Promise.resolve()),
   start: jest.fn((_session) => Promise.resolve()),
@@ -1056,7 +1058,6 @@ describe("timerController", () => {
   describe("LiveActivityDriver integration", () => {
     it("starts driver with active session payload when controller starts", () => {
       const strategy = new IntervalStrategy(30_000, 15_000, 4);
-      strategy.mode = TimerMode.INTERVAL;
       const mockDriver = createMockDriver();
 
       const controller = new TimerController(strategy, 5000, {
@@ -1136,7 +1137,6 @@ describe("timerController", () => {
 
     it("pauses driver with formatted display string when paused", () => {
       const strategy = new DownStrategy(60_000);
-      strategy.mode = TimerMode.AMRAP;
       const mockDriver = createMockDriver();
 
       const controller = new TimerController(strategy, 0, {
@@ -1154,7 +1154,6 @@ describe("timerController", () => {
 
     it("resumes driver after pause when restarted", () => {
       const strategy = new DownStrategy(60_000);
-      strategy.mode = TimerMode.AMRAP;
       const mockDriver = createMockDriver();
 
       const controller = new TimerController(strategy, 0, {
@@ -1209,7 +1208,6 @@ describe("timerController", () => {
 
     it("dispatches driver update on phase transitions", () => {
       const strategy = new IntervalStrategy(2000, 1000, 2);
-      strategy.mode = TimerMode.INTERVAL;
       const mockDriver = createMockDriver();
 
       const controller = new TimerController(strategy, 1000, {
@@ -1234,7 +1232,6 @@ describe("timerController", () => {
 
     it("dispatches driver update on background transition", () => {
       const strategy = new IntervalStrategy(2000, 1000, 2);
-      strategy.mode = TimerMode.INTERVAL;
       const mockDriver = createMockDriver();
 
       const controller = new TimerController(strategy, 0, {
@@ -1258,9 +1255,29 @@ describe("timerController", () => {
       );
     });
 
+    it("automatically pauses when backgrounded if notification permission is denied", async () => {
+      const strategy = new IntervalStrategy(2000, 1000, 2);
+      const mockDriver = createMockDriver();
+      mockDriver.hasNotificationPermission = jest.fn(() =>
+        Promise.resolve(false)
+      );
+
+      const controller = new TimerController(strategy, 0, {
+        liveActivityDriver: mockDriver,
+        mode: TimerMode.INTERVAL,
+      });
+
+      controller.start();
+      expect(controller.getIsRunning()).toBe(true);
+
+      controller.handleAppStateChange("background");
+      await Promise.resolve();
+
+      expect(controller.getIsRunning()).toBe(false);
+    });
+
     it("dispatches driver update on checkpoint in AMRAP and Stopwatch", () => {
       const strategy = new DownStrategy(60_000);
-      strategy.mode = TimerMode.AMRAP;
       const mockDriver = createMockDriver();
 
       const controller = new TimerController(strategy, 0, {
@@ -1281,7 +1298,6 @@ describe("timerController", () => {
 
     it("computes accurate next phase details during preparation and active phases", () => {
       const strategy = new IntervalStrategy(45_000, 15_000, 5);
-      strategy.mode = TimerMode.INTERVAL;
 
       const controller = new TimerController(strategy, 10_000, {
         mode: TimerMode.INTERVAL,

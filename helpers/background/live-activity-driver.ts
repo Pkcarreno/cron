@@ -2,14 +2,19 @@ import { Platform } from "react-native";
 
 import type { TimerController } from "@/helpers/timer/controller";
 import { TimerMode } from "@/helpers/timer/factory";
+import type { NativeMilestoneBridge } from "@/helpers/timer/milestone-scheduler";
 import { TimerPhase } from "@/helpers/timer/strategy";
-import type { ForegroundNotificationPayload } from "@/modules/cron-foreground-service";
+import type { ForegroundNotificationPayload } from "@/modules/cron-foreground-service/index";
 import {
+  addMilestoneListener,
   addNotificationActionListener,
+  clearNativeMilestones,
+  hasNotificationPermission,
+  scheduleNativeMilestones,
   startForegroundService,
   stopForegroundService,
   updateForegroundService,
-} from "@/modules/cron-foreground-service";
+} from "@/modules/cron-foreground-service/index";
 
 import { IosNoopLiveActivityDriver } from "./ios-noop-driver";
 
@@ -47,6 +52,8 @@ export interface LiveActivityDriver {
   resume: (session: ActiveSessionPayload) => Promise<void>;
   stop: () => Promise<void>;
   attachController?: (controller: TimerController) => () => void;
+  getMilestoneBridge?: () => NativeMilestoneBridge | null;
+  hasNotificationPermission?: () => Promise<boolean>;
 }
 
 /**
@@ -80,84 +87,66 @@ export const formatClockDuration = (
   return `${formattedMinutes}:${paddedSeconds}`;
 };
 
+export interface NotificationContextPayload {
+  mode: TimerMode;
+  phase: TimerPhase;
+  currentRound: number;
+  totalRounds: number;
+  phaseDurationMs?: number;
+  capDurationMs?: number;
+}
+
+const formatSessionContext = (
+  payload: NotificationContextPayload,
+  isCompact: boolean
+): string => {
+  if (payload.phase === TimerPhase.PREPARATION) {
+    return isCompact ? "PREP" : "PREPARATION";
+  }
+
+  switch (payload.mode) {
+    case TimerMode.INTERVAL:
+    case TimerMode.EMOM: {
+      const roundLabel = isCompact
+        ? `${payload.currentRound}`
+        : `Round ${payload.currentRound}/${payload.totalRounds}`;
+      return `${roundLabel} | ${payload.phase}`;
+    }
+    case TimerMode.AMRAP: {
+      const activeRound = Math.max(1, payload.currentRound);
+      const roundLabel = isCompact ? `${activeRound}` : `Round ${activeRound}`;
+      return `${roundLabel} | WORK`;
+    }
+    case TimerMode.FOR_TIME: {
+      return "WORK";
+    }
+    case TimerMode.STOP_WATCH: {
+      if (payload.currentRound > 1) {
+        const lapLabel = isCompact
+          ? `${payload.currentRound}`
+          : `Lap ${payload.currentRound}`;
+        return `${lapLabel} | STOPWATCH`;
+      }
+      return "STOPWATCH";
+    }
+    default: {
+      return payload.phase;
+    }
+  }
+};
+
 /**
  * Formats the primary notification headline according to the active workout mode.
  * Enforces standard pipe separators without em-dashes and formats durations as MM:SS.
  */
-export const formatHeadline = (payload: {
-  mode: TimerMode;
-  phase: TimerPhase;
-  currentRound: number;
-  totalRounds: number;
-  phaseDurationMs?: number;
-  capDurationMs?: number;
-}): string => {
-  if (payload.phase === TimerPhase.PREPARATION) {
-    return "PREPARATION";
-  }
-
-  switch (payload.mode) {
-    case TimerMode.INTERVAL:
-    case TimerMode.EMOM: {
-      return `Round ${payload.currentRound}/${payload.totalRounds} | ${payload.phase}`;
-    }
-    case TimerMode.AMRAP: {
-      const activeRound = Math.max(1, payload.currentRound);
-      return `Round ${activeRound} | WORK`;
-    }
-    case TimerMode.FOR_TIME: {
-      return "WORK";
-    }
-    case TimerMode.STOP_WATCH: {
-      if (payload.currentRound > 1) {
-        return `Lap ${payload.currentRound} | STOPWATCH`;
-      }
-      return "STOPWATCH";
-    }
-    default: {
-      return payload.phase;
-    }
-  }
-};
+export const formatHeadline = (payload: NotificationContextPayload): string =>
+  formatSessionContext(payload, false);
 
 /**
  * Formats the compact chip badge using single-digit values when applicable.
  */
-export const formatChip = (payload: {
-  mode: TimerMode;
-  phase: TimerPhase;
-  currentRound: number;
-  totalRounds: number;
-  phaseDurationMs?: number;
-  capDurationMs?: number;
-}): string => {
-  if (payload.phase === TimerPhase.PREPARATION) {
-    return "PREP";
-  }
-
-  switch (payload.mode) {
-    case TimerMode.INTERVAL:
-    case TimerMode.EMOM: {
-      return `${payload.currentRound} | ${payload.phase}`;
-    }
-    case TimerMode.AMRAP: {
-      const activeRound = Math.max(1, payload.currentRound);
-      return `${activeRound} | WORK`;
-    }
-    case TimerMode.FOR_TIME: {
-      return "WORK";
-    }
-    case TimerMode.STOP_WATCH: {
-      if (payload.currentRound > 1) {
-        return `${payload.currentRound} | STOPWATCH`;
-      }
-      return "STOPWATCH";
-    }
-    default: {
-      return payload.phase;
-    }
-  }
-};
+export const formatChip = (payload: NotificationContextPayload): string =>
+  formatSessionContext(payload, true);
 
 /**
  * Returns the standardized mode prefix for the subtitle.
@@ -290,6 +279,7 @@ const resolveForegroundNotificationPayload = (
 /**
  * Android Foreground Service live activity driver.
  */
+// oxlint-disable eslint/class-methods-use-this
 export class AndroidForegroundDriver implements LiveActivityDriver {
   private lastSessionPayload: ActiveSessionPayload | null = null;
   private isServiceActive = false;
@@ -381,6 +371,18 @@ export class AndroidForegroundDriver implements LiveActivityDriver {
 
   public getLastPayload(): ActiveSessionPayload | null {
     return this.lastSessionPayload;
+  }
+
+  public getMilestoneBridge(): NativeMilestoneBridge {
+    return {
+      addMilestoneListener,
+      clearMilestones: clearNativeMilestones,
+      scheduleMilestones: scheduleNativeMilestones,
+    };
+  }
+
+  public async hasNotificationPermission(): Promise<boolean> {
+    return await hasNotificationPermission();
   }
 }
 

@@ -51,7 +51,6 @@ export const createTimerStrategy = (config: TimerConfig): TimerStrategy => {
     }
   }
 
-  strategy.mode = config.mode;
   return strategy;
 };
 

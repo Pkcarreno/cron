@@ -12,11 +12,10 @@ import {
   calculatePhaseMilestones,
   MilestoneScheduler,
 } from "@/helpers/timer/milestone-scheduler";
-import * as ForegroundModule from "@/modules/cron-foreground-service";
-
-const noopMilestoneListener = (
-  _event: ForegroundModule.MilestoneEvent
-): void => {};
+import type {
+  NativeMilestoneBridge,
+  NativeMilestoneEvent,
+} from "@/helpers/timer/milestone-scheduler";
 
 describe("milestoneScheduler", () => {
   beforeEach(() => {
@@ -224,24 +223,35 @@ describe("milestoneScheduler", () => {
     });
 
     it("handles native milestones and deduplicates against JS timeouts", () => {
-      let triggerNativeMilestone = noopMilestoneListener;
+      let triggerNativeMilestone!: (event: NativeMilestoneEvent) => void;
 
-      jest
-        .spyOn(ForegroundModule, "addMilestoneListener")
-        .mockImplementation((listener) => {
-          triggerNativeMilestone = listener;
-          return { remove: jest.fn() };
-        });
+      const mockBridge: NativeMilestoneBridge = {
+        addMilestoneListener: jest.fn(
+          (listener: (event: NativeMilestoneEvent) => void) => {
+            triggerNativeMilestone = listener;
+            return { remove: jest.fn() };
+          }
+        ),
+        clearMilestones: jest
+          .fn<() => Promise<boolean>>()
+          .mockResolvedValue(true),
+        scheduleMilestones: jest
+          .fn<() => Promise<boolean>>()
+          .mockResolvedValue(true),
+      };
 
       const onWarmup = jest.fn();
       const onCountdownBeep = jest.fn();
       const onTransition = jest.fn();
 
-      const scheduler = new MilestoneScheduler({
-        onCountdownBeep,
-        onTransition,
-        onWarmup,
-      });
+      const scheduler = new MilestoneScheduler(
+        {
+          onCountdownBeep,
+          onTransition,
+          onWarmup,
+        },
+        mockBridge
+      );
 
       const milestones = calculatePhaseMilestones({
         hasCountdownBeeps: true,
