@@ -74,22 +74,62 @@ Rather than adopting external forks with uncertain longevity, `cron` maintains i
 
 ### 2.2. Notification Design, Copy, and Contextual Actions
 
-All notification text is strictly in English matching the application domain standard:
+All notification text is strictly in English matching the application domain standard. It follows a unified, predictable model across all timer strategies (`INTERVAL`, `EMOM`, `AMRAP`, `FOR_TIME`, `STOP_WATCH`), enforcing clean typography without em-dashes (`—`) or decorative bullets, using pipe separators (`|`) for titles/chips and standard periods (`.`) for description sentences.
 
-- **Small Icon**: Monochromatic silhouette of the `cron` emblem (required by Android notification spec).
-- **Headline**: Phase and round progression:
-  - Intervals / EMOM: `WORK — Round 3/8` or `REST — Round 3/8`.
-  - AMRAP / Stopwatch: `AMRAP — Round 5` or `STOPWATCH — Lap 4`.
-  - For Time: `FOR TIME — Cap 20:00`.
-- **Subtitle**: Immediate next phase contextual information:
-  - `Next: REST (30s)` or `Next: WORK (60s)`.
-- **Chronometer Chip**: Hardware countdown ticking to the active block's completion timestamp.
-- **Color Accent**: Dynamic theme color based on active phase (`#008153` for Work, `#E7801F` for Rest/Preparation).
-- **Deep Link**: Tapping the notification body dispatches an Intent opening the active timer screen directly.
+#### 2.2.1. Standard Visual Structure & Hierarchy
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│ [Small Icon]  cron  •  [CHIP / SubText]  •  [Hardware Chronometer]     │
+│                                                                        │
+│ HEADLINE:  [Round / Progression] | [Phase / Mode] | [Duration / Cap]   │
+│ SUBTITLE:  [Mode]. [Next Phase Context / Cap / Paused State]           │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+1. **Headline (Expanded Notification Card Title)**:
+   - High-detail context when the user pulls down the notification shade.
+   - Separator: `|`.
+   - Time format: `MM:SS` (or `HH:MM:SS` if exceeding 60 minutes).
+   - Omission rule: Inexistent dimensions are omitted cleanly without trailing pipes.
+2. **Chip (Android SubText / Status Bar Promoted Chip)**:
+   - Ultra-compact format saving horizontal pixels on narrow status bars and lockscreen chips.
+   - Separator: `|`.
+   - Time format: `M:SS` (single digit for minutes < 10, e.g., `0:20`, `1:00`).
+   - Omission rule: Inexistent dimensions are omitted cleanly.
+3. **Subtitle (Content Text / Body)**:
+   - Always prefixed with the timer mode name and a period (`Interval. `, `EMOM. `, `AMRAP. `, `For Time. `, `Stopwatch. `).
+   - When active with upcoming phase: `[Mode]. Next: [PHASE] (MM:SS)`.
+   - When active on single/terminal block: `[Mode]. Cap: MM:SS` (if capped) or `[Mode].` (if open-ended).
+   - When paused: `[Mode]. Paused at MM:SS`.
+4. **Hardware Chronometer & Color Accent**:
+   - Native ticking chronometer via `setUsesChronometer(true)`.
+   - Countdown mode (`isCountDown = true`) for `PREPARATION` and all countdown phases.
+   - Count-up mode (`isCountDown = false`) for active `WORK` in `FOR_TIME` and `STOP_WATCH`.
+   - Accent color: `#008153` (Emerald Green) for `WORK`; `#E7801F` (Amber Orange) for `REST` and `PREPARATION`.
+
+#### 2.2.2. Per-Strategy Presentation Matrix
+
+| Strategy / Phase | Headline (`MM:SS`) | Chip / SubText (`M:SS`) | Subtitle (Active) | Subtitle (Paused) |
+| :-- | :-- | :-- | :-- | :-- |
+| **PREPARATION** (Any mode) | `PREPARATION \| 00:10` | `PREP \| 0:10` | `[Mode]. Next: WORK (00:20)` | `[Mode]. Paused at 00:05` |
+| **INTERVAL (Work)** | `Round 3/8 \| WORK \| 00:20` | `3 \| WORK \| 0:20` | `Interval. Next: REST (00:10)` | `Interval. Paused at 04:12` |
+| **INTERVAL (Rest)** | `Round 3/8 \| REST \| 00:10` | `3 \| REST \| 0:10` | `Interval. Next: WORK (00:20)` | `Interval. Paused at 04:25` |
+| **EMOM (Time-Agnostic)** | `Round 4/10 \| WORK \| 01:00` | `4 \| WORK \| 1:00` | `EMOM. Next: WORK (01:00)` | `EMOM. Paused at 03:40` |
+| **AMRAP (Open Rounds)** | `Round 3 \| WORK \| 10:00` | `3 \| WORK \| 10:00` | `AMRAP. Cap: 10:00` | `AMRAP. Paused at 06:15` |
+| **FOR TIME (With Cap)** | `WORK \| 15:00` | `WORK \| 15:00` | `For Time. Cap: 15:00` | `For Time. Paused at 07:30` |
+| **FOR TIME (No Cap)** | `WORK` | `WORK` | `For Time.` | `For Time. Paused at 02:10` |
+| **STOPWATCH (Base)** | `STOPWATCH` | `STOPWATCH` | `Stopwatch.` | `Stopwatch. Paused at 01:23` |
+| **STOPWATCH (Laps)** | `Lap 2 \| STOPWATCH` | `2 \| STOPWATCH` | `Stopwatch.` | `Stopwatch. Paused at 01:23` |
+
+#### 2.2.3. Contextual Actions & Deep Linking (Deferred to #119)
+
+- **Deep Link**: Tapping the notification card body dispatches an Intent opening the active timer screen directly.
 - **Contextual Actions (Clean text labels, no brackets)**:
   - Primary Action (All Modes): `Pause` (alternating to `Resume` when paused).
   - Secondary Action (Strictly `AMRAP` and `STOP_WATCH`): `Lap` or `Record Round` (records checkpoint identical to the UI double-tap gesture).
   - `EMOM`, `INTERVAL`, and `FOR_TIME` omit secondary skip/advance buttons to eliminate accidental pocket presses during strenuous exercise.
+  - _Note: Action receivers and interactive buttons belong to Issue #119._
 
 ---
 
