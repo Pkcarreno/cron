@@ -226,7 +226,14 @@ class CronForegroundService : Service() {
             builder.setUsesChronometer(false)
             builder.setShowWhen(false)
         } else {
-            builder.setWhen(currentTargetTimestampMs)
+            // Android Chronometer integer division truncates remaining seconds towards zero ((mBase - now) / 1000).
+            // In countdown mode, offset by +1000ms so display matches Math.ceil behavior of the app UI.
+            val baseTimestamp = if (currentIsCountDown) {
+                currentTargetTimestampMs + 1000L
+            } else {
+                currentTargetTimestampMs
+            }
+            builder.setWhen(baseTimestamp)
             builder.setShowWhen(true)
             builder.setUsesChronometer(true)
             builder.setChronometerCountDown(currentIsCountDown)
