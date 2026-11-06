@@ -5,15 +5,30 @@ export const convertTimeToMs = (minutes: number, seconds = 0): number =>
 
 const pad = (num: number) => num.toString().padStart(2, "0");
 
+export interface FormatTimeOptions {
+  includeHours?: boolean;
+  isCountDown?: boolean;
+}
+
 export const formatTimeForDisplay = (
   totalMs: number,
-  includeHours = false
+  optionsOrIncludeHours: boolean | FormatTimeOptions = false
 ): {
   hours?: string;
   minutes: string;
   seconds: string;
 } => {
-  const totalSeconds = Math.ceil(totalMs / 1000);
+  const options: FormatTimeOptions =
+    typeof optionsOrIncludeHours === "boolean"
+      ? { includeHours: optionsOrIncludeHours, isCountDown: true }
+      : { isCountDown: true, ...optionsOrIncludeHours };
+
+  const isCountDown = options.isCountDown ?? true;
+  const includeHours = options.includeHours ?? false;
+
+  const totalSeconds = isCountDown
+    ? Math.ceil(totalMs / 1000)
+    : Math.floor(totalMs / 1000);
 
   if (includeHours) {
     const hours = Math.floor(totalSeconds / 3600);

@@ -81,10 +81,17 @@ export const timerFlagsAtom = atom<TimerFlags>((get) => {
 export const timerFormattedTimeAtom = atom((get) => {
   const displayTimeMs = get(timerDisplayTimeMsAtom);
   const config = get(timerConfigAtom);
-  return formatTimeForDisplay(
-    displayTimeMs,
-    config.mode === TimerMode.STOP_WATCH
-  );
+  const phase = get(timerPhaseAtom);
+
+  const isCountDown =
+    phase === TimerPhase.PREPARATION ||
+    (config.mode !== TimerMode.STOP_WATCH &&
+      config.mode !== TimerMode.FOR_TIME);
+
+  return formatTimeForDisplay(displayTimeMs, {
+    includeHours: config.mode === TimerMode.STOP_WATCH,
+    isCountDown,
+  });
 });
 
 export const timerHoursStrAtom = atom(

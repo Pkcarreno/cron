@@ -266,10 +266,15 @@ export const useTimer = (
   const totalRounds =
     "totalRounds" in config ? config.totalRounds : timerState.totalRounds;
 
-  const formattedTime = formatTimeForDisplay(
-    timerState.displayTimeMs,
-    config.mode === TimerMode.STOP_WATCH
-  );
+  const isCountDown =
+    timerState.phase === TimerPhase.PREPARATION ||
+    (config.mode !== TimerMode.STOP_WATCH &&
+      config.mode !== TimerMode.FOR_TIME);
+
+  const formattedTime = formatTimeForDisplay(timerState.displayTimeMs, {
+    includeHours: config.mode === TimerMode.STOP_WATCH,
+    isCountDown,
+  });
 
   const modeAbbr = useMemo(
     () => getModeAbbreviation(config.mode),

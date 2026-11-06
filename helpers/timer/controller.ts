@@ -315,9 +315,23 @@ export class TimerController {
     }
   }
 
+  private getIsCountDown(state: TimerState): boolean {
+    if (state.phase === TimerPhase.PREPARATION) {
+      return true;
+    }
+    const mode = this.configuredMode ?? TimerMode.INTERVAL;
+    return mode !== TimerMode.STOP_WATCH && mode !== TimerMode.FOR_TIME;
+  }
+
+  private calculateVisibleSecond(state: TimerState): number {
+    return this.getIsCountDown(state)
+      ? Math.ceil(state.displayTimeMs / 1000)
+      : Math.floor(state.displayTimeMs / 1000);
+  }
+
   private updateUiTickSnapshot(state: TimerState): void {
     this.lastUiTickState = state;
-    this.lastEmittedUiSecond = Math.ceil(state.displayTimeMs / 1000);
+    this.lastEmittedUiSecond = this.calculateVisibleSecond(state);
     if (this.uiTickResolutionMs !== null && this.uiTickResolutionMs > 0) {
       this.lastEmittedQuantizedStep = Math.floor(
         state.displayTimeMs / this.uiTickResolutionMs
@@ -353,7 +367,7 @@ export class TimerController {
       return currentStep !== this.lastEmittedQuantizedStep;
     }
 
-    const currentVisibleSecond = Math.ceil(newState.displayTimeMs / 1000);
+    const currentVisibleSecond = this.calculateVisibleSecond(newState);
     return currentVisibleSecond !== this.lastEmittedUiSecond;
   }
 
@@ -664,10 +678,13 @@ export class TimerController {
     this.isResuming = true;
     if (this.liveActivityDriver) {
       const displayMs = this.previousState?.displayTimeMs ?? 0;
-      const formatted = formatTimeForDisplay(
-        displayMs,
-        this.configuredMode === TimerMode.STOP_WATCH
-      );
+      const isCountDown = this.previousState
+        ? this.getIsCountDown(this.previousState)
+        : true;
+      const formatted = formatTimeForDisplay(displayMs, {
+        includeHours: this.configuredMode === TimerMode.STOP_WATCH,
+        isCountDown,
+      });
       const displayString = formatted.hours
         ? `${formatted.hours}:${formatted.minutes}:${formatted.seconds}`
         : `${formatted.minutes}:${formatted.seconds}`;
