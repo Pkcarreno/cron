@@ -261,6 +261,9 @@ export class TimerController {
         if (!this.previousState?.isFinished) {
           this.engine.resumeLoop();
         }
+      } else if (this.previousState) {
+        this.updateUiTickSnapshot(this.previousState);
+        this.emit(TimerEventType.UI_TICK, this.previousState);
       }
     }
   }
@@ -673,6 +676,9 @@ export class TimerController {
   public pause() {
     this.hasEmittedApproachingTransition = false;
     this.milestoneScheduler.clearMilestones();
+    if (this.isVisualUpdatesPaused && this.engine.getIsRunning()) {
+      this.catchUp();
+    }
     this.emit(TimerEventType.PAUSE);
     this.engine.pause();
     this.isResuming = true;
@@ -876,10 +882,11 @@ export class TimerController {
   }
 
   private dispatchDriverUpdate(): void {
-    if (!this.liveActivityDriver || !this.engine.getIsRunning()) {
+    if (!this.liveActivityDriver) {
       return;
     }
-    const payload = this.buildActiveSessionPayload(false);
+    const isPaused = !this.engine.getIsRunning();
+    const payload = this.buildActiveSessionPayload(isPaused);
     if (payload) {
       this.dispatchDriverAction(async () => {
         await this.liveActivityDriver?.update(payload);

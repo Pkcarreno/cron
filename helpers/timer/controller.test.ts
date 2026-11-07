@@ -1326,5 +1326,188 @@ describe("timerController", () => {
         phase: TimerPhase.WORK,
       });
     });
+
+    describe("in-notification interactive controls, chronometer freezing, and deep linking (#119)", () => {
+      it("freezes chronometer, halts progression, cancels milestones, and emits PAUSE when paused via notification action", async () => {
+        const strategy = new IntervalStrategy(20_000, 10_000, 8);
+        const mockDriver = createMockDriver();
+
+        let actionListener: ((event: { action: string }) => void) | undefined;
+        // oxlint-disable-next-line typescript/no-explicit-any
+        mockDriver.attachController = jest.fn((controller: any) => {
+          actionListener = (event) => {
+            if (event.action === "pause") {
+              controller.pause();
+            }
+            if (event.action === "resume") {
+              controller.start();
+            }
+            if (event.action === "checkpoint") {
+              controller.recordCheckpoint();
+            }
+          };
+          return () => {};
+        });
+
+        const controller = new TimerController(strategy, 5000, {
+          liveActivityDriver: mockDriver,
+          mode: TimerMode.INTERVAL,
+        });
+
+        controller.start();
+        controller.handleAppStateChange("background");
+        await Promise.resolve();
+
+        expect(controller.getIsRunning()).toBe(true);
+        expect(controller.getScheduledMilestones()).not.toBeNull();
+
+        // Trigger pause from notification action
+        actionListener?.({ action: "pause" });
+        await Promise.resolve();
+
+        expect(controller.getIsRunning()).toBe(false);
+        expect(controller.getScheduledMilestones()).toBeNull();
+        expect(mockDriver.pause).toHaveBeenCalledTimes(1);
+      });
+
+      it("recalculates remaining duration, re-engages chronometer, and reschedules milestones on notification resume", async () => {
+        const strategy = new IntervalStrategy(20_000, 10_000, 8);
+        const mockDriver = createMockDriver();
+
+        let actionListener: ((event: { action: string }) => void) | undefined;
+        // oxlint-disable-next-line typescript/no-explicit-any
+        mockDriver.attachController = jest.fn((controller: any) => {
+          actionListener = (event) => {
+            if (event.action === "pause") {
+              controller.pause();
+            }
+            if (event.action === "resume") {
+              controller.start();
+            }
+            if (event.action === "checkpoint") {
+              controller.recordCheckpoint();
+            }
+          };
+          return () => {};
+        });
+
+        const controller = new TimerController(strategy, 5000, {
+          liveActivityDriver: mockDriver,
+          mode: TimerMode.INTERVAL,
+        });
+
+        controller.start();
+        controller.handleAppStateChange("background");
+        await Promise.resolve();
+
+        // Pause via action
+        actionListener?.({ action: "pause" });
+        await Promise.resolve();
+        expect(controller.getIsRunning()).toBe(false);
+        expect(controller.getScheduledMilestones()).toBeNull();
+
+        // Resume via action
+        actionListener?.({ action: "resume" });
+        await Promise.resolve();
+        expect(controller.getIsRunning()).toBe(true);
+        expect(controller.getScheduledMilestones()).not.toBeNull();
+        expect(mockDriver.resume).toHaveBeenCalledWith(
+          expect.objectContaining({
+            isCountDown: true,
+            isPaused: false,
+            mode: TimerMode.INTERVAL,
+          })
+        );
+      });
+
+      it("logs checkpoints and updates notification headline upon secondary action tap in AMRAP and Stopwatch", async () => {
+        const stopwatchStrategy = new StopwatchStrategy();
+        const mockDriver = createMockDriver();
+
+        let actionListener: ((event: { action: string }) => void) | undefined;
+        // oxlint-disable-next-line typescript/no-explicit-any
+        mockDriver.attachController = jest.fn((controller: any) => {
+          actionListener = (event) => {
+            if (event.action === "checkpoint") {
+              controller.recordCheckpoint();
+            }
+          };
+          return () => {};
+        });
+
+        const controller = new TimerController(stopwatchStrategy, 0, {
+          liveActivityDriver: mockDriver,
+          mode: TimerMode.STOP_WATCH,
+        });
+
+        controller.start();
+
+        actionListener?.({ action: "checkpoint" });
+        actionListener?.({ action: "checkpoint" });
+        await Promise.resolve();
+
+        const summary = controller.getSummary();
+        expect(summary.checkpoints).toHaveLength(2);
+        expect(summary.checkpoints[0].lap).toBe(1);
+        expect(summary.checkpoints[1].lap).toBe(2);
+
+        expect(mockDriver.update).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            currentRound: 3,
+            mode: TimerMode.STOP_WATCH,
+          })
+        );
+      });
+
+      it("omits secondary checkpoint action in Interval, EMOM, and For Time payloads", () => {
+        const intervalDriver = createMockDriver();
+        const intervalController = new TimerController(
+          new IntervalStrategy(30_000, 15_000, 5),
+          5000,
+          {
+            liveActivityDriver: intervalDriver,
+            mode: TimerMode.INTERVAL,
+          }
+        );
+        intervalController.start();
+
+        const payload = intervalController.buildActiveSessionPayload(false);
+        expect(payload?.mode).toBe(TimerMode.INTERVAL);
+        expect(payload?.secondaryActionLabel).toBeUndefined();
+      });
+
+      it("catches up wall-clock elapsed time before freezing when paused from background notification", async () => {
+        const strategy = new DownStrategy(60_000);
+        const mockDriver = createMockDriver();
+
+        let actionListener: ((event: { action: string }) => void) | undefined;
+        // oxlint-disable-next-line typescript/no-explicit-any
+        mockDriver.attachController = jest.fn((controller: any) => {
+          actionListener = (event) => {
+            if (event.action === "pause") {
+              controller.pause();
+            }
+          };
+          return () => {};
+        });
+
+        const controller = new TimerController(strategy, 0, {
+          liveActivityDriver: mockDriver,
+          mode: TimerMode.AMRAP,
+        });
+
+        controller.start();
+        controller.handleAppStateChange("background");
+        await Promise.resolve();
+
+        // Advance 12 seconds in background
+        jest.advanceTimersByTime(12_000);
+
+        actionListener?.({ action: "pause" });
+        await Promise.resolve();
+
+        expect(mockDriver.pause).toHaveBeenCalledWith("00:48");
+      });
+    });
   });
 });

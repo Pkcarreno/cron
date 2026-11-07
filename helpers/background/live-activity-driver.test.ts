@@ -407,6 +407,74 @@ describe("liveActivityDriver", () => {
       });
     });
 
+    it("omits secondary action label during PREPARATION phase even for AMRAP", async () => {
+      const startSpy = jest
+        .spyOn(Module, "startForegroundService")
+        .mockResolvedValue(true);
+
+      const driver = new AndroidForegroundDriver();
+      await driver.start({
+        currentRound: 0,
+        isPaused: false,
+        mode: TimerMode.AMRAP,
+        nextPhase: TimerPhase.WORK,
+        nextPhaseDurationMs: 600_000,
+        phase: TimerPhase.PREPARATION,
+        phaseDurationMs: 10_000,
+        targetTimestampMs: 1_700_000_010_000,
+        totalRounds: 1,
+      });
+
+      expect(startSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          headline: "PREPARATION",
+          secondaryLabel: undefined,
+        })
+      );
+    });
+
+    it("resumes the notification with active chronometer countdown and recalculated target", async () => {
+      jest.spyOn(Module, "startForegroundService").mockResolvedValue(true);
+      const updateSpy = jest
+        .spyOn(Module, "updateForegroundService")
+        .mockResolvedValue(true);
+
+      const driver = new AndroidForegroundDriver();
+      await driver.start({
+        currentRound: 1,
+        isPaused: false,
+        mode: TimerMode.INTERVAL,
+        nextPhase: TimerPhase.REST,
+        nextPhaseDurationMs: 30_000,
+        phase: TimerPhase.WORK,
+        phaseDurationMs: 60_000,
+        targetTimestampMs: 1_700_000_000_000,
+        totalRounds: 8,
+      });
+
+      await driver.pause("00:45");
+
+      await driver.resume({
+        currentRound: 1,
+        isPaused: false,
+        mode: TimerMode.INTERVAL,
+        nextPhase: TimerPhase.REST,
+        nextPhaseDurationMs: 30_000,
+        phase: TimerPhase.WORK,
+        phaseDurationMs: 60_000,
+        targetTimestampMs: 1_700_000_045_000,
+        totalRounds: 8,
+      });
+
+      expect(updateSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          headline: "Round 1/8 | WORK",
+          isPaused: false,
+          targetTimestampMs: 1_700_000_045_000,
+        })
+      );
+    });
+
     it("stops foreground service and clears active state", async () => {
       const stopSpy = jest
         .spyOn(Module, "stopForegroundService")
