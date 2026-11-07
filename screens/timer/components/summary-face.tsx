@@ -13,14 +13,16 @@ import {
 } from "@/helpers/timer/utils/formatter";
 import type { UISessionSummary } from "@/hooks/use-timer";
 
-interface Props {
+export interface SummaryFaceProps {
+  banner?: React.ReactNode;
   summary: UISessionSummary | undefined;
   mode: TimerMode;
   handleEndSession: () => void;
   handleResumeSession: () => void;
 }
 
-export const SummaryFace: React.FC<Props> = ({
+export const SummaryFace: React.FC<SummaryFaceProps> = ({
+  banner,
   summary,
   mode,
   handleEndSession,
@@ -37,6 +39,7 @@ export const SummaryFace: React.FC<Props> = ({
 
   return (
     <SafeAreaView style={styles.container}>
+      {banner}
       <View style={styles.header}>
         <View style={styles.info}>
           <Text>session summary</Text>
@@ -79,7 +82,7 @@ export const SummaryFace: React.FC<Props> = ({
   );
 };
 
-type RenderDataProps = Pick<Props, "summary">;
+type RenderDataProps = Pick<SummaryFaceProps, "summary">;
 
 const RenderData: React.FC<RenderDataProps> = ({ summary }) => {
   if (!summary) {

@@ -45,4 +45,8 @@ export class IosNoopLiveActivityDriver implements LiveActivityDriver {
   public hasNotificationPermission(): Promise<boolean> {
     return Promise.resolve(true);
   }
+
+  public areLiveUpdatesSupported(): Promise<boolean> {
+    return Promise.resolve(false);
+  }
 }

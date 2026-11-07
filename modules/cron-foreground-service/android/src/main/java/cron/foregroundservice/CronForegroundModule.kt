@@ -1,6 +1,7 @@
 package cron.foregroundservice
 
 import android.content.Intent
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -113,6 +114,10 @@ class CronForegroundModule : Module() {
             androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
         }
 
+        AsyncFunction("areLiveUpdatesSupported") {
+            Build.VERSION.SDK_INT >= 36
+        }
+
         AsyncFunction("scheduleMilestones") { payload: Map<String, Any?> ->
             clearScheduledMilestones()
 
@@ -169,6 +174,7 @@ class CronForegroundModule : Module() {
         }
         (payload["isPaused"] as? Boolean)?.let { intent.putExtra(CronForegroundService.EXTRA_IS_PAUSED, it) }
         (payload["isCountDown"] as? Boolean)?.let { intent.putExtra(CronForegroundService.EXTRA_IS_COUNT_DOWN, it) }
+        (payload["supportsLiveUpdates"] as? Boolean)?.let { intent.putExtra(CronForegroundService.EXTRA_SUPPORTS_LIVE_UPDATES, it) }
 
         val targetTimestamp = (payload["targetTimestampMs"] as? Number)?.toLong()
         if (targetTimestamp != null) {

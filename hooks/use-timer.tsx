@@ -21,6 +21,7 @@ import {
 } from "@/helpers/timer/utils/formatter";
 import type { FeedbackServiceInterface } from "@/services/audio/feedback-service";
 import {
+  isBackgroundAudioOnlyAllowedAtom,
   isHighPrecisionTimerEnabledAtom,
   preparationTimeMsAtom,
 } from "@/stores/settings";
@@ -74,6 +75,9 @@ export const useTimerInstance = (
   const [isHighPrecisionTimerEnabled] = useAtom(
     isHighPrecisionTimerEnabledAtom
   );
+  const [isBackgroundAudioOnlyAllowed] = useAtom(
+    isBackgroundAudioOnlyAllowedAtom
+  );
   const controllerRef = useRef<TimerController | null>(null);
   const prevConfigKeyRef = useRef<string>("");
   const prevPrepTimeRef = useRef<number>(preparationTimeMs);
@@ -97,6 +101,7 @@ export const useTimerInstance = (
     }
 
     const options: TimerControllerOptions = {
+      allowBackgroundAudioOnly: isBackgroundAudioOnlyAllowed,
       highPrecision: isHighPrecisionTimerEnabled,
       liveActivityDriver: liveActivityDriver ?? createLiveActivityDriver(),
       mode: config.mode,
@@ -122,6 +127,14 @@ export const useTimerInstance = (
       controllerRef.current.setHighPrecision(isHighPrecisionTimerEnabled);
     }
   }, [isHighPrecisionTimerEnabled]);
+
+  useEffect(() => {
+    if (controllerRef.current) {
+      controllerRef.current.setAllowBackgroundAudioOnly(
+        isBackgroundAudioOnlyAllowed
+      );
+    }
+  }, [isBackgroundAudioOnlyAllowed]);
 
   useEffect(
     () => () => {

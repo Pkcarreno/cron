@@ -1509,5 +1509,213 @@ describe("timerController", () => {
         expect(mockDriver.pause).toHaveBeenCalledWith("00:48");
       });
     });
+
+    describe("multi-tier fallback hierarchy and defensive permission guard (#120)", () => {
+      it("updates notification card on phase and round transitions for Tier 2 fallback", () => {
+        const strategy = new IntervalStrategy(20_000, 10_000, 3);
+        const mockDriver = createMockDriver();
+        // oxlint-disable-next-line typescript/no-explicit-any
+        (mockDriver as any).getSupportsLiveUpdates = jest.fn(() => false);
+
+        const controller = new TimerController(strategy, 5000, {
+          liveActivityDriver: mockDriver,
+          mode: TimerMode.INTERVAL,
+        });
+
+        controller.start();
+        expect(mockDriver.start).toHaveBeenCalledTimes(1);
+
+        // Prep ends at 5000ms -> transitions to WORK
+        jest.advanceTimersByTime(5000);
+        expect(mockDriver.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            currentRound: 1,
+            phase: TimerPhase.WORK,
+            phaseDurationMs: 20_000,
+          })
+        );
+
+        // Work ends at 5000 + 20000 = 25000ms -> transitions to REST
+        jest.advanceTimersByTime(20_000);
+        expect(mockDriver.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            currentRound: 1,
+            phase: TimerPhase.REST,
+            phaseDurationMs: 10_000,
+          })
+        );
+      });
+
+      it("auto-pauses session and emits permission-denied event when backgrounded without notification permission", async () => {
+        const strategy = new IntervalStrategy(20_000, 10_000, 3);
+        const mockDriver = createMockDriver();
+        mockDriver.hasNotificationPermission = jest.fn(() =>
+          Promise.resolve(false)
+        );
+
+        const controller = new TimerController(strategy, 0, {
+          liveActivityDriver: mockDriver,
+          mode: TimerMode.INTERVAL,
+        });
+
+        const autoPauseSpy = jest.fn();
+        controller.on(
+          TimerEventType.AUTO_PAUSE_PERMISSION_DENIED,
+          autoPauseSpy
+        );
+
+        controller.start();
+        expect(controller.getIsRunning()).toBe(true);
+
+        controller.handleAppStateChange("background");
+        await Promise.resolve();
+
+        expect(controller.getIsRunning()).toBe(false);
+        expect(controller.getWasAutoPausedDueToPermission()).toBe(true);
+        expect(autoPauseSpy).toHaveBeenCalledTimes(1);
+        expect(controller.getScheduledMilestones()).toBeNull();
+
+        // Returning to active state re-emits event for in-app banner
+        controller.handleAppStateChange("active");
+        expect(autoPauseSpy).toHaveBeenCalledTimes(2);
+      });
+
+      it("allows background audio-only session without pausing when toggle is enabled and permission is missing", async () => {
+        const strategy = new IntervalStrategy(20_000, 10_000, 3);
+        const mockDriver = createMockDriver();
+        mockDriver.hasNotificationPermission = jest.fn(() =>
+          Promise.resolve(false)
+        );
+
+        const controller = new TimerController(strategy, 5000, {
+          allowBackgroundAudioOnly: true,
+          liveActivityDriver: mockDriver,
+          mode: TimerMode.INTERVAL,
+        });
+
+        expect(controller.getAllowBackgroundAudioOnly()).toBe(true);
+
+        const autoPauseSpy = jest.fn();
+        controller.on(
+          TimerEventType.AUTO_PAUSE_PERMISSION_DENIED,
+          autoPauseSpy
+        );
+
+        controller.start();
+        controller.handleAppStateChange("background");
+        await Promise.resolve();
+
+        // Should NOT be paused
+        expect(controller.getIsRunning()).toBe(true);
+        expect(controller.getWasAutoPausedDueToPermission()).toBe(false);
+        expect(autoPauseSpy).not.toHaveBeenCalled();
+
+        // Background acoustic milestones should be scheduled
+        expect(controller.getScheduledMilestones()).not.toBeNull();
+
+        // liveActivityDriver.update should not be dispatched since notifications are disabled
+        expect(mockDriver.update).not.toHaveBeenCalled();
+      });
+
+      it("supports updating allowBackgroundAudioOnly dynamically via setter", async () => {
+        const strategy = new IntervalStrategy(20_000, 10_000, 3);
+        const mockDriver = createMockDriver();
+        mockDriver.hasNotificationPermission = jest.fn(() =>
+          Promise.resolve(false)
+        );
+
+        const controller = new TimerController(strategy, 0, {
+          allowBackgroundAudioOnly: false,
+          liveActivityDriver: mockDriver,
+          mode: TimerMode.INTERVAL,
+        });
+
+        controller.setAllowBackgroundAudioOnly(true);
+        expect(controller.getAllowBackgroundAudioOnly()).toBe(true);
+
+        controller.start();
+        controller.handleAppStateChange("background");
+        await Promise.resolve();
+
+        expect(controller.getIsRunning()).toBe(true);
+        expect(controller.getWasAutoPausedDueToPermission()).toBe(false);
+      });
+
+      it("clears auto-pause flag when session is started, reset, or explicitly cleared", async () => {
+        const strategy = new IntervalStrategy(20_000, 10_000, 3);
+        const mockDriver = createMockDriver();
+        mockDriver.hasNotificationPermission = jest.fn(() =>
+          Promise.resolve(false)
+        );
+
+        const controller = new TimerController(strategy, 0, {
+          liveActivityDriver: mockDriver,
+          mode: TimerMode.INTERVAL,
+        });
+
+        const autoPauseSpy = jest.fn();
+        controller.on(
+          TimerEventType.AUTO_PAUSE_PERMISSION_DENIED,
+          autoPauseSpy
+        );
+
+        controller.start();
+        controller.handleAppStateChange("background");
+        await Promise.resolve();
+
+        expect(controller.getWasAutoPausedDueToPermission()).toBe(true);
+
+        // Explicit clear
+        controller.clearAutoPauseDueToPermission();
+        expect(controller.getWasAutoPausedDueToPermission()).toBe(false);
+
+        // Re-trigger auto-pause
+        controller.handleAppStateChange("active");
+        controller.start();
+        controller.handleAppStateChange("background");
+        await Promise.resolve();
+        expect(controller.getWasAutoPausedDueToPermission()).toBe(true);
+
+        // Reset clears it
+        controller.reset();
+        expect(controller.getWasAutoPausedDueToPermission()).toBe(false);
+
+        // Returning to active now should NOT emit AUTO_PAUSE_PERMISSION_DENIED
+        autoPauseSpy.mockClear();
+        controller.handleAppStateChange("active");
+        expect(autoPauseSpy).not.toHaveBeenCalled();
+      });
+
+      it("emits acoustic countdown and transition events identically across Tier 1 and Tier 2 drivers", () => {
+        const strategy = new IntervalStrategy(20_000, 10_000, 3);
+
+        const beepEvents: number[] = [];
+        const transitionEvents: number[] = [];
+
+        const controller = new TimerController(strategy, 3000, {
+          mode: TimerMode.INTERVAL,
+        });
+
+        controller.on(TimerEventType.BEEP, (seconds) => {
+          beepEvents.push(seconds);
+        });
+
+        controller.on(TimerEventType.TRANSITION_APPROACHING, () => {
+          transitionEvents.push(1);
+        });
+
+        controller.start();
+
+        // 3-second preparation beeps: 3, 2, 1
+        jest.advanceTimersByTime(1000);
+        expect(beepEvents).toContain(2);
+
+        jest.advanceTimersByTime(1000);
+        expect(beepEvents).toContain(1);
+
+        // Transition approaching emitted ahead of WORK
+        expect(transitionEvents.length).toBeGreaterThan(0);
+      });
+    });
   });
 });

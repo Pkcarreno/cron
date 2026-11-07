@@ -34,6 +34,7 @@ export enum TimerEventType {
   UI_TICK = "UI_TICK",
   CHECKPOINT = "CHECKPOINT",
   TRANSITION_APPROACHING = "TRANSITION_APPROACHING",
+  AUTO_PAUSE_PERMISSION_DENIED = "AUTO_PAUSE_PERMISSION_DENIED",
 }
 
 export interface CheckpointData {
@@ -64,6 +65,7 @@ export interface TimerEventMap {
   [TimerEventType.UI_TICK]: [state: TimerState];
   [TimerEventType.CHECKPOINT]: [lastCheckpoint: CheckpointData];
   [TimerEventType.TRANSITION_APPROACHING]: [];
+  [TimerEventType.AUTO_PAUSE_PERMISSION_DENIED]: [];
 }
 
 export type TimerEventCallback<K extends keyof TimerEventMap> = (
@@ -81,6 +83,7 @@ export interface TimerControllerOptions {
   milestoneScheduler?: MilestoneScheduler;
   liveActivityDriver?: LiveActivityDriver;
   mode?: TimerMode;
+  allowBackgroundAudioOnly?: boolean;
 }
 
 export class TimerController {
@@ -104,6 +107,8 @@ export class TimerController {
   private currentAppState: AppStateStatus = "active";
   private appStateSubscription: { remove: () => void } | null = null;
   private hasEmittedApproachingTransition = false;
+  private allowBackgroundAudioOnly = false;
+  private wasAutoPausedDueToPermission = false;
 
   private listeners: {
     [K in keyof TimerEventMap]: TimerEventCallback<K>[];
@@ -120,6 +125,7 @@ export class TimerController {
     [TimerEventType.UI_TICK]: [],
     [TimerEventType.CHECKPOINT]: [],
     [TimerEventType.TRANSITION_APPROACHING]: [],
+    [TimerEventType.AUTO_PAUSE_PERMISSION_DENIED]: [],
   };
 
   constructor(
@@ -162,6 +168,9 @@ export class TimerController {
       if (options.mode) {
         this.configuredMode = options.mode;
       }
+      if (options.allowBackgroundAudioOnly !== undefined) {
+        this.allowBackgroundAudioOnly = options.allowBackgroundAudioOnly;
+      }
       if (options.liveActivityDriver) {
         this.attachLiveActivityDriver(options.liveActivityDriver);
       }
@@ -170,11 +179,16 @@ export class TimerController {
     this.engine = new TickEngine({ highPrecision });
     this.engine.onTickCallbacks.push((tickEvent) => this.handleTick(tickEvent));
 
-    let appStateSource: typeof AppState | undefined = AppState;
-    if (typeof options === "object" && options?.appState) {
-      appStateSource = options.appState;
-    }
+    const appStateSource =
+      typeof options === "object" && options?.appState
+        ? options.appState
+        : AppState;
+    this.initializeAppStateSubscription(appStateSource);
+  }
 
+  private initializeAppStateSubscription(
+    appStateSource?: typeof AppState
+  ): void {
     if (appStateSource?.currentState) {
       this.currentAppState = appStateSource.currentState as AppStateStatus;
       this.isVisualUpdatesPaused =
@@ -190,6 +204,22 @@ export class TimerController {
         }
       );
     }
+  }
+
+  public setAllowBackgroundAudioOnly(allow: boolean): void {
+    this.allowBackgroundAudioOnly = allow;
+  }
+
+  public getAllowBackgroundAudioOnly(): boolean {
+    return this.allowBackgroundAudioOnly;
+  }
+
+  public getWasAutoPausedDueToPermission(): boolean {
+    return this.wasAutoPausedDueToPermission;
+  }
+
+  public clearAutoPauseDueToPermission(): void {
+    this.wasAutoPausedDueToPermission = false;
   }
 
   public setUiTickResolution(resolutionMs: number | null) {
@@ -238,8 +268,16 @@ export class TimerController {
             const hasPermission =
               await this.liveActivityDriver?.hasNotificationPermission?.();
             if (hasPermission === false) {
+              if (this.allowBackgroundAudioOnly) {
+                if (this.engine.getIsRunning()) {
+                  this.scheduleBackgroundMilestones();
+                }
+                return;
+              }
               if (this.engine.getIsRunning()) {
+                this.wasAutoPausedDueToPermission = true;
                 this.pause();
+                this.emit(TimerEventType.AUTO_PAUSE_PERMISSION_DENIED);
               }
               return;
             }
@@ -256,6 +294,9 @@ export class TimerController {
     } else if (!wasActive && isNowActive) {
       this.isVisualUpdatesPaused = false;
       this.milestoneScheduler.clearMilestones();
+      if (this.wasAutoPausedDueToPermission) {
+        this.emit(TimerEventType.AUTO_PAUSE_PERMISSION_DENIED);
+      }
       if (this.engine.getIsRunning()) {
         this.catchUp();
         if (!this.previousState?.isFinished) {
@@ -591,6 +632,7 @@ export class TimerController {
       [TimerEventType.UI_TICK]: [],
       [TimerEventType.CHECKPOINT]: [],
       [TimerEventType.TRANSITION_APPROACHING]: [],
+      [TimerEventType.AUTO_PAUSE_PERMISSION_DENIED]: [],
     };
   }
 
@@ -612,6 +654,7 @@ export class TimerController {
     this.lastUiTickState = null;
     this.lastEmittedUiSecond = null;
     this.lastEmittedQuantizedStep = null;
+    this.wasAutoPausedDueToPermission = false;
     this.removeAllListeners();
   }
 
@@ -662,6 +705,7 @@ export class TimerController {
   }
 
   public start() {
+    this.wasAutoPausedDueToPermission = false;
     if (!this.previousState) {
       this.previousState = this.getInitialState();
     }
@@ -703,6 +747,7 @@ export class TimerController {
   public reset() {
     this.hasEmittedApproachingTransition = false;
     this.milestoneScheduler.clearMilestones();
+    this.wasAutoPausedDueToPermission = false;
     this.emit(TimerEventType.RESET);
     this.checkpoints = [];
     this.previousState = null;

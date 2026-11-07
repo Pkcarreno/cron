@@ -4,6 +4,7 @@ import { storage } from "@/stores/storage";
 
 import {
   hasHapticEnabledAtom,
+  isBackgroundAudioOnlyAllowedAtom,
   isHighPrecisionTimerEnabledAtom,
   isRawTimerEnabledAtom,
   isSoundEnabledAtom,
@@ -23,6 +24,7 @@ describe("settings store persistence", () => {
     expect(store.get(hasHapticEnabledAtom)).toBe(true);
     expect(store.get(isSoundEnabledAtom)).toBe(true);
     expect(store.get(preparationTimeMsAtom)).toBe(10_000);
+    expect(store.get(isBackgroundAudioOnlyAllowedAtom)).toBe(false);
   });
 
   it("persists isHighPrecisionTimerEnabledAtom in MMKV and restores it across store restarts", () => {
@@ -66,5 +68,32 @@ describe("settings store persistence", () => {
         storage.getString("settings.isHighPrecisionTimerEnabled") ?? "true"
       )
     ).toBe(false);
+  });
+
+  it("persists isBackgroundAudioOnlyAllowedAtom in MMKV and restores across store restarts", () => {
+    const firstStore = createStore();
+    const unsub = firstStore.sub(isBackgroundAudioOnlyAllowedAtom, () => {});
+
+    expect(firstStore.get(isBackgroundAudioOnlyAllowedAtom)).toBe(false);
+
+    firstStore.set(isBackgroundAudioOnlyAllowedAtom, true);
+    expect(firstStore.get(isBackgroundAudioOnlyAllowedAtom)).toBe(true);
+
+    unsub();
+
+    expect(
+      JSON.parse(
+        storage.getString("settings.isBackgroundAudioOnlyAllowed") ?? "false"
+      )
+    ).toBe(true);
+
+    const restartedStore = createStore();
+    const unsubRestart = restartedStore.sub(
+      isBackgroundAudioOnlyAllowedAtom,
+      () => {}
+    );
+
+    expect(restartedStore.get(isBackgroundAudioOnlyAllowedAtom)).toBe(true);
+    unsubRestart();
   });
 });

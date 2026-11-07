@@ -9,6 +9,7 @@ import {
   formatHeadline,
   formatModePrefix,
   formatSubtitle,
+  formatTier2Headline,
   getPhaseAccentColor,
   getSecondaryActionLabel,
 } from "@/helpers/background/live-activity-driver";
@@ -125,6 +126,73 @@ describe("liveActivityDriver", () => {
         totalRounds: 1,
       });
       expect(noCap).toBe("WORK");
+    });
+  });
+
+  describe("formatTier2Headline", () => {
+    it("formats preparation phase with static duration", () => {
+      const headline = formatTier2Headline({
+        currentRound: 0,
+        mode: TimerMode.INTERVAL,
+        phase: TimerPhase.PREPARATION,
+        phaseDurationMs: 10_000,
+        totalRounds: 8,
+      });
+      expect(headline).toBe("PREPARATION (00:10)");
+    });
+
+    it("formats interval work and rest with static duration", () => {
+      const workHeadline = formatTier2Headline({
+        currentRound: 3,
+        mode: TimerMode.INTERVAL,
+        phase: TimerPhase.WORK,
+        phaseDurationMs: 20_000,
+        totalRounds: 8,
+      });
+      expect(workHeadline).toBe("Round 3/8 | WORK (00:20)");
+
+      const restHeadline = formatTier2Headline({
+        currentRound: 3,
+        mode: TimerMode.INTERVAL,
+        phase: TimerPhase.REST,
+        phaseDurationMs: 10_000,
+        totalRounds: 8,
+      });
+      expect(restHeadline).toBe("Round 3/8 | REST (00:10)");
+    });
+
+    it("formats AMRAP with remaining display time", () => {
+      const amrapHeadline = formatTier2Headline({
+        capDurationMs: 600_000,
+        currentRound: 5,
+        displayTimeMs: 570_000,
+        mode: TimerMode.AMRAP,
+        phase: TimerPhase.WORK,
+        totalRounds: 1,
+      });
+      expect(amrapHeadline).toBe("Round 5 | WORK (09:30)");
+    });
+
+    it("formats Stopwatch with elapsed duration", () => {
+      const lapHeadline = formatTier2Headline({
+        currentRound: 2,
+        displayTimeMs: 75_000,
+        mode: TimerMode.STOP_WATCH,
+        phase: TimerPhase.WORK,
+        totalRounds: 1,
+      });
+      expect(lapHeadline).toBe("Lap 2 | STOPWATCH (01:15)");
+    });
+
+    it("formats For Time with remaining duration", () => {
+      const forTimeHeadline = formatTier2Headline({
+        currentRound: 1,
+        displayTimeMs: 300_000,
+        mode: TimerMode.FOR_TIME,
+        phase: TimerPhase.WORK,
+        totalRounds: 1,
+      });
+      expect(forTimeHeadline).toBe("WORK (05:00)");
     });
   });
 
@@ -323,15 +391,18 @@ describe("liveActivityDriver", () => {
         totalRounds: 8,
       });
 
-      expect(startSpy).toHaveBeenCalledWith({
-        color: "#008153",
-        headline: "Round 3/8 | WORK",
-        isPaused: false,
-        secondaryLabel: undefined,
-        subText: undefined,
-        subtitle: "Interval. Next: REST (00:30)",
-        targetTimestampMs: 1_700_000_000_000,
-      });
+      expect(startSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          color: "#008153",
+          headline: "Round 3/8 | WORK",
+          isPaused: false,
+          secondaryLabel: undefined,
+          subText: undefined,
+          subtitle: "Interval. Next: REST (00:30)",
+          supportsLiveUpdates: true,
+          targetTimestampMs: 1_700_000_000_000,
+        })
+      );
       expect(driver.getIsActive()).toBe(true);
     });
 
@@ -364,15 +435,18 @@ describe("liveActivityDriver", () => {
         totalRounds: 1,
       });
 
-      expect(updateSpy).toHaveBeenCalledWith({
-        color: "#008153",
-        headline: "Round 2 | WORK",
-        isPaused: false,
-        secondaryLabel: "Record Round",
-        subText: undefined,
-        subtitle: "AMRAP. Cap: 10:00",
-        targetTimestampMs: 1_700_000_000_000,
-      });
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          color: "#008153",
+          headline: "Round 2 | WORK",
+          isPaused: false,
+          secondaryLabel: "Record Round",
+          subText: undefined,
+          subtitle: "AMRAP. Cap: 10:00",
+          supportsLiveUpdates: true,
+          targetTimestampMs: 1_700_000_000_000,
+        })
+      );
     });
 
     it("pauses the notification with frozen chronometer and static text", async () => {
@@ -396,15 +470,18 @@ describe("liveActivityDriver", () => {
 
       await driver.pause("02:45");
 
-      expect(updateSpy).toHaveBeenCalledWith({
-        color: "#008153",
-        headline: "Round 3/8 | WORK",
-        isPaused: true,
-        secondaryLabel: undefined,
-        subText: undefined,
-        subtitle: "Interval. Paused at 02:45",
-        targetTimestampMs: 0,
-      });
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          color: "#008153",
+          headline: "Round 3/8 | WORK",
+          isPaused: true,
+          secondaryLabel: undefined,
+          subText: undefined,
+          subtitle: "Interval. Paused at 02:45",
+          supportsLiveUpdates: true,
+          targetTimestampMs: 0,
+        })
+      );
     });
 
     it("omits secondary action label during PREPARATION phase even for AMRAP", async () => {
@@ -548,9 +625,91 @@ describe("liveActivityDriver", () => {
       expect(hasPermission).toBe(true);
       expect(permissionSpy).toHaveBeenCalledTimes(1);
     });
+
+    it("manages supportsLiveUpdates state and checks native platform support", async () => {
+      const defaultDriver = new AndroidForegroundDriver();
+      expect(defaultDriver.getSupportsLiveUpdates()).toBe(true);
+
+      const falseDriver = new AndroidForegroundDriver({
+        supportsLiveUpdates: false,
+      });
+      expect(falseDriver.getSupportsLiveUpdates()).toBe(false);
+
+      falseDriver.setSupportsLiveUpdates(true);
+      expect(falseDriver.getSupportsLiveUpdates()).toBe(true);
+
+      const areSupportedSpy = jest
+        .spyOn(Module, "areLiveUpdatesSupported")
+        .mockResolvedValue(false);
+
+      const result = await defaultDriver.areLiveUpdatesSupported();
+      expect(result).toBe(false);
+      expect(defaultDriver.getSupportsLiveUpdates()).toBe(false);
+      expect(areSupportedSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("formats Tier 2 static notification card and suppresses chronometer countdown when live updates are disabled", async () => {
+      const startSpy = jest
+        .spyOn(Module, "startForegroundService")
+        .mockResolvedValue(true);
+      const updateSpy = jest
+        .spyOn(Module, "updateForegroundService")
+        .mockResolvedValue(true);
+
+      const driver = new AndroidForegroundDriver({
+        supportsLiveUpdates: false,
+      });
+
+      await driver.start({
+        currentRound: 1,
+        isPaused: false,
+        mode: TimerMode.INTERVAL,
+        nextPhase: TimerPhase.REST,
+        nextPhaseDurationMs: 15_000,
+        phase: TimerPhase.WORK,
+        phaseDurationMs: 30_000,
+        targetTimestampMs: 1_700_000_030_000,
+        totalRounds: 5,
+      });
+
+      expect(startSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          headline: "Round 1/5 | WORK (00:30)",
+          isCountDown: false,
+          supportsLiveUpdates: false,
+          targetTimestampMs: 0,
+        })
+      );
+
+      await driver.update({
+        currentRound: 1,
+        isPaused: false,
+        mode: TimerMode.INTERVAL,
+        nextPhase: TimerPhase.WORK,
+        nextPhaseDurationMs: 30_000,
+        phase: TimerPhase.REST,
+        phaseDurationMs: 15_000,
+        targetTimestampMs: 1_700_000_045_000,
+        totalRounds: 5,
+      });
+
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          headline: "Round 1/5 | REST (00:15)",
+          isCountDown: false,
+          supportsLiveUpdates: false,
+          targetTimestampMs: 0,
+        })
+      );
+    });
   });
 
   describe("IosNoopLiveActivityDriver", () => {
+    it("reports live updates as unsupported", async () => {
+      const driver = new IosNoopLiveActivityDriver();
+      await expect(driver.areLiveUpdatesSupported()).resolves.toBe(false);
+    });
+
     it("handles all driver calls without error", async () => {
       const driver = new IosNoopLiveActivityDriver();
       await expect(
