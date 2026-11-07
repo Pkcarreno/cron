@@ -63,6 +63,8 @@ export const timerEndedAtAtom = atom<Date | null>(null);
 
 export const isLowBatteryAtom = atom<boolean>(false);
 
+export const isPermissionAutoPauseBannerVisibleAtom = atom<boolean>(false);
+
 /**
  * Derived selectors enforce Object.is memoization so 1 Hz second ticks do not invalidate
  * 1/60 Hz minute SVGs, notch headers, or context phase tags.

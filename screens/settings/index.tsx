@@ -1,8 +1,8 @@
 import { Link, Stack } from "expo-router";
 import { useAtom } from "jotai/react";
 import { CaretRightIcon } from "phosphor-react-native";
-import { useCallback } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { AppState, ScrollView, StyleSheet, View } from "react-native";
 
 import { NumberPickerSheet } from "@/components/input-number";
 import {
@@ -18,82 +18,91 @@ import { Text } from "@/components/text";
 import Env from "@/env";
 import { colors } from "@/helpers/colors";
 import { formatDuration } from "@/helpers/timer/utils/formatter";
+import { hasNotificationPermission } from "@/modules/cron-foreground-service";
 import {
   hasHapticEnabledAtom,
+  isBackgroundAudioOnlyAllowedAtom,
   isHighPrecisionTimerEnabledAtom,
   isRawTimerEnabledAtom,
   isSoundEnabledAtom,
   preparationTimeMsAtom,
 } from "@/stores/settings";
 
-export const Settings = () => (
-  <>
-    <Stack.Screen
-      options={{
-        headerShown: true,
-        title: "Settings",
-      }}
-    />
+export const Settings = () => {
+  const hasNotificationPermissionState = useHasNotificationPermission();
 
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
-      contentInsetAdjustmentBehavior="automatic"
-    >
-      <Menu>
-        <MenuTopic>Preferences</MenuTopic>
-        <MenuGroup>
-          <PreparationSelectorItem />
-          <SoundSwitchItem />
-          <HapticsSwitchItem />
-          <HighPrecisionTimerSwitchItem />
-        </MenuGroup>
-      </Menu>
+  return (
+    <>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: "Settings",
+        }}
+      />
 
-      <Menu>
-        <MenuTopic>About & Support</MenuTopic>
-        <MenuGroup>
-          <Link href="https://www.pkcarreno.com/projects/cron" asChild>
-            <MenuPressableItem>
-              <MenuItemText>About the Project</MenuItemText>
-              <CaretRightIcon size={14} color={colors.neutral[300]} />
-            </MenuPressableItem>
-          </Link>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+        contentInsetAdjustmentBehavior="automatic"
+      >
+        <Menu>
+          <MenuTopic>Preferences</MenuTopic>
+          <MenuGroup>
+            <PreparationSelectorItem />
+            <SoundSwitchItem />
+            <HapticsSwitchItem />
+            <HighPrecisionTimerSwitchItem />
+            {hasNotificationPermissionState === false && (
+              <BackgroundAudioOnlySwitchItem />
+            )}
+          </MenuGroup>
+        </Menu>
 
-          <Link href="https://github.com/pkcarreno/cron/issues" asChild>
-            <MenuPressableItem>
-              <MenuItemText>Report an Issue</MenuItemText>
-              <CaretRightIcon size={14} color={colors.neutral[300]} />
-            </MenuPressableItem>
-          </Link>
+        <Menu>
+          <MenuTopic>About & Support</MenuTopic>
+          <MenuGroup>
+            <Link href="https://www.pkcarreno.com/projects/cron" asChild>
+              <MenuPressableItem>
+                <MenuItemText>About the Project</MenuItemText>
+                <CaretRightIcon size={14} color={colors.neutral[300]} />
+              </MenuPressableItem>
+            </Link>
 
-          <Link href="https://github.com/pkcarreno/cron" asChild>
-            <MenuPressableItem>
-              <MenuItemText>Source Code</MenuItemText>
-              <CaretRightIcon size={14} color={colors.neutral[300]} />
-            </MenuPressableItem>
-          </Link>
-        </MenuGroup>
-      </Menu>
+            <Link href="https://github.com/pkcarreno/cron/issues" asChild>
+              <MenuPressableItem>
+                <MenuItemText>Report an Issue</MenuItemText>
+                <CaretRightIcon size={14} color={colors.neutral[300]} />
+              </MenuPressableItem>
+            </Link>
 
-      <Menu>
-        <MenuTopic>Developer</MenuTopic>
-        <MenuGroup>
-          <RawTimerSwitchItem />
-        </MenuGroup>
-      </Menu>
+            <Link href="https://github.com/pkcarreno/cron" asChild>
+              <MenuPressableItem>
+                <MenuItemText>Source Code</MenuItemText>
+                <CaretRightIcon size={14} color={colors.neutral[300]} />
+              </MenuPressableItem>
+            </Link>
+          </MenuGroup>
+        </Menu>
 
-      <View style={styles.extra}>
-        <Text colorSubtone="600" fontType="mono">
-          {Env.EXPO_PUBLIC_NAME} v{Env.EXPO_PUBLIC_VERSION}
-        </Text>
-        <Text colorSubtone="600" fontType="mono">
-          by pkcarreno
-        </Text>
-      </View>
-    </ScrollView>
-  </>
-);
+        <Menu>
+          <MenuTopic>Developer</MenuTopic>
+          <MenuGroup>
+            <RawTimerSwitchItem />
+          </MenuGroup>
+        </Menu>
+
+        <View style={styles.extra}>
+          <Text colorSubtone="600" fontType="mono">
+            {Env.EXPO_PUBLIC_NAME} v{Env.EXPO_PUBLIC_VERSION}
+          </Text>
+          <Text colorSubtone="600" fontType="mono">
+            by pkcarreno
+          </Text>
+        </View>
+      </ScrollView>
+    </>
+  );
+};
 
 const PreparationSelectorItem = () => {
   const [preparationTimeMs, setPreparationTimeMs] = useAtom(
@@ -185,6 +194,61 @@ const HighPrecisionTimerSwitchItem = () => {
         accessibilityLabel="High-precision timer"
         checked={isHighPrecisionTimerEnabled}
         onCheckedChange={setIsHighPrecisionTimerEnabled}
+      />
+    </MenuItem>
+  );
+};
+
+const useHasNotificationPermission = () => {
+  const [hasPermission, setHasPermission] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkPermission = async () => {
+      try {
+        const granted = await hasNotificationPermission();
+        if (isMounted) {
+          setHasPermission(granted);
+        }
+      } catch {
+        if (isMounted) {
+          setHasPermission(true);
+        }
+      }
+    };
+
+    void checkPermission();
+
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        void checkPermission();
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      sub.remove();
+    };
+  }, []);
+
+  return hasPermission;
+};
+
+const BackgroundAudioOnlySwitchItem = () => {
+  const [isBackgroundAudioOnlyAllowed, setIsBackgroundAudioOnlyAllowed] =
+    useAtom(isBackgroundAudioOnlyAllowedAtom);
+
+  return (
+    <MenuItem>
+      <MenuItemText>
+        Allow background audio-only session (without notifications)
+      </MenuItemText>
+      <Switch
+        accessibilityLabel="Allow background audio-only session (without notifications)"
+        checked={isBackgroundAudioOnlyAllowed}
+        onCheckedChange={setIsBackgroundAudioOnlyAllowed}
+        testID="background-audio-only-switch"
       />
     </MenuItem>
   );

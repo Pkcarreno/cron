@@ -35,6 +35,7 @@ class CronForegroundService : Service() {
         const val EXTRA_IS_COUNT_DOWN = "isCountDown"
         const val EXTRA_COLOR = "color"
         const val EXTRA_SECONDARY_LABEL = "secondaryLabel"
+        const val EXTRA_SUPPORTS_LIVE_UPDATES = "supportsLiveUpdates"
         const val EXTRA_ACTION = "action"
 
         var isRunning: Boolean = false
@@ -47,6 +48,7 @@ class CronForegroundService : Service() {
     private var currentTargetTimestampMs: Long = 0L
     private var currentIsPaused: Boolean = false
     private var currentIsCountDown: Boolean = true
+    private var currentSupportsLiveUpdates: Boolean = true
     private var currentColorHex: String = "#008153"
     private var currentSecondaryLabel: String? = null
     private var wakeLock: PowerManager.WakeLock? = null
@@ -166,6 +168,9 @@ class CronForegroundService : Service() {
         if (intent.hasExtra(EXTRA_TARGET_TIMESTAMP_MS)) {
             currentTargetTimestampMs = intent.getLongExtra(EXTRA_TARGET_TIMESTAMP_MS, 0L)
         }
+        if (intent.hasExtra(EXTRA_SUPPORTS_LIVE_UPDATES)) {
+            currentSupportsLiveUpdates = intent.getBooleanExtra(EXTRA_SUPPORTS_LIVE_UPDATES, true)
+        }
     }
 
     private fun createNotificationChannel() {
@@ -253,8 +258,8 @@ class CronForegroundService : Service() {
             builder.addAction(0, currentSecondaryLabel, secondaryPendingIntent)
         }
 
-        // Hardware chronometer
-        if (currentIsPaused || currentTargetTimestampMs <= 0L) {
+        // Hardware chronometer: Tier 1 utilizes live ticking chronometer. Tier 2 uses static text.
+        if (!currentSupportsLiveUpdates || currentIsPaused || currentTargetTimestampMs <= 0L) {
             builder.setUsesChronometer(false)
             builder.setShowWhen(false)
         } else {
@@ -271,16 +276,18 @@ class CronForegroundService : Service() {
             builder.setChronometerCountDown(currentIsCountDown)
         }
 
-        // Request Live Update promotion (Android 16+ Promoted Ongoing / Status Bar Chip)
-        // 1. EXTRA_REQUEST_PROMOTED_ONGOING ("android.requestPromotedOngoing") for Android 16 (API 36+)
-        builder.extras.putBoolean("android.requestPromotedOngoing", true)
+        // Request Live Update promotion (Android 16+ Promoted Ongoing / Status Bar Chip) strictly when supported
+        if (currentSupportsLiveUpdates) {
+            // 1. EXTRA_REQUEST_PROMOTED_ONGOING ("android.requestPromotedOngoing") for Android 16 (API 36+)
+            builder.extras.putBoolean("android.requestPromotedOngoing", true)
 
-        // 2. Also invoke setRequestPromotedOngoing via reflection if available on newer AndroidX or platform builder
-        try {
-            val method = builder.javaClass.getMethod("setRequestPromotedOngoing", Boolean::class.javaPrimitiveType)
-            method.invoke(builder, true)
-        } catch (_: Exception) {
-            // Fallback handled by extras bundle above
+            // 2. Also invoke setRequestPromotedOngoing via reflection if available on newer AndroidX or platform builder
+            try {
+                val method = builder.javaClass.getMethod("setRequestPromotedOngoing", Boolean::class.javaPrimitiveType)
+                method.invoke(builder, true)
+            } catch (_: Exception) {
+                // Fallback handled by extras bundle above
+            }
         }
 
         return builder.build()

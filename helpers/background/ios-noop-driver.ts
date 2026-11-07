@@ -20,7 +20,10 @@ export class IosNoopLiveActivityDriver implements LiveActivityDriver {
     return Promise.resolve();
   }
 
-  public pause(_elapsedDisplayTime: string): Promise<void> {
+  public pause(
+    _elapsedDisplayTime: string,
+    _remainingDisplayTimeMs?: number
+  ): Promise<void> {
     return Promise.resolve();
   }
 
@@ -44,5 +47,9 @@ export class IosNoopLiveActivityDriver implements LiveActivityDriver {
 
   public hasNotificationPermission(): Promise<boolean> {
     return Promise.resolve(true);
+  }
+
+  public areLiveUpdatesSupported(): Promise<boolean> {
+    return Promise.resolve(false);
   }
 }

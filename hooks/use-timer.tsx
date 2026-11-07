@@ -21,6 +21,7 @@ import {
 } from "@/helpers/timer/utils/formatter";
 import type { FeedbackServiceInterface } from "@/services/audio/feedback-service";
 import {
+  isBackgroundAudioOnlyAllowedAtom,
   isHighPrecisionTimerEnabledAtom,
   preparationTimeMsAtom,
 } from "@/stores/settings";
@@ -74,6 +75,9 @@ export const useTimerInstance = (
   const [isHighPrecisionTimerEnabled] = useAtom(
     isHighPrecisionTimerEnabledAtom
   );
+  const [isBackgroundAudioOnlyAllowed] = useAtom(
+    isBackgroundAudioOnlyAllowedAtom
+  );
   const controllerRef = useRef<TimerController | null>(null);
   const prevConfigKeyRef = useRef<string>("");
   const prevPrepTimeRef = useRef<number>(preparationTimeMs);
@@ -98,6 +102,7 @@ export const useTimerInstance = (
 
     const options: TimerControllerOptions = {
       highPrecision: isHighPrecisionTimerEnabled,
+      isBackgroundAudioOnlyAllowed,
       liveActivityDriver: liveActivityDriver ?? createLiveActivityDriver(),
       mode: config.mode,
       uiTickResolutionMs:
@@ -122,6 +127,21 @@ export const useTimerInstance = (
       controllerRef.current.setHighPrecision(isHighPrecisionTimerEnabled);
     }
   }, [isHighPrecisionTimerEnabled]);
+
+  useEffect(() => {
+    if (controllerRef.current) {
+      controllerRef.current.setIsBackgroundAudioOnlyAllowed(
+        isBackgroundAudioOnlyAllowed
+      );
+    }
+  }, [isBackgroundAudioOnlyAllowed]);
+
+  useEffect(() => {
+    const driver = controllerRef.current?.getLiveActivityDriver();
+    if (driver && typeof driver.areLiveUpdatesSupported === "function") {
+      void driver.areLiveUpdatesSupported();
+    }
+  }, []);
 
   useEffect(
     () => () => {

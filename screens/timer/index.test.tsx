@@ -3,7 +3,10 @@ import { act, cleanup, fireEvent } from "@testing-library/react-native";
 import { createStore } from "jotai";
 import { useAtomValue } from "jotai/react";
 import React from "react";
+import type { AppStateStatus } from "react-native";
+import { AppState, Linking, Platform } from "react-native";
 
+import * as ForegroundModule from "@/modules/cron-foreground-service";
 import { Timer } from "@/screens/timer";
 import {
   timerContextBannerAtom,
@@ -12,6 +15,7 @@ import {
   timerSecondsStrAtom,
 } from "@/screens/timer/atoms";
 import { FeedbackService } from "@/services/audio/feedback-service";
+import { isBackgroundAudioOnlyAllowedAtom } from "@/stores/settings";
 import { renderWithProviders } from "@/test-utils/render-with-providers";
 
 const mockBack = jest.fn();
@@ -395,6 +399,121 @@ describe("Timer screen audio lifecycle", () => {
 
       expect(mockActivateKeepAwakeAsync).not.toHaveBeenCalled();
       expect(mockDeactivateKeepAwake).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("multi-tier fallback hierarchy and defensive permission guards integration (#120)", () => {
+    let originalPlatform: string;
+    let appStateListeners: ((state: AppStateStatus) => void)[] = [];
+
+    beforeEach(() => {
+      originalPlatform = Platform.OS;
+      Object.defineProperty(Platform, "OS", {
+        configurable: true,
+        value: "android",
+      });
+      appStateListeners = [];
+      jest
+        .spyOn(AppState, "addEventListener")
+        // oxlint-disable-next-line typescript/no-explicit-any
+        .mockImplementation((type: any, listener: any) => {
+          if (type === "change") {
+            appStateListeners.push(listener);
+          }
+          return {
+            remove: jest.fn(() => {
+              appStateListeners = appStateListeners.filter(
+                (l) => l !== listener
+              );
+            }),
+          } as unknown as ReturnType<typeof AppState.addEventListener>;
+        });
+    });
+
+    afterEach(() => {
+      Object.defineProperty(Platform, "OS", {
+        configurable: true,
+        value: originalPlatform,
+      });
+    });
+
+    const emitAppState = (state: AppStateStatus) => {
+      for (const listener of appStateListeners) {
+        listener(state);
+      }
+    };
+
+    it("auto-pauses session upon backgrounding when notification permission is denied and renders banner on resume", async () => {
+      jest
+        .spyOn(ForegroundModule, "hasNotificationPermission")
+        .mockResolvedValue(false);
+
+      const openSettingsSpy = jest
+        .spyOn(Linking, "openSettings")
+        .mockResolvedValue();
+
+      const store = createStore();
+      const screen = await renderWithProviders(<Timer />, { store });
+
+      expect(screen.queryByTestId("permission-auto-pause-banner")).toBeNull();
+
+      // Transition to background
+      await act(async () => {
+        emitAppState("background");
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      // Transition to active
+      await act(async () => {
+        emitAppState("active");
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(screen.getByTestId("permission-auto-pause-banner")).toBeTruthy();
+      expect(
+        screen.getByText(
+          "Session paused because notifications are disabled. Enable notifications in Settings to allow background workout tracking."
+        )
+      ).toBeTruthy();
+
+      // Open settings from banner
+      await act(() => {
+        fireEvent.press(screen.getByTestId("enable-notifications-button"));
+      });
+      expect(openSettingsSpy).toHaveBeenCalledTimes(1);
+
+      // Resume session clears banner
+      await act(() => {
+        fireEvent.press(screen.getByText("Resume session"));
+      });
+      expect(screen.queryByTestId("permission-auto-pause-banner")).toBeNull();
+    });
+
+    it("does not auto-pause when audio-only background toggle is enabled despite denied notification permission", async () => {
+      jest
+        .spyOn(ForegroundModule, "hasNotificationPermission")
+        .mockResolvedValue(false);
+
+      const store = createStore();
+      store.set(isBackgroundAudioOnlyAllowedAtom, true);
+
+      const screen = await renderWithProviders(<Timer />, { store });
+
+      await act(async () => {
+        emitAppState("background");
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      await act(async () => {
+        emitAppState("active");
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(screen.queryByTestId("permission-auto-pause-banner")).toBeNull();
     });
   });
 });

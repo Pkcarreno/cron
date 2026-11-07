@@ -24,3 +24,8 @@ export const preparationTimeMsAtom = atomWithMMKV<number>(
   "settings.preparationTimeMs",
   10_000
 );
+
+export const isBackgroundAudioOnlyAllowedAtom = atomWithMMKV<boolean>(
+  "settings.isBackgroundAudioOnlyAllowed",
+  false
+);

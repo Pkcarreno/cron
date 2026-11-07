@@ -24,6 +24,8 @@ export interface ForegroundNotificationPayload {
   color?: string;
   /** Contextual secondary action button label (e.g., "Record Round", "Lap"). */
   secondaryLabel?: string;
+  /** Whether the notification should use live updates / hardware chronometer (Tier 1) or static text (Tier 2). */
+  supportsLiveUpdates?: boolean;
 }
 
 /** Action types emitted when athletes interact with notification action buttons. */
@@ -54,16 +56,17 @@ export interface MilestoneEvent {
 }
 
 declare class CronForegroundNativeModule extends NativeModule<{
-  onNotificationAction: (event: NotificationActionEvent) => void;
   onMilestone: (event: MilestoneEvent) => void;
+  onNotificationAction: (event: NotificationActionEvent) => void;
 }> {
-  start(payload: ForegroundNotificationPayload): Promise<boolean>;
-  update(payload: ForegroundNotificationPayload): Promise<boolean>;
-  stop(): Promise<boolean>;
-  isServiceRunning(): Promise<boolean>;
-  hasNotificationPermission(): Promise<boolean>;
-  scheduleMilestones(payload: ScheduledMilestonesPayload): Promise<boolean>;
+  areLiveUpdatesSupported(): Promise<boolean>;
   clearMilestones(): Promise<boolean>;
+  hasNotificationPermission(): Promise<boolean>;
+  isServiceRunning(): Promise<boolean>;
+  scheduleMilestones(payload: ScheduledMilestonesPayload): Promise<boolean>;
+  start(payload: ForegroundNotificationPayload): Promise<boolean>;
+  stop(): Promise<boolean>;
+  update(payload: ForegroundNotificationPayload): Promise<boolean>;
 }
 
 let nativeModule: CronForegroundNativeModule | null = null;
@@ -160,6 +163,24 @@ export const hasNotificationPermission = async (): Promise<boolean> => {
     return false;
   }
   return await mod.hasNotificationPermission();
+};
+
+/**
+ * Checks whether Live Updates / rich ongoing notifications are supported on the device (Android 16+).
+ */
+export const areLiveUpdatesSupported = async (): Promise<boolean> => {
+  if (Platform.OS !== "android") {
+    return false;
+  }
+  const mod = getNativeModule();
+  if (!mod || typeof mod.areLiveUpdatesSupported !== "function") {
+    return false;
+  }
+  try {
+    return await mod.areLiveUpdatesSupported();
+  } catch {
+    return false;
+  }
 };
 
 /**

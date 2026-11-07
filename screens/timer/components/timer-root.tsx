@@ -4,7 +4,7 @@ import { useAtom, useSetAtom } from "jotai";
 import type { FC, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { AppStateStatus } from "react-native";
-import { AppState, StyleSheet, View } from "react-native";
+import { AppState, Linking, StyleSheet, View } from "react-native";
 
 import { HideNavigationBar } from "@/components/hide-navigation-bar";
 import { colors } from "@/helpers/colors";
@@ -22,6 +22,7 @@ import type { UICheckpoint, UISessionSummary } from "@/hooks/use-timer";
 import { TimerStatus, useTimerInstance } from "@/hooks/use-timer";
 import {
   isLowBatteryAtom,
+  isPermissionAutoPauseBannerVisibleAtom,
   timerCheckpointsAtom,
   timerConfigAtom,
   timerCurrentRoundAtom,
@@ -34,6 +35,7 @@ import {
   timerTotalRoundsAtom,
 } from "@/screens/timer/atoms";
 import { OledBurnInProtector } from "@/screens/timer/components/oled-burn-in-protector";
+import { PermissionAutoPauseBanner } from "@/screens/timer/components/permission-auto-pause-banner";
 import { SummaryFace } from "@/screens/timer/components/summary-face";
 import { TimerDisplay } from "@/screens/timer/components/timer-display";
 import { TimerGestureOverlay } from "@/screens/timer/components/timer-gesture-overlay";
@@ -87,6 +89,9 @@ export const TimerRoot: FC<TimerRootProps> = ({
   const [startedAt, setStartedAt] = useAtom(timerStartedAtAtom);
   const [endedAt, setEndedAt] = useAtom(timerEndedAtAtom);
   const setIsLowBattery = useSetAtom(isLowBatteryAtom);
+  const [isPermissionBannerVisible, setIsPermissionBannerVisible] = useAtom(
+    isPermissionAutoPauseBannerVisibleAtom
+  );
 
   useTimerKeepAwake(status === TimerStatus.RUNNING);
 
@@ -208,6 +213,11 @@ export const TimerRoot: FC<TimerRootProps> = ({
       }
     );
 
+    controller.on(TimerEventType.AUTO_PAUSE_PERMISSION_DENIED, () => {
+      setStatus(TimerStatus.PAUSED);
+      setIsPermissionBannerVisible(true);
+    });
+
     return () => {
       controller.dispose();
     };
@@ -222,8 +232,13 @@ export const TimerRoot: FC<TimerRootProps> = ({
     setStartedAt,
     setEndedAt,
     setCheckpoints,
+    setIsPermissionBannerVisible,
     onFinish,
   ]);
+
+  const dismissPermissionBanner = useCallback(() => {
+    setIsPermissionBannerVisible(false);
+  }, [setIsPermissionBannerVisible]);
 
   const pause = useCallback(() => {
     setStatus(TimerStatus.PAUSED);
@@ -231,14 +246,16 @@ export const TimerRoot: FC<TimerRootProps> = ({
   }, [controllerRef, setStatus]);
 
   const start = useCallback(() => {
+    dismissPermissionBanner();
     setStatus(TimerStatus.RUNNING);
     controllerRef.current?.start();
-  }, [controllerRef, setStatus]);
+  }, [controllerRef, setStatus, dismissPermissionBanner]);
 
   const reset = useCallback(() => {
+    dismissPermissionBanner();
     setStatus(TimerStatus.READY);
     controllerRef.current?.reset();
-  }, [controllerRef, setStatus]);
+  }, [controllerRef, setStatus, dismissPermissionBanner]);
 
   const recordCheckpoint = useCallback(() => {
     controllerRef.current?.recordCheckpoint();
@@ -247,6 +264,10 @@ export const TimerRoot: FC<TimerRootProps> = ({
   const handleEndSession = useCallback(() => {
     setStatus(TimerStatus.FINISHED);
   }, [setStatus]);
+
+  const handleOpenSettings = useCallback(() => {
+    void Linking.openSettings();
+  }, []);
 
   const getSummary = useCallback((): UISessionSummary | undefined => {
     const coreSummary = controllerRef.current?.getSummary();
@@ -290,9 +311,17 @@ export const TimerRoot: FC<TimerRootProps> = ({
     [getSummary, handleEndSession, pause, recordCheckpoint, reset, start]
   );
 
+  const bannerNode = isPermissionBannerVisible ? (
+    <PermissionAutoPauseBanner
+      onDismiss={dismissPermissionBanner}
+      onOpenSettings={handleOpenSettings}
+    />
+  ) : null;
+
   if (status === TimerStatus.PAUSED || status === TimerStatus.FINISHED) {
     return (
       <SummaryFace
+        banner={bannerNode}
         summary={getSummary()}
         mode={config.mode}
         handleEndSession={handleFinish}
@@ -307,6 +336,7 @@ export const TimerRoot: FC<TimerRootProps> = ({
       <HideNavigationBar />
 
       <View style={styles.container} testID="timer-screen" collapsable={false}>
+        {bannerNode}
         {children ?? (
           <OledBurnInProtector>
             <TimerGestureOverlay>

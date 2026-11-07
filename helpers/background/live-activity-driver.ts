@@ -4,17 +4,18 @@ import type { TimerController } from "@/helpers/timer/controller";
 import { TimerMode } from "@/helpers/timer/factory";
 import type { NativeMilestoneBridge } from "@/helpers/timer/milestone-scheduler";
 import { TimerPhase } from "@/helpers/timer/strategy";
-import type { ForegroundNotificationPayload } from "@/modules/cron-foreground-service/index";
 import {
   addMilestoneListener,
   addNotificationActionListener,
+  areLiveUpdatesSupported,
   clearNativeMilestones,
   hasNotificationPermission,
   scheduleNativeMilestones,
   startForegroundService,
   stopForegroundService,
   updateForegroundService,
-} from "@/modules/cron-foreground-service/index";
+} from "@/modules/cron-foreground-service";
+import type { ForegroundNotificationPayload } from "@/modules/cron-foreground-service/index";
 
 import { IosNoopLiveActivityDriver } from "./ios-noop-driver";
 
@@ -48,12 +49,18 @@ export interface ActiveSessionPayload {
 export interface LiveActivityDriver {
   start: (session: ActiveSessionPayload) => Promise<void>;
   update: (session: ActiveSessionPayload) => Promise<void>;
-  pause: (elapsedDisplayTime: string) => Promise<void>;
+  pause: (
+    elapsedDisplayTime: string,
+    remainingDisplayTimeMs?: number
+  ) => Promise<void>;
   resume: (session: ActiveSessionPayload) => Promise<void>;
   stop: () => Promise<void>;
   attachController?: (controller: TimerController) => () => void;
   getMilestoneBridge?: () => NativeMilestoneBridge | null;
   hasNotificationPermission?: () => Promise<boolean>;
+  areLiveUpdatesSupported?: () => Promise<boolean>;
+  setSupportsLiveUpdates?: (supported: boolean) => void;
+  getSupportsLiveUpdates?: () => boolean;
 }
 
 /**
@@ -91,6 +98,7 @@ export interface NotificationContextPayload {
   totalRounds: number;
   phaseDurationMs?: number;
   capDurationMs?: number;
+  displayTimeMs?: number;
 }
 
 const formatSessionContext = (
@@ -138,6 +146,20 @@ const formatSessionContext = (
  */
 export const formatHeadline = (payload: NotificationContextPayload): string =>
   formatSessionContext(payload, false);
+
+/**
+ * Formats a standard Material 3 notification card headline with static text
+ * (phase name, round, and remaining duration) for Tier 2 fallback when Live Updates
+ * (status bar chips / rich ongoing notifications) are unsupported or disabled.
+ */
+export const formatTier2Headline = (
+  payload: NotificationContextPayload
+): string => {
+  const baseHeadline = formatHeadline(payload);
+  const remainingMs = payload.displayTimeMs ?? payload.phaseDurationMs ?? 0;
+  const durationText = formatClockDuration(remainingMs);
+  return `${baseHeadline} (${durationText})`;
+};
 
 /**
  * Formats the compact chip badge using single-digit values when applicable.
@@ -243,10 +265,19 @@ export const getSecondaryActionLabel = (
   }
 };
 
+export interface AndroidForegroundDriverOptions {
+  supportsLiveUpdates?: boolean;
+}
+
 const resolveForegroundNotificationPayload = (
-  session: ActiveSessionPayload
+  session: ActiveSessionPayload,
+  supportsLiveUpdates = true
 ): ForegroundNotificationPayload => {
-  const headline = session.headline ?? formatHeadline(session);
+  const headline =
+    session.headline ??
+    (supportsLiveUpdates
+      ? formatHeadline(session)
+      : formatTier2Headline(session));
   const { subText } = session;
   const subtitle =
     session.subtitle ??
@@ -266,12 +297,13 @@ const resolveForegroundNotificationPayload = (
   return {
     color,
     headline,
-    isCountDown: session.isCountDown,
+    isCountDown: supportsLiveUpdates ? session.isCountDown : false,
     isPaused: session.isPaused,
     secondaryLabel,
     subText,
     subtitle,
-    targetTimestampMs: session.targetTimestampMs,
+    supportsLiveUpdates,
+    targetTimestampMs: supportsLiveUpdates ? session.targetTimestampMs : 0,
   };
 };
 
@@ -283,11 +315,40 @@ export class AndroidForegroundDriver implements LiveActivityDriver {
   private lastSessionPayload: ActiveSessionPayload | null = null;
   private isServiceActive = false;
   private controllerSubscription: { remove: () => void } | null = null;
+  private supportsLiveUpdates = true;
+  private hasExplicitSupportsLiveUpdates = false;
+
+  constructor(options?: AndroidForegroundDriverOptions) {
+    if (options?.supportsLiveUpdates !== undefined) {
+      this.supportsLiveUpdates = options.supportsLiveUpdates;
+      this.hasExplicitSupportsLiveUpdates = true;
+    }
+  }
+
+  public setSupportsLiveUpdates(supported: boolean): void {
+    this.supportsLiveUpdates = supported;
+    this.hasExplicitSupportsLiveUpdates = true;
+  }
+
+  public getSupportsLiveUpdates(): boolean {
+    return this.supportsLiveUpdates;
+  }
+
+  public async areLiveUpdatesSupported(): Promise<boolean> {
+    if (this.hasExplicitSupportsLiveUpdates) {
+      return this.supportsLiveUpdates;
+    }
+    const supported = await areLiveUpdatesSupported();
+    this.supportsLiveUpdates = supported;
+    return supported;
+  }
 
   public async start(session: ActiveSessionPayload): Promise<void> {
     this.lastSessionPayload = session;
     this.isServiceActive = true;
-    await startForegroundService(resolveForegroundNotificationPayload(session));
+    await startForegroundService(
+      resolveForegroundNotificationPayload(session, this.supportsLiveUpdates)
+    );
   }
 
   public async update(session: ActiveSessionPayload): Promise<void> {
@@ -298,11 +359,14 @@ export class AndroidForegroundDriver implements LiveActivityDriver {
     }
 
     await updateForegroundService(
-      resolveForegroundNotificationPayload(session)
+      resolveForegroundNotificationPayload(session, this.supportsLiveUpdates)
     );
   }
 
-  public async pause(elapsedDisplayTime: string): Promise<void> {
+  public async pause(
+    elapsedDisplayTime: string,
+    remainingDisplayTimeMs?: number
+  ): Promise<void> {
     if (!this.lastSessionPayload) {
       return;
     }
@@ -315,6 +379,8 @@ export class AndroidForegroundDriver implements LiveActivityDriver {
 
     const pausedSession: ActiveSessionPayload = {
       ...this.lastSessionPayload,
+      displayTimeMs:
+        remainingDisplayTimeMs ?? this.lastSessionPayload.displayTimeMs,
       isPaused: true,
       subtitle: pausedSubtitle,
       targetTimestampMs: 0,
@@ -389,10 +455,11 @@ export class AndroidForegroundDriver implements LiveActivityDriver {
  * Creates the appropriate LiveActivityDriver implementation for the current platform.
  */
 export const createLiveActivityDriver = (
-  platform: string = Platform.OS
+  platform: string = Platform.OS,
+  options?: AndroidForegroundDriverOptions
 ): LiveActivityDriver => {
   if (platform === "android") {
-    return new AndroidForegroundDriver();
+    return new AndroidForegroundDriver(options);
   }
   return new IosNoopLiveActivityDriver();
 };
