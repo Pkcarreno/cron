@@ -74,22 +74,62 @@ Rather than adopting external forks with uncertain longevity, `cron` maintains i
 
 ### 2.2. Notification Design, Copy, and Contextual Actions
 
-All notification text is strictly in English matching the application domain standard:
+All notification text is strictly in English matching the application domain standard. It follows a unified, predictable model across all timer strategies (`INTERVAL`, `EMOM`, `AMRAP`, `FOR_TIME`, `STOP_WATCH`), enforcing clean typography without em-dashes (`—`) or decorative bullets, using pipe separators (`|`) for titles/chips and standard periods (`.`) for description sentences.
 
-- **Small Icon**: Monochromatic silhouette of the `cron` emblem (required by Android notification spec).
-- **Headline**: Phase and round progression:
-  - Intervals / EMOM: `WORK — Round 3/8` or `REST — Round 3/8`.
-  - AMRAP / Stopwatch: `AMRAP — Round 5` or `STOPWATCH — Lap 4`.
-  - For Time: `FOR TIME — Cap 20:00`.
-- **Subtitle**: Immediate next phase contextual information:
-  - `Next: REST (30s)` or `Next: WORK (60s)`.
-- **Chronometer Chip**: Hardware countdown ticking to the active block's completion timestamp.
-- **Color Accent**: Dynamic theme color based on active phase (`#008153` for Work, `#E7801F` for Rest/Preparation).
-- **Deep Link**: Tapping the notification body dispatches an Intent opening the active timer screen directly.
+#### 2.2.1. Standard Visual Structure & Hierarchy
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│ [Small Icon]  cron  •  [Hardware Chronometer: MM:SS]                   │
+│                                                                        │
+│ HEADLINE:  [Round / Progression] | [Phase / Mode]                      │
+│ SUBTITLE:  [Mode]. [Next Phase Context / Cap / Paused State]           │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+1. **Headline (Notification Content Title)**:
+   - High-detail context when the user pulls down the notification shade.
+   - Formula: `[Round / Progression] | [Phase / Mode]`.
+   - Separator: `|`.
+   - Omission rule: Inexistent dimensions are omitted cleanly without trailing pipes (e.g., `Round 3/8 | WORK`, `Round 3 | WORK`, `WORK`, `PREPARATION`, `STOPWATCH`).
+   - Notice on Time: Static duration/cap values are explicitly omitted from the headline. Android's native hardware chronometer (`setUsesChronometer(true)`) renders the live elapsed or remaining time directly adjacent to the title (`[Headline] • [Chronometer]`), avoiding redundant or conflicting time displays.
+2. **Chip (Compact Format & Status Bar Promoted Chip)**:
+   - Ultra-compact format for narrow spaces: `[Round] | [Phase]` (e.g., `3 | WORK`, `PREP`, `2 | STOPWATCH`).
+   - In Android notification cards, `subText` is intentionally omitted (`undefined`) to avoid duplicating the headline as a secondary line inside the notification shade.
+   - For Android 16 Status Bar Live Updates, omitting static string overrides allows the system to prioritize the live ticking hardware chronometer chip.
+3. **Subtitle (Content Text / Body)**:
+   - Always prefixed with the timer mode name and a period (`Interval. `, `EMOM. `, `AMRAP. `, `For Time. `, `Stopwatch. `).
+   - When active with upcoming phase: `[Mode]. Next: [PHASE] (MM:SS)`.
+   - When active on single/terminal block: `[Mode]. Cap: MM:SS` (if capped) or `[Mode].` (if open-ended).
+   - When paused: `[Mode]. Paused at MM:SS`.
+4. **Hardware Chronometer & Color Accent**:
+   - Native ticking chronometer via `setUsesChronometer(true)`.
+   - Countdown mode (`isCountDown = true`) for `PREPARATION` and all countdown phases.
+   - Count-up mode (`isCountDown = false`) for active `WORK` in `FOR_TIME` and `STOP_WATCH`.
+   - Accent color: `#008153` (Emerald Green) for `WORK`; `#E7801F` (Amber Orange) for `REST` and `PREPARATION`.
+
+#### 2.2.2. Per-Strategy Presentation Matrix
+
+| Strategy / Phase | Headline | Chip (`formatChip`) | Subtitle (Active) | Subtitle (Paused) |
+| :-- | :-- | :-- | :-- | :-- |
+| **PREPARATION** (Any mode) | `PREPARATION` | `PREP` | `[Mode]. Next: WORK (00:20)` | `[Mode]. Paused at 00:05` |
+| **INTERVAL (Work)** | `Round 3/8 \| WORK` | `3 \| WORK` | `Interval. Next: REST (00:10)` | `Interval. Paused at 04:12` |
+| **INTERVAL (Rest)** | `Round 3/8 \| REST` | `3 \| REST` | `Interval. Next: WORK (00:20)` | `Interval. Paused at 04:25` |
+| **EMOM (Time-Agnostic)** | `Round 4/10 \| WORK` | `4 \| WORK` | `EMOM. Next: WORK (01:00)` | `EMOM. Paused at 03:40` |
+| **AMRAP (Open Rounds)** | `Round 3 \| WORK` | `3 \| WORK` | `AMRAP. Cap: 10:00` | `AMRAP. Paused at 06:15` |
+| **FOR TIME (With Cap)** | `WORK` | `WORK` | `For Time. Cap: 15:00` | `For Time. Paused at 07:30` |
+| **FOR TIME (No Cap)** | `WORK` | `WORK` | `For Time.` | `For Time. Paused at 02:10` |
+| **STOPWATCH (Base)** | `STOPWATCH` | `STOPWATCH` | `Stopwatch.` | `Stopwatch. Paused at 01:23` |
+| **STOPWATCH (Laps)** | `Lap 2 \| STOPWATCH` | `2 \| STOPWATCH` | `Stopwatch.` | `Stopwatch. Paused at 01:23` |
+
+#### 2.2.3. Contextual Actions & Deep Linking (Deferred to #119)
+
+- **Deep Link**: Tapping the notification card body dispatches an Intent opening the active timer screen directly.
 - **Contextual Actions (Clean text labels, no brackets)**:
   - Primary Action (All Modes): `Pause` (alternating to `Resume` when paused).
   - Secondary Action (Strictly `AMRAP` and `STOP_WATCH`): `Lap` or `Record Round` (records checkpoint identical to the UI double-tap gesture).
   - `EMOM`, `INTERVAL`, and `FOR_TIME` omit secondary skip/advance buttons to eliminate accidental pocket presses during strenuous exercise.
+  - _Note: Action receivers and interactive buttons belong to Issue #119._
 
 ---
 
@@ -106,7 +146,7 @@ To guarantee that audio cues and phase transitions fire with microsecond precisi
    $$
 2. **Scheduled Execution**:
    - At $T_{\text{prewarm}}$: Calls `feedbackService.warmUp()`, which eagerly wakes the hardware DAC and claims transient ducking focus via `react-native-audio-api`.
-   - At $T_{\text{countdown}}$: Dispatches the canonical 3-2-1 countdown beeps onto `audioContext.currentTime`.
+   - At $T_{\text{countdown}}$: Strictly during the initial `PREPARATION` phase countdown ($\ge 3000\,\text{ms}$), dispatches the canonical 3-2-1 countdown beeps onto `audioContext.currentTime`. Internal workout transitions (`WORK` $\leftrightarrow$ `REST`) omit intermediate countdown beeps to prevent audio pollution during active exercise.
    - At $T_{\text{transition}}$: Executes strategy recalculation, emits `PHASE_CHANGE` / `ROUND_CHANGE`, plays the transition tone (`GO` / `REST`), and calls `driver.update()` with the next phase's metadata.
 
 ---

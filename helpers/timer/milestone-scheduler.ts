@@ -28,6 +28,35 @@ export interface CalculatePhaseMilestonesOptions {
   phaseRemainingMs: number;
 }
 
+export interface NativeMilestoneScheduleItem {
+  delayMs: number;
+  secondRemaining: number;
+}
+
+export interface NativeMilestoneSchedulePayload {
+  countdownBeeps?: NativeMilestoneScheduleItem[];
+  transitionDelayMs: number;
+  warmupDelayMs?: number;
+}
+
+export interface NativeMilestoneEvent {
+  type: "warmup" | "beep" | "transition";
+  secondRemaining?: number;
+}
+
+/**
+ * Platform bridge interface decoupling native hardware scheduling from core timer domain.
+ */
+export interface NativeMilestoneBridge {
+  scheduleMilestones: (
+    payload: NativeMilestoneSchedulePayload
+  ) => Promise<unknown>;
+  clearMilestones: () => Promise<unknown>;
+  addMilestoneListener: (listener: (event: NativeMilestoneEvent) => void) => {
+    remove: () => void;
+  };
+}
+
 /**
  * Pure calculation function projecting wall-clock target timestamps for upcoming milestones.
  * Eliminates 1 Hz polling jitter by scheduling single-shot hardware/clock timers.
@@ -92,14 +121,74 @@ export interface MilestoneSchedulerCallbacks {
 /**
  * Deterministic milestone scheduler managing wall-clock single-shot timers
  * when high-frequency UI rendering loops are suspended in the background.
+ * Optionally bridges to a platform-native milestone driver to bypass JS timer freeze.
  */
 export class MilestoneScheduler {
   private callbacks: MilestoneSchedulerCallbacks;
+  private bridge: NativeMilestoneBridge | null = null;
   private activeMilestones: PhaseMilestones | null = null;
   private activeTimeouts = new Set<ReturnType<typeof setTimeout>>();
+  private milestoneSubscription: { remove: () => void } | null = null;
 
-  constructor(callbacks: MilestoneSchedulerCallbacks) {
+  private triggeredBeeps = new Set<number>();
+  private hasTriggeredWarmup = false;
+  private hasTriggeredTransition = false;
+
+  constructor(
+    callbacks: MilestoneSchedulerCallbacks,
+    bridge?: NativeMilestoneBridge | null
+  ) {
     this.callbacks = callbacks;
+    if (bridge) {
+      this.setBridge(bridge);
+    }
+  }
+
+  public setBridge(bridge: NativeMilestoneBridge | null): void {
+    this.milestoneSubscription?.remove();
+    this.milestoneSubscription = null;
+    this.bridge = bridge;
+
+    if (bridge) {
+      this.milestoneSubscription = bridge.addMilestoneListener((event) => {
+        this.handleNativeMilestone(event);
+      });
+    }
+  }
+
+  private handleNativeMilestone(event: NativeMilestoneEvent): void {
+    if (!this.activeMilestones) {
+      return;
+    }
+
+    switch (event.type) {
+      case "warmup": {
+        if (!this.hasTriggeredWarmup) {
+          this.hasTriggeredWarmup = true;
+          this.callbacks.onWarmup();
+        }
+        break;
+      }
+      case "beep": {
+        const second = event.secondRemaining ?? 0;
+        if (!this.triggeredBeeps.has(second)) {
+          this.triggeredBeeps.add(second);
+          this.callbacks.onCountdownBeep(second);
+        }
+        break;
+      }
+      case "transition": {
+        if (!this.hasTriggeredTransition) {
+          this.hasTriggeredTransition = true;
+          this.clearMilestones();
+          this.callbacks.onTransition();
+        }
+        break;
+      }
+      default: {
+        break;
+      }
+    }
   }
 
   public getActiveMilestones(): PhaseMilestones | null {
@@ -116,33 +205,58 @@ export class MilestoneScheduler {
   ): void {
     this.clearMilestones();
     this.activeMilestones = milestones;
+    this.triggeredBeeps.clear();
+    this.hasTriggeredWarmup = false;
+    this.hasTriggeredTransition = false;
 
-    // 1. Warmup timer
+    // 1. Dispatch native background scheduling if bridge is configured (e.g. Android Handler loop)
+    if (this.bridge) {
+      void this.bridge.scheduleMilestones({
+        countdownBeeps: milestones.countdownBeeps.map((beep) => ({
+          delayMs: Math.max(0, beep.targetTimestampMs - now),
+          secondRemaining: beep.secondRemaining,
+        })),
+        transitionDelayMs: Math.max(0, milestones.transitionTimestampMs - now),
+        warmupDelayMs: Math.max(0, milestones.warmupTimestampMs - now),
+      });
+    }
+
+    // 2. Schedule JS timeouts (drives foreground execution, iOS, Web, and Jest)
+    // 2.1 Warmup timer
     if (now < milestones.transitionTimestampMs) {
       const warmupDelay = Math.max(0, milestones.warmupTimestampMs - now);
       const timerId = setTimeout(() => {
         this.activeTimeouts.delete(timerId);
-        this.callbacks.onWarmup();
+        if (!this.hasTriggeredWarmup) {
+          this.hasTriggeredWarmup = true;
+          this.callbacks.onWarmup();
+        }
       }, warmupDelay);
       this.activeTimeouts.add(timerId);
     }
 
-    // 2. Countdown beep timers
+    // 2.2 Countdown beep timers
     for (const beep of milestones.countdownBeeps) {
       const beepDelay = Math.max(0, beep.targetTimestampMs - now);
       const timerId = setTimeout(() => {
         this.activeTimeouts.delete(timerId);
-        this.callbacks.onCountdownBeep(beep.secondRemaining);
+        if (!this.triggeredBeeps.has(beep.secondRemaining)) {
+          this.triggeredBeeps.add(beep.secondRemaining);
+          this.callbacks.onCountdownBeep(beep.secondRemaining);
+        }
       }, beepDelay);
       this.activeTimeouts.add(timerId);
     }
 
-    // 3. Transition timer
+    // 2.3 Transition timer
     const transitionDelay = Math.max(0, milestones.transitionTimestampMs - now);
     const timerId = setTimeout(() => {
       this.activeTimeouts.delete(timerId);
-      this.activeMilestones = null;
-      this.callbacks.onTransition();
+      if (!this.hasTriggeredTransition) {
+        this.hasTriggeredTransition = true;
+        this.clearMilestones();
+        this.callbacks.onTransition();
+      }
     }, transitionDelay);
     this.activeTimeouts.add(timerId);
   }
@@ -153,9 +267,15 @@ export class MilestoneScheduler {
     }
     this.activeTimeouts.clear();
     this.activeMilestones = null;
+    if (this.bridge) {
+      void this.bridge.clearMilestones();
+    }
   }
 
   public dispose(): void {
     this.clearMilestones();
+    this.milestoneSubscription?.remove();
+    this.milestoneSubscription = null;
+    this.bridge = null;
   }
 }

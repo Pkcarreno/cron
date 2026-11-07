@@ -1,0 +1,7 @@
+{
+  "name": "cron-foreground-service",
+  "platforms": ["android"],
+  "android": {
+    "modules": ["cron.foregroundservice.CronForegroundModule"]
+  }
+}

@@ -91,12 +91,30 @@ describe("formatter", () => {
       expect(result).toStrictEqual({ minutes: "00", seconds: "09" });
     });
 
-    it("rounds up milliseconds to the nearest second", () => {
+    it("rounds up milliseconds to the nearest second by default (countdown)", () => {
       const totalMilliseconds = 1200;
 
       const result = formatTimeForDisplay(totalMilliseconds);
 
       expect(result).toStrictEqual({ minutes: "00", seconds: "02" });
+    });
+
+    it("floors milliseconds to completed seconds when isCountDown is false (count-up)", () => {
+      const totalMilliseconds = 1200;
+
+      const result = formatTimeForDisplay(totalMilliseconds, {
+        isCountDown: false,
+      });
+
+      expect(result).toStrictEqual({ minutes: "00", seconds: "01" });
+    });
+
+    it("formats 0 to 999ms as 00:00 in count-up mode", () => {
+      expect(
+        formatTimeForDisplay(500, {
+          isCountDown: false,
+        })
+      ).toStrictEqual({ minutes: "00", seconds: "00" });
     });
   });
 

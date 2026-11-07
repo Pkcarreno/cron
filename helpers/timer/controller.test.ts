@@ -7,7 +7,9 @@ import {
   jest,
 } from "@jest/globals";
 
+import type { LiveActivityDriver } from "@/helpers/background/live-activity-driver";
 import { TimerController, TimerEventType } from "@/helpers/timer/controller";
+import { TimerMode } from "@/helpers/timer/factory";
 import { DownStrategy } from "@/helpers/timer/strategies/down-strategy";
 import { UpStrategy } from "@/helpers/timer/strategies/up-strategy";
 import type { TimerState } from "@/helpers/timer/strategy";
@@ -15,6 +17,17 @@ import { TimerPhase } from "@/helpers/timer/strategy";
 
 import { IntervalStrategy } from "./strategies/interval-strategy";
 import { StopwatchStrategy } from "./strategies/stopwatch-strategy";
+
+const createMockDriver = (): jest.Mocked<LiveActivityDriver> => ({
+  attachController: jest.fn((_controller) => jest.fn()),
+  getMilestoneBridge: jest.fn(() => null),
+  hasNotificationPermission: jest.fn(() => Promise.resolve(true)),
+  pause: jest.fn((_elapsedDisplayTime) => Promise.resolve()),
+  resume: jest.fn((_session) => Promise.resolve()),
+  start: jest.fn((_session) => Promise.resolve()),
+  stop: jest.fn(() => Promise.resolve()),
+  update: jest.fn((_session) => Promise.resolve()),
+});
 
 // oxlint-disable eslint/max-lines
 describe("timerController", () => {
@@ -937,7 +950,7 @@ describe("timerController", () => {
       expect(goSpy).toHaveBeenCalledTimes(1);
     });
 
-    it("plays 3-2-1 countdown beeps and interval phase transitions accurately on schedule while backgrounded", () => {
+    it("transitions interval phases accurately on schedule without countdown beeps during work/rest while backgrounded", () => {
       // 0ms prep, 5000ms work, 4000ms rest, 1 round
       const strategy = new IntervalStrategy(5000, 4000, 1);
       const controller = new TimerController(strategy, 0);
@@ -953,58 +966,46 @@ describe("timerController", () => {
       controller.start();
       controller.handleAppStateChange("background");
 
-      // Work phase (5000ms):
-      // Countdown beeps at 2000ms (3), 3000ms (2), 4000ms (1)
-      jest.advanceTimersByTime(2000);
-      expect(beepSpy).toHaveBeenCalledWith(3);
-
-      jest.advanceTimersByTime(1000);
-      expect(beepSpy).toHaveBeenCalledWith(2);
-
-      jest.advanceTimersByTime(1000);
-      expect(beepSpy).toHaveBeenCalledWith(1);
+      // Work phase (5000ms): no countdown beeps during work
+      jest.advanceTimersByTime(4500);
+      expect(beepSpy).not.toHaveBeenCalled();
 
       // At 5000ms: Transition to REST
-      jest.advanceTimersByTime(1000);
+      jest.advanceTimersByTime(500);
       expect(phaseChangeSpy).toHaveBeenCalledWith(TimerPhase.REST);
+      expect(beepSpy).not.toHaveBeenCalled();
 
-      // Rest phase (4000ms):
-      // Countdown beeps at 6000ms (3), 7000ms (2), 8000ms (1)
-      jest.advanceTimersByTime(1000);
-      expect(beepSpy).toHaveBeenCalledWith(3);
-
-      jest.advanceTimersByTime(1000);
-      expect(beepSpy).toHaveBeenCalledWith(2);
-
-      jest.advanceTimersByTime(1000);
-      expect(beepSpy).toHaveBeenCalledWith(1);
+      // Rest phase (4000ms): no countdown beeps during rest
+      jest.advanceTimersByTime(3500);
+      expect(beepSpy).not.toHaveBeenCalled();
 
       // At 9000ms: Workout completes
-      jest.advanceTimersByTime(1000);
+      jest.advanceTimersByTime(500);
       expect(finishSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           fullyCompleted: true,
         })
       );
+      expect(beepSpy).not.toHaveBeenCalled();
     });
 
     it("clears milestone timers on pause and reschedules with remaining duration on resume in background", () => {
-      const strategy = new DownStrategy(10_000);
-      const controller = new TimerController(strategy, 0);
+      const strategy = new UpStrategy(10_000);
+      const controller = new TimerController(strategy, 5000);
 
       const warmupSpy = jest.fn();
       const beepSpy = jest.fn();
-      const finishSpy = jest.fn();
+      const goSpy = jest.fn();
 
       controller.on(TimerEventType.TRANSITION_APPROACHING, warmupSpy);
       controller.on(TimerEventType.BEEP, beepSpy);
-      controller.on(TimerEventType.COMPLETED, finishSpy);
+      controller.on(TimerEventType.GO, goSpy);
 
       controller.start();
       controller.handleAppStateChange("background");
 
-      // Advance 2000ms into 10s countdown (8s remaining)
-      jest.advanceTimersByTime(2000);
+      // Advance 300ms into 5s prep (4700ms remaining, warmup is at 500ms so it hasn't fired yet)
+      jest.advanceTimersByTime(300);
 
       // Pause while in background
       controller.pause();
@@ -1014,16 +1015,17 @@ describe("timerController", () => {
       jest.advanceTimersByTime(30_000);
       expect(warmupSpy).not.toHaveBeenCalled();
       expect(beepSpy).not.toHaveBeenCalled();
-      expect(finishSpy).not.toHaveBeenCalled();
+      expect(goSpy).not.toHaveBeenCalled();
 
-      // Resume while still in background: reschedules for remaining 8000ms
+      // Resume while still in background: reschedules for remaining 4700ms
       controller.start();
       expect(controller.getScheduledMilestones()).not.toBeNull();
-      // Target is now + 8000ms. Warmup is at now + 8000 - 4500 = 3500ms
-      jest.advanceTimersByTime(3500);
+
+      // Warmup at 4700 - 4500 = 200ms from resume
+      jest.advanceTimersByTime(200);
       expect(warmupSpy).toHaveBeenCalledTimes(1);
 
-      // Countdown beep 3 at now + 8000 - 3000 = 5000ms (1500ms after warmup)
+      // Countdown beep 3 at 4700 - 3000 = 1700ms from resume (+1500ms)
       jest.advanceTimersByTime(1500);
       expect(beepSpy).toHaveBeenCalledWith(3);
     });
@@ -1050,6 +1052,279 @@ describe("timerController", () => {
       const lastState = uiTickSpy.mock.calls.at(-1)?.[0] as TimerState;
       expect(lastState.displayTimeMs).toBe(17_655);
       expect(controller.getSummary().totalSessionTimeMs).toBe(12_345);
+    });
+  });
+
+  describe("LiveActivityDriver integration", () => {
+    it("starts driver with active session payload when controller starts", () => {
+      const strategy = new IntervalStrategy(30_000, 15_000, 4);
+      const mockDriver = createMockDriver();
+
+      const controller = new TimerController(strategy, 5000, {
+        liveActivityDriver: mockDriver,
+        mode: TimerMode.INTERVAL,
+      });
+
+      controller.start();
+
+      expect(mockDriver.start).toHaveBeenCalledTimes(1);
+      expect(mockDriver.start).toHaveBeenCalledWith(
+        expect.objectContaining({
+          currentRound: 0,
+          isPaused: false,
+          mode: TimerMode.INTERVAL,
+          nextPhase: TimerPhase.WORK,
+          nextPhaseDurationMs: 30_000,
+          phase: TimerPhase.PREPARATION,
+          phaseDurationMs: 5000,
+          totalRounds: 0,
+        })
+      );
+    });
+
+    it("starts driver with count-up isCountDown false for STOP_WATCH mode", () => {
+      const strategy = new StopwatchStrategy();
+      const mockDriver = createMockDriver();
+
+      const controller = new TimerController(strategy, 0, {
+        liveActivityDriver: mockDriver,
+        mode: TimerMode.STOP_WATCH,
+      });
+
+      controller.start();
+
+      expect(mockDriver.start).toHaveBeenCalledTimes(1);
+      expect(mockDriver.start).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isCountDown: false,
+          isPaused: false,
+          mode: TimerMode.STOP_WATCH,
+          phase: TimerPhase.WORK,
+        })
+      );
+    });
+
+    it("handles count-up vs count-down correctly for FOR_TIME mode during prep and work", () => {
+      const strategy = new UpStrategy(600_000);
+      const mockDriver = createMockDriver();
+
+      const controller = new TimerController(strategy, 5000, {
+        liveActivityDriver: mockDriver,
+        mode: TimerMode.FOR_TIME,
+      });
+
+      controller.start();
+
+      // In PREPARATION: must be isCountDown: true
+      expect(mockDriver.start).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isCountDown: true,
+          mode: TimerMode.FOR_TIME,
+          phase: TimerPhase.PREPARATION,
+        })
+      );
+
+      // Transition to WORK: must be isCountDown: false
+      jest.advanceTimersByTime(5000);
+      expect(mockDriver.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isCountDown: false,
+          mode: TimerMode.FOR_TIME,
+          phase: TimerPhase.WORK,
+        })
+      );
+    });
+
+    it("pauses driver with formatted display string when paused", () => {
+      const strategy = new DownStrategy(60_000);
+      const mockDriver = createMockDriver();
+
+      const controller = new TimerController(strategy, 0, {
+        liveActivityDriver: mockDriver,
+        mode: TimerMode.AMRAP,
+      });
+
+      controller.start();
+      jest.advanceTimersByTime(12_000);
+      controller.pause();
+
+      expect(mockDriver.pause).toHaveBeenCalledTimes(1);
+      expect(mockDriver.pause).toHaveBeenCalledWith("00:48");
+    });
+
+    it("resumes driver after pause when restarted", () => {
+      const strategy = new DownStrategy(60_000);
+      const mockDriver = createMockDriver();
+
+      const controller = new TimerController(strategy, 0, {
+        liveActivityDriver: mockDriver,
+        mode: TimerMode.AMRAP,
+      });
+
+      controller.start();
+      controller.pause();
+      controller.start();
+
+      expect(mockDriver.resume).toHaveBeenCalledTimes(1);
+      expect(mockDriver.resume).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isPaused: false,
+          mode: TimerMode.AMRAP,
+        })
+      );
+    });
+
+    it("stops driver cleanly when timer resets or disposes", () => {
+      const strategy = new UpStrategy(60_000);
+      const mockDriver = createMockDriver();
+
+      const controller = new TimerController(strategy, 0, {
+        liveActivityDriver: mockDriver,
+        mode: TimerMode.FOR_TIME,
+      });
+
+      controller.start();
+      controller.reset();
+      expect(mockDriver.stop).toHaveBeenCalledTimes(1);
+
+      controller.dispose();
+      expect(mockDriver.stop).toHaveBeenCalledTimes(2);
+    });
+
+    it("stops driver when workout completes", () => {
+      const strategy = new DownStrategy(1000);
+      const mockDriver = createMockDriver();
+
+      const controller = new TimerController(strategy, 0, {
+        liveActivityDriver: mockDriver,
+        mode: TimerMode.AMRAP,
+      });
+
+      controller.start();
+      jest.advanceTimersByTime(1050);
+
+      expect(mockDriver.stop).toHaveBeenCalledTimes(1);
+    });
+
+    it("dispatches driver update on phase transitions", () => {
+      const strategy = new IntervalStrategy(2000, 1000, 2);
+      const mockDriver = createMockDriver();
+
+      const controller = new TimerController(strategy, 1000, {
+        liveActivityDriver: mockDriver,
+        mode: TimerMode.INTERVAL,
+      });
+
+      controller.start();
+
+      // Transition from PREP to WORK at 1000ms
+      jest.advanceTimersByTime(1000);
+
+      expect(mockDriver.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          currentRound: 1,
+          nextPhase: TimerPhase.REST,
+          nextPhaseDurationMs: 1000,
+          phase: TimerPhase.WORK,
+        })
+      );
+    });
+
+    it("dispatches driver update on background transition", async () => {
+      const strategy = new IntervalStrategy(2000, 1000, 2);
+      const mockDriver = createMockDriver();
+
+      const controller = new TimerController(strategy, 0, {
+        liveActivityDriver: mockDriver,
+        mode: TimerMode.INTERVAL,
+      });
+
+      controller.start();
+      controller.handleAppStateChange("background");
+      await Promise.resolve();
+
+      // Advance by 2000ms (end of WORK phase in background)
+      jest.advanceTimersByTime(2000);
+
+      expect(mockDriver.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          currentRound: 1,
+          nextPhase: TimerPhase.WORK,
+          nextPhaseDurationMs: 2000,
+          phase: TimerPhase.REST,
+        })
+      );
+    });
+
+    it("automatically pauses when backgrounded if notification permission is denied", async () => {
+      const strategy = new IntervalStrategy(2000, 1000, 2);
+      const mockDriver = createMockDriver();
+      mockDriver.hasNotificationPermission = jest.fn(() =>
+        Promise.resolve(false)
+      );
+
+      const controller = new TimerController(strategy, 0, {
+        liveActivityDriver: mockDriver,
+        mode: TimerMode.INTERVAL,
+      });
+
+      controller.start();
+      expect(controller.getIsRunning()).toBe(true);
+
+      controller.handleAppStateChange("background");
+      await Promise.resolve();
+
+      expect(controller.getIsRunning()).toBe(false);
+      expect(controller.getScheduledMilestones()).toBeNull();
+    });
+
+    it("dispatches driver update on checkpoint in AMRAP and Stopwatch", () => {
+      const strategy = new DownStrategy(60_000);
+      const mockDriver = createMockDriver();
+
+      const controller = new TimerController(strategy, 0, {
+        liveActivityDriver: mockDriver,
+        mode: TimerMode.AMRAP,
+      });
+
+      controller.start();
+      controller.recordCheckpoint();
+
+      expect(mockDriver.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          currentRound: 2,
+          mode: TimerMode.AMRAP,
+        })
+      );
+    });
+
+    it("computes accurate next phase details during preparation and active phases", () => {
+      const strategy = new IntervalStrategy(45_000, 15_000, 5);
+
+      const controller = new TimerController(strategy, 10_000, {
+        mode: TimerMode.INTERVAL,
+      });
+
+      // During preparation (elapsed < 10_000)
+      const nextDuringPrep = controller.getNextPhaseDetails(3000);
+      expect(nextDuringPrep).toEqual({
+        durationMs: 45_000,
+        phase: TimerPhase.WORK,
+      });
+
+      // During active work phase (elapsed = 20_000 total, which is 10_000 into work)
+      const nextDuringWork = controller.getNextPhaseDetails(20_000);
+      expect(nextDuringWork).toEqual({
+        durationMs: 15_000,
+        phase: TimerPhase.REST,
+      });
+
+      // During active rest phase (elapsed = 10_000 prep + 45_000 work + 5_000 rest = 60_000)
+      const nextDuringRest = controller.getNextPhaseDetails(60_000);
+      expect(nextDuringRest).toEqual({
+        durationMs: 45_000,
+        phase: TimerPhase.WORK,
+      });
     });
   });
 });

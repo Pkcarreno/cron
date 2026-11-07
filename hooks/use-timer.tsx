@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AppStateStatus } from "react-native";
 import { AppState } from "react-native";
 
+import { createLiveActivityDriver } from "@/helpers/background/live-activity-driver";
+import type { LiveActivityDriver } from "@/helpers/background/live-activity-driver";
 import type {
   CheckpointData,
   SessionSummary,
@@ -48,6 +50,7 @@ export interface TimerEventHandlers {
   onBeep?: (second: number) => void;
   onCheckpoint?: (checkpoint: UICheckpoint) => void;
   feedbackService?: FeedbackServiceInterface;
+  liveActivityDriver?: LiveActivityDriver;
 }
 
 const getTimerFlags = (config: TimerConfig, phase: TimerPhase): TimerFlags => {
@@ -64,7 +67,8 @@ const getTimerFlags = (config: TimerConfig, phase: TimerPhase): TimerFlags => {
 
 export const useTimerInstance = (
   config: TimerConfig,
-  feedbackService?: FeedbackServiceInterface
+  feedbackService?: FeedbackServiceInterface,
+  liveActivityDriver?: LiveActivityDriver
 ): React.RefObject<TimerController | null> => {
   const [preparationTimeMs] = useAtom(preparationTimeMsAtom);
   const [isHighPrecisionTimerEnabled] = useAtom(
@@ -76,13 +80,17 @@ export const useTimerInstance = (
   const prevServiceRef = useRef<FeedbackServiceInterface | undefined>(
     feedbackService
   );
+  const prevDriverRef = useRef<LiveActivityDriver | undefined>(
+    liveActivityDriver
+  );
   const configKey = JSON.stringify(config);
 
   if (
     !controllerRef.current ||
     prevConfigKeyRef.current !== configKey ||
     prevPrepTimeRef.current !== preparationTimeMs ||
-    prevServiceRef.current !== feedbackService
+    prevServiceRef.current !== feedbackService ||
+    prevDriverRef.current !== liveActivityDriver
   ) {
     if (controllerRef.current) {
       controllerRef.current.dispose();
@@ -90,6 +98,8 @@ export const useTimerInstance = (
 
     const options: TimerControllerOptions = {
       highPrecision: isHighPrecisionTimerEnabled,
+      liveActivityDriver: liveActivityDriver ?? createLiveActivityDriver(),
+      mode: config.mode,
       uiTickResolutionMs:
         config.mode === TimerMode.STOP_WATCH && "uiTickResolutionMs" in config
           ? config.uiTickResolutionMs
@@ -104,6 +114,7 @@ export const useTimerInstance = (
     prevConfigKeyRef.current = configKey;
     prevPrepTimeRef.current = preparationTimeMs;
     prevServiceRef.current = feedbackService;
+    prevDriverRef.current = liveActivityDriver;
   }
 
   useEffect(() => {
@@ -131,7 +142,11 @@ export const useTimerController = (
   setStatus: React.Dispatch<React.SetStateAction<TimerStatus>>,
   handlers?: TimerEventHandlers
 ) => {
-  const controllerRef = useTimerInstance(config, handlers?.feedbackService);
+  const controllerRef = useTimerInstance(
+    config,
+    handlers?.feedbackService,
+    handlers?.liveActivityDriver
+  );
   const controller = controllerRef.current;
 
   const startedAtRef = useRef<Date | null>(null);
@@ -176,6 +191,15 @@ export const useTimerController = (
     }
 
     controller.on(TimerEventType.UI_TICK, setTimerState);
+    controller.on(TimerEventType.START, () => {
+      setStatus(TimerStatus.RUNNING);
+    });
+    controller.on(TimerEventType.PAUSE, () => {
+      setStatus(TimerStatus.PAUSED);
+    });
+    controller.on(TimerEventType.RESET, () => {
+      setStatus(TimerStatus.READY);
+    });
     controller.on(TimerEventType.BEEP, (second: number) => {
       handlersRef.current?.onBeep?.(second);
     });
@@ -242,10 +266,15 @@ export const useTimer = (
   const totalRounds =
     "totalRounds" in config ? config.totalRounds : timerState.totalRounds;
 
-  const formattedTime = formatTimeForDisplay(
-    timerState.displayTimeMs,
-    config.mode === TimerMode.STOP_WATCH
-  );
+  const isCountDown =
+    timerState.phase === TimerPhase.PREPARATION ||
+    (config.mode !== TimerMode.STOP_WATCH &&
+      config.mode !== TimerMode.FOR_TIME);
+
+  const formattedTime = formatTimeForDisplay(timerState.displayTimeMs, {
+    includeHours: config.mode === TimerMode.STOP_WATCH,
+    isCountDown,
+  });
 
   const modeAbbr = useMemo(
     () => getModeAbbreviation(config.mode),

@@ -28,4 +28,7 @@ export interface TimerStrategy {
   calculateState: (event: TickEvent) => TimerState;
   getTargetDurationMs?: () => number;
   getPhaseDetails?: (event: TickEvent) => PhaseDetails | null;
+  getNextPhaseDetails?: (
+    event: TickEvent
+  ) => { phase: TimerPhase; durationMs: number } | null;
 }

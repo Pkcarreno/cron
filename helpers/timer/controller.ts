@@ -1,6 +1,11 @@
 import type { AppStateStatus } from "react-native";
 import { AppState } from "react-native";
 
+import type {
+  ActiveSessionPayload,
+  LiveActivityDriver,
+} from "@/helpers/background/live-activity-driver";
+import { TimerMode } from "@/helpers/timer/factory";
 import type { PhaseMilestones } from "@/helpers/timer/milestone-scheduler";
 import {
   calculatePhaseMilestones,
@@ -14,6 +19,7 @@ import type {
 import { TimerPhase } from "@/helpers/timer/strategy";
 import type { TickEvent } from "@/helpers/timer/tick-engine";
 import { TickEngine } from "@/helpers/timer/tick-engine";
+import { formatTimeForDisplay } from "@/helpers/timer/utils/formatter";
 
 export enum TimerEventType {
   START = "START",
@@ -73,6 +79,8 @@ export interface TimerControllerOptions {
   appState?: typeof AppState;
   highPrecision?: boolean;
   milestoneScheduler?: MilestoneScheduler;
+  liveActivityDriver?: LiveActivityDriver;
+  mode?: TimerMode;
 }
 
 export class TimerController {
@@ -80,6 +88,10 @@ export class TimerController {
   private strategy: TimerStrategy;
   private milestoneScheduler: MilestoneScheduler;
   private preparationTimeMs: number;
+  private liveActivityDriver: LiveActivityDriver | null = null;
+  private driverTeardown: (() => void) | null = null;
+  private configuredMode: TimerMode | null = null;
+  private isResuming = false;
 
   private uiTickResolutionMs: number | null = null;
   private previousState: TimerState | null = null;
@@ -143,8 +155,16 @@ export class TimerController {
       this.uiTickResolutionMs = options.uiTickResolutionMs;
     }
 
-    if (typeof options === "object" && options?.highPrecision !== undefined) {
-      ({ highPrecision } = options);
+    if (typeof options === "object" && options !== null) {
+      if (options.highPrecision !== undefined) {
+        ({ highPrecision } = options);
+      }
+      if (options.mode) {
+        this.configuredMode = options.mode;
+      }
+      if (options.liveActivityDriver) {
+        this.attachLiveActivityDriver(options.liveActivityDriver);
+      }
     }
 
     this.engine = new TickEngine({ highPrecision });
@@ -188,6 +208,10 @@ export class TimerController {
     return this.engine.getIsHighPrecision();
   }
 
+  public getIsRunning(): boolean {
+    return this.engine.getIsRunning();
+  }
+
   public getIsVisualUpdatesPaused(): boolean {
     return this.isVisualUpdatesPaused;
   }
@@ -209,7 +233,25 @@ export class TimerController {
       this.isVisualUpdatesPaused = true;
       this.engine.pauseLoop();
       if (this.engine.getIsRunning()) {
-        this.scheduleBackgroundMilestones();
+        if (this.liveActivityDriver?.hasNotificationPermission) {
+          void (async () => {
+            const hasPermission =
+              await this.liveActivityDriver?.hasNotificationPermission?.();
+            if (hasPermission === false) {
+              if (this.engine.getIsRunning()) {
+                this.pause();
+              }
+              return;
+            }
+            if (this.engine.getIsRunning()) {
+              this.scheduleBackgroundMilestones();
+              this.dispatchDriverUpdate();
+            }
+          })();
+        } else {
+          this.scheduleBackgroundMilestones();
+          this.dispatchDriverUpdate();
+        }
       }
     } else if (!wasActive && isNowActive) {
       this.isVisualUpdatesPaused = false;
@@ -273,9 +315,23 @@ export class TimerController {
     }
   }
 
+  private getIsCountDown(state: TimerState): boolean {
+    if (state.phase === TimerPhase.PREPARATION) {
+      return true;
+    }
+    const mode = this.configuredMode ?? TimerMode.INTERVAL;
+    return mode !== TimerMode.STOP_WATCH && mode !== TimerMode.FOR_TIME;
+  }
+
+  private calculateVisibleSecond(state: TimerState): number {
+    return this.getIsCountDown(state)
+      ? Math.ceil(state.displayTimeMs / 1000)
+      : Math.floor(state.displayTimeMs / 1000);
+  }
+
   private updateUiTickSnapshot(state: TimerState): void {
     this.lastUiTickState = state;
-    this.lastEmittedUiSecond = Math.ceil(state.displayTimeMs / 1000);
+    this.lastEmittedUiSecond = this.calculateVisibleSecond(state);
     if (this.uiTickResolutionMs !== null && this.uiTickResolutionMs > 0) {
       this.lastEmittedQuantizedStep = Math.floor(
         state.displayTimeMs / this.uiTickResolutionMs
@@ -311,7 +367,7 @@ export class TimerController {
       return currentStep !== this.lastEmittedQuantizedStep;
     }
 
-    const currentVisibleSecond = Math.ceil(newState.displayTimeMs / 1000);
+    const currentVisibleSecond = this.calculateVisibleSecond(newState);
     return currentVisibleSecond !== this.lastEmittedUiSecond;
   }
 
@@ -379,6 +435,7 @@ export class TimerController {
     this.checkpoints.push(newCheckpoint);
 
     this.emit(TimerEventType.CHECKPOINT, newCheckpoint);
+    this.dispatchDriverUpdate();
   }
 
   private detectApproachingTransition(
@@ -447,6 +504,11 @@ export class TimerController {
     // detect completion
     if (!oldState.isFinished && newState.isFinished) {
       this.hasEmittedApproachingTransition = false;
+      if (this.liveActivityDriver) {
+        this.dispatchDriverAction(async () => {
+          await this.liveActivityDriver?.stop();
+        });
+      }
       const summary = this.generateSummary(true);
       this.emit(TimerEventType.COMPLETED, summary);
       return;
@@ -459,6 +521,7 @@ export class TimerController {
     ) {
       this.hasEmittedApproachingTransition = false;
       this.emit(TimerEventType.GO);
+      this.dispatchDriverUpdate();
       return;
     }
 
@@ -467,17 +530,25 @@ export class TimerController {
   }
 
   private detectRoundAndPhase(oldState: TimerState, newState: TimerState) {
+    let hasChanged = false;
+
     if (
       oldState.currentRound !== newState.currentRound &&
       newState.currentRound > 0
     ) {
       this.hasEmittedApproachingTransition = false;
       this.emit(TimerEventType.ROUND_CHANGE, newState.currentRound);
+      hasChanged = true;
     }
 
     if (oldState.phase !== newState.phase && !newState.isFinished) {
       this.hasEmittedApproachingTransition = false;
       this.emit(TimerEventType.PHASE_CHANGE, newState.phase);
+      hasChanged = true;
+    }
+
+    if (hasChanged) {
+      this.dispatchDriverUpdate();
     }
   }
 
@@ -521,6 +592,14 @@ export class TimerController {
   }
 
   public dispose() {
+    this.driverTeardown?.();
+    this.driverTeardown = null;
+    if (this.liveActivityDriver) {
+      this.dispatchDriverAction(async () => {
+        await this.liveActivityDriver?.stop();
+      });
+    }
+    this.liveActivityDriver = null;
     this.milestoneScheduler.dispose();
     this.engine.pause();
     this.appStateSubscription?.remove();
@@ -588,6 +667,7 @@ export class TimerController {
     if (this.isVisualUpdatesPaused) {
       this.scheduleBackgroundMilestones();
     }
+    this.dispatchDriverStartOrResume();
   }
 
   public pause() {
@@ -595,6 +675,23 @@ export class TimerController {
     this.milestoneScheduler.clearMilestones();
     this.emit(TimerEventType.PAUSE);
     this.engine.pause();
+    this.isResuming = true;
+    if (this.liveActivityDriver) {
+      const displayMs = this.previousState?.displayTimeMs ?? 0;
+      const isCountDown = this.previousState
+        ? this.getIsCountDown(this.previousState)
+        : true;
+      const formatted = formatTimeForDisplay(displayMs, {
+        includeHours: this.configuredMode === TimerMode.STOP_WATCH,
+        isCountDown,
+      });
+      const displayString = formatted.hours
+        ? `${formatted.hours}:${formatted.minutes}:${formatted.seconds}`
+        : `${formatted.minutes}:${formatted.seconds}`;
+      this.dispatchDriverAction(async () => {
+        await this.liveActivityDriver?.pause(displayString);
+      });
+    }
   }
 
   public reset() {
@@ -607,7 +704,13 @@ export class TimerController {
     this.lastEmittedUiSecond = null;
     this.lastEmittedQuantizedStep = null;
     this.lastKnownElapsedMs = 0;
+    this.isResuming = false;
     this.engine.reset();
+    if (this.liveActivityDriver) {
+      this.dispatchDriverAction(async () => {
+        await this.liveActivityDriver?.stop();
+      });
+    }
   }
 
   public getPhaseDetails(elapsedMs?: number): PhaseDetails | null {
@@ -672,9 +775,7 @@ export class TimerController {
 
     const hasCountdownBeeps =
       phaseDetails.phaseDurationMs >= 3000 &&
-      (phaseDetails.phase === TimerPhase.PREPARATION ||
-        phaseDetails.phase === TimerPhase.WORK ||
-        phaseDetails.phase === TimerPhase.REST);
+      phaseDetails.phase === TimerPhase.PREPARATION;
 
     const now = Date.now();
     const milestones = calculatePhaseMilestones({
@@ -693,11 +794,17 @@ export class TimerController {
 
     if (this.previousState?.isFinished) {
       this.milestoneScheduler.clearMilestones();
+      if (this.liveActivityDriver) {
+        this.dispatchDriverAction(async () => {
+          await this.liveActivityDriver?.stop();
+        });
+      }
       return;
     }
 
     if (this.isVisualUpdatesPaused && this.engine.getIsRunning()) {
       this.scheduleBackgroundMilestones();
+      this.dispatchDriverUpdate();
     }
   }
 
@@ -707,5 +814,171 @@ export class TimerController {
 
   public getMilestoneScheduler(): MilestoneScheduler {
     return this.milestoneScheduler;
+  }
+
+  /**
+   * Attaches a LiveActivityDriver to synchronize timer lifecycle events with background surfaces.
+   */
+  public attachLiveActivityDriver(driver: LiveActivityDriver): () => void {
+    this.driverTeardown?.();
+    this.liveActivityDriver = driver;
+    this.milestoneScheduler.setBridge(driver.getMilestoneBridge?.() ?? null);
+    this.driverTeardown = driver.attachController?.(this) ?? null;
+
+    return () => {
+      this.driverTeardown?.();
+      this.driverTeardown = null;
+      this.milestoneScheduler.setBridge(null);
+      if (this.liveActivityDriver === driver) {
+        this.liveActivityDriver = null;
+      }
+    };
+  }
+
+  /**
+   * Retrieves the currently attached LiveActivityDriver instance, if any.
+   */
+  public getLiveActivityDriver(): LiveActivityDriver | null {
+    return this.liveActivityDriver;
+  }
+
+  private dispatchDriverAction(action: () => Promise<void>): void {
+    if (!this.liveActivityDriver) {
+      return;
+    }
+    void (async () => {
+      try {
+        await action();
+      } catch (error) {
+        console.warn("[TimerController] LiveActivityDriver error:", error);
+      }
+    })();
+  }
+
+  private dispatchDriverStartOrResume(): void {
+    if (!this.liveActivityDriver) {
+      return;
+    }
+    const payload = this.buildActiveSessionPayload(false);
+    if (!payload) {
+      return;
+    }
+    if (this.isResuming) {
+      this.dispatchDriverAction(async () => {
+        await this.liveActivityDriver?.resume(payload);
+      });
+    } else {
+      this.dispatchDriverAction(async () => {
+        await this.liveActivityDriver?.start(payload);
+      });
+    }
+    this.isResuming = false;
+  }
+
+  private dispatchDriverUpdate(): void {
+    if (!this.liveActivityDriver || !this.engine.getIsRunning()) {
+      return;
+    }
+    const payload = this.buildActiveSessionPayload(false);
+    if (payload) {
+      this.dispatchDriverAction(async () => {
+        await this.liveActivityDriver?.update(payload);
+      });
+    }
+  }
+
+  /**
+   * Evaluates the phase and duration metadata of the immediate next phase.
+   */
+  public getNextPhaseDetails(
+    elapsedMs?: number
+  ): { phase: TimerPhase; durationMs: number } | null {
+    const currentElapsed = elapsedMs ?? this.engine.getElapsedMs();
+
+    if (currentElapsed < this.preparationTimeMs) {
+      const firstTick: TickEvent = { deltaMs: 0, totalElapsedMs: 0 };
+      if (typeof this.strategy.getPhaseDetails === "function") {
+        const details = this.strategy.getPhaseDetails(firstTick);
+        if (details && !details.isFinished) {
+          return { durationMs: details.phaseDurationMs, phase: details.phase };
+        }
+      }
+      const firstState = this.strategy.calculateState(firstTick);
+      if (!firstState.isFinished) {
+        return {
+          durationMs: firstState.displayTimeMs,
+          phase: firstState.phase,
+        };
+      }
+      return null;
+    }
+
+    const adjustedElapsedMs = currentElapsed - this.preparationTimeMs;
+    const adjustedTick: TickEvent = {
+      deltaMs: 0,
+      totalElapsedMs: adjustedElapsedMs,
+    };
+
+    if (typeof this.strategy.getNextPhaseDetails === "function") {
+      return this.strategy.getNextPhaseDetails(adjustedTick);
+    }
+
+    return null;
+  }
+
+  /**
+   * Constructs an ActiveSessionPayload representing the current timer state for background display.
+   */
+  public buildActiveSessionPayload(
+    isPaused = false
+  ): ActiveSessionPayload | null {
+    const phaseDetails = this.getPhaseDetails();
+    if (!phaseDetails || phaseDetails.isFinished) {
+      return null;
+    }
+
+    const mode = this.configuredMode ?? TimerMode.INTERVAL;
+    const isPreparation = phaseDetails.phase === TimerPhase.PREPARATION;
+    const isCountDown =
+      isPreparation ||
+      (mode !== TimerMode.STOP_WATCH && mode !== TimerMode.FOR_TIME);
+    const nextPhaseInfo = this.getNextPhaseDetails();
+
+    let targetTimestampMs = 0;
+    if (!isPaused) {
+      if (isCountDown) {
+        targetTimestampMs = Date.now() + phaseDetails.phaseRemainingMs;
+      } else {
+        const elapsedInPhase =
+          phaseDetails.phaseDurationMs > 0
+            ? phaseDetails.phaseDurationMs - phaseDetails.phaseRemainingMs
+            : phaseDetails.phaseRemainingMs;
+        targetTimestampMs = Date.now() - elapsedInPhase;
+      }
+    }
+    const capDurationMs =
+      typeof this.strategy.getTargetDurationMs === "function"
+        ? this.strategy.getTargetDurationMs()
+        : undefined;
+
+    const currentRound =
+      mode === TimerMode.AMRAP || mode === TimerMode.STOP_WATCH
+        ? this.checkpoints.length + 1
+        : phaseDetails.currentRound;
+
+    return {
+      capDurationMs,
+      currentRound,
+      displayTimeMs: phaseDetails.phaseRemainingMs,
+      isCountDown,
+      isPaused,
+      mode,
+      nextPhase: nextPhaseInfo?.phase,
+      nextPhaseDurationMs: nextPhaseInfo?.durationMs,
+      phase: phaseDetails.phase,
+      phaseDurationMs: phaseDetails.phaseDurationMs,
+      targetTimestampMs,
+      totalRounds: phaseDetails.totalRounds,
+    };
   }
 }

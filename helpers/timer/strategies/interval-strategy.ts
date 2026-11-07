@@ -1,3 +1,4 @@
+import type { TimerMode } from "@/helpers/timer/factory";
 import type {
   PhaseDetails,
   TimerState,
@@ -7,6 +8,7 @@ import { TimerPhase } from "@/helpers/timer/strategy";
 import type { TickEvent } from "@/helpers/timer/tick-engine";
 
 export class IntervalStrategy implements TimerStrategy {
+  public mode?: TimerMode;
   private cycleTimeMs: number;
   private workTimeMs: number;
   private restTimeMs: number;
@@ -79,6 +81,35 @@ export class IntervalStrategy implements TimerStrategy {
       phaseRemainingMs,
       totalRounds: this.totalRounds,
     };
+  }
+
+  getNextPhaseDetails(
+    event: TickEvent
+  ): { phase: TimerPhase; durationMs: number } | null {
+    if (event.totalElapsedMs >= this.totalDurationMs) {
+      return null;
+    }
+
+    const currentRound =
+      Math.floor(event.totalElapsedMs / this.cycleTimeMs) + 1;
+    const timeInCycle = event.totalElapsedMs % this.cycleTimeMs;
+    const isWorkPhase = timeInCycle < this.workTimeMs;
+
+    if (isWorkPhase) {
+      if (this.restTimeMs > 0) {
+        return { durationMs: this.restTimeMs, phase: TimerPhase.REST };
+      }
+      if (currentRound < this.totalRounds) {
+        return { durationMs: this.workTimeMs, phase: TimerPhase.WORK };
+      }
+      return null;
+    }
+
+    if (currentRound < this.totalRounds) {
+      return { durationMs: this.workTimeMs, phase: TimerPhase.WORK };
+    }
+
+    return null;
   }
 
   getTargetDurationMs(): number {

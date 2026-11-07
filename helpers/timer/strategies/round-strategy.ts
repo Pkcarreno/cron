@@ -71,6 +71,23 @@ export class RoundStrategy implements TimerStrategy {
     };
   }
 
+  getNextPhaseDetails(
+    event: TickEvent
+  ): { phase: TimerPhase; durationMs: number } | null {
+    if (event.totalElapsedMs >= this.totalDurationMs) {
+      return null;
+    }
+
+    const currentRound =
+      Math.floor(event.totalElapsedMs / this.roundTimeMs) + 1;
+
+    if (currentRound < this.totalRounds) {
+      return { durationMs: this.roundTimeMs, phase: TimerPhase.WORK };
+    }
+
+    return null;
+  }
+
   getTargetDurationMs(): number {
     return this.totalDurationMs;
   }
