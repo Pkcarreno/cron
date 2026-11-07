@@ -702,6 +702,38 @@ describe("liveActivityDriver", () => {
         })
       );
     });
+
+    it("updates Tier 2 static headline with frozen remaining duration upon pause", async () => {
+      jest.spyOn(Module, "startForegroundService").mockResolvedValue(true);
+      const updateSpy = jest
+        .spyOn(Module, "updateForegroundService")
+        .mockResolvedValue(true);
+
+      const driver = new AndroidForegroundDriver({
+        supportsLiveUpdates: false,
+      });
+
+      await driver.start({
+        currentRound: 1,
+        isPaused: false,
+        mode: TimerMode.INTERVAL,
+        phase: TimerPhase.WORK,
+        phaseDurationMs: 60_000,
+        targetTimestampMs: 1_700_000_060_000,
+        totalRounds: 5,
+      });
+
+      await driver.pause("00:35", 25_000);
+
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          headline: "Round 1/5 | WORK (00:25)",
+          isPaused: true,
+          supportsLiveUpdates: false,
+          targetTimestampMs: 0,
+        })
+      );
+    });
   });
 
   describe("IosNoopLiveActivityDriver", () => {

@@ -101,8 +101,8 @@ export const useTimerInstance = (
     }
 
     const options: TimerControllerOptions = {
-      allowBackgroundAudioOnly: isBackgroundAudioOnlyAllowed,
       highPrecision: isHighPrecisionTimerEnabled,
+      isBackgroundAudioOnlyAllowed,
       liveActivityDriver: liveActivityDriver ?? createLiveActivityDriver(),
       mode: config.mode,
       uiTickResolutionMs:
@@ -130,11 +130,18 @@ export const useTimerInstance = (
 
   useEffect(() => {
     if (controllerRef.current) {
-      controllerRef.current.setAllowBackgroundAudioOnly(
+      controllerRef.current.setIsBackgroundAudioOnlyAllowed(
         isBackgroundAudioOnlyAllowed
       );
     }
   }, [isBackgroundAudioOnlyAllowed]);
+
+  useEffect(() => {
+    const driver = controllerRef.current?.getLiveActivityDriver();
+    if (driver && typeof driver.areLiveUpdatesSupported === "function") {
+      void driver.areLiveUpdatesSupported();
+    }
+  }, []);
 
   useEffect(
     () => () => {

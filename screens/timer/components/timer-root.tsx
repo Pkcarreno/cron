@@ -236,24 +236,26 @@ export const TimerRoot: FC<TimerRootProps> = ({
     onFinish,
   ]);
 
+  const dismissPermissionBanner = useCallback(() => {
+    setIsPermissionBannerVisible(false);
+  }, [setIsPermissionBannerVisible]);
+
   const pause = useCallback(() => {
     setStatus(TimerStatus.PAUSED);
     controllerRef.current?.pause();
   }, [controllerRef, setStatus]);
 
   const start = useCallback(() => {
-    setIsPermissionBannerVisible(false);
-    controllerRef.current?.clearAutoPauseDueToPermission();
+    dismissPermissionBanner();
     setStatus(TimerStatus.RUNNING);
     controllerRef.current?.start();
-  }, [controllerRef, setStatus, setIsPermissionBannerVisible]);
+  }, [controllerRef, setStatus, dismissPermissionBanner]);
 
   const reset = useCallback(() => {
-    setIsPermissionBannerVisible(false);
-    controllerRef.current?.clearAutoPauseDueToPermission();
+    dismissPermissionBanner();
     setStatus(TimerStatus.READY);
     controllerRef.current?.reset();
-  }, [controllerRef, setStatus, setIsPermissionBannerVisible]);
+  }, [controllerRef, setStatus, dismissPermissionBanner]);
 
   const recordCheckpoint = useCallback(() => {
     controllerRef.current?.recordCheckpoint();
@@ -262,11 +264,6 @@ export const TimerRoot: FC<TimerRootProps> = ({
   const handleEndSession = useCallback(() => {
     setStatus(TimerStatus.FINISHED);
   }, [setStatus]);
-
-  const handleDismissBanner = useCallback(() => {
-    setIsPermissionBannerVisible(false);
-    controllerRef.current?.clearAutoPauseDueToPermission();
-  }, [controllerRef, setIsPermissionBannerVisible]);
 
   const handleOpenSettings = useCallback(() => {
     void Linking.openSettings();
@@ -316,7 +313,7 @@ export const TimerRoot: FC<TimerRootProps> = ({
 
   const bannerNode = isPermissionBannerVisible ? (
     <PermissionAutoPauseBanner
-      onDismiss={handleDismissBanner}
+      onDismiss={dismissPermissionBanner}
       onOpenSettings={handleOpenSettings}
     />
   ) : null;

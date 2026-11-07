@@ -18,7 +18,7 @@ import { Text } from "@/components/text";
 import Env from "@/env";
 import { colors } from "@/helpers/colors";
 import { formatDuration } from "@/helpers/timer/utils/formatter";
-import { hasNotificationPermission } from "@/modules/cron-foreground-service/index";
+import { hasNotificationPermission } from "@/modules/cron-foreground-service";
 import {
   hasHapticEnabledAtom,
   isBackgroundAudioOnlyAllowedAtom,
@@ -29,7 +29,7 @@ import {
 } from "@/stores/settings";
 
 export const Settings = () => {
-  const isNotificationBlocked = useIsNotificationBlocked();
+  const hasNotificationPermissionState = useHasNotificationPermission();
 
   return (
     <>
@@ -52,7 +52,9 @@ export const Settings = () => {
             <SoundSwitchItem />
             <HapticsSwitchItem />
             <HighPrecisionTimerSwitchItem />
-            {isNotificationBlocked && <BackgroundAudioOnlySwitchItem />}
+            {hasNotificationPermissionState === false && (
+              <BackgroundAudioOnlySwitchItem />
+            )}
           </MenuGroup>
         </Menu>
 
@@ -197,8 +199,8 @@ const HighPrecisionTimerSwitchItem = () => {
   );
 };
 
-const useIsNotificationBlocked = () => {
-  const [isBlocked, setIsBlocked] = useState(false);
+const useHasNotificationPermission = () => {
+  const [hasPermission, setHasPermission] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -207,11 +209,11 @@ const useIsNotificationBlocked = () => {
       try {
         const granted = await hasNotificationPermission();
         if (isMounted) {
-          setIsBlocked(!granted);
+          setHasPermission(granted);
         }
       } catch {
         if (isMounted) {
-          setIsBlocked(false);
+          setHasPermission(true);
         }
       }
     };
@@ -230,7 +232,7 @@ const useIsNotificationBlocked = () => {
     };
   }, []);
 
-  return isBlocked;
+  return hasPermission;
 };
 
 const BackgroundAudioOnlySwitchItem = () => {
@@ -238,16 +240,10 @@ const BackgroundAudioOnlySwitchItem = () => {
     useAtom(isBackgroundAudioOnlyAllowedAtom);
 
   return (
-    <MenuItem style={styles.switchItemWithAdvisory}>
-      <View style={styles.switchTextContainer}>
-        <MenuItemText>
-          Allow background audio-only session (without notifications)
-        </MenuItemText>
-        <Text colorSubtone="500" size={12}>
-          Keeps workout audio active in background when notifications are
-          blocked
-        </Text>
-      </View>
+    <MenuItem>
+      <MenuItemText>
+        Allow background audio-only session (without notifications)
+      </MenuItemText>
       <Switch
         accessibilityLabel="Allow background audio-only session (without notifications)"
         checked={isBackgroundAudioOnlyAllowed}

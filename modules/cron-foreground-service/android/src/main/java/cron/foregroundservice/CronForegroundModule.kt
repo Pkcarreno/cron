@@ -115,7 +115,21 @@ class CronForegroundModule : Module() {
         }
 
         AsyncFunction("areLiveUpdatesSupported") {
-            Build.VERSION.SDK_INT >= 36
+            if (Build.VERSION.SDK_INT < 36) {
+                return@AsyncFunction false
+            }
+            val context = appContext.reactContext ?: return@AsyncFunction false
+            val notificationManager = androidx.core.app.NotificationManagerCompat.from(context)
+            if (!notificationManager.areNotificationsEnabled()) {
+                return@AsyncFunction false
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = notificationManager.getNotificationChannel(CronForegroundService.CHANNEL_ID)
+                if (channel != null && channel.importance == android.app.NotificationManager.IMPORTANCE_NONE) {
+                    return@AsyncFunction false
+                }
+            }
+            true
         }
 
         AsyncFunction("scheduleMilestones") { payload: Map<String, Any?> ->

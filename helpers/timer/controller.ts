@@ -83,7 +83,7 @@ export interface TimerControllerOptions {
   milestoneScheduler?: MilestoneScheduler;
   liveActivityDriver?: LiveActivityDriver;
   mode?: TimerMode;
-  allowBackgroundAudioOnly?: boolean;
+  isBackgroundAudioOnlyAllowed?: boolean;
 }
 
 export class TimerController {
@@ -107,7 +107,7 @@ export class TimerController {
   private currentAppState: AppStateStatus = "active";
   private appStateSubscription: { remove: () => void } | null = null;
   private hasEmittedApproachingTransition = false;
-  private allowBackgroundAudioOnly = false;
+  private isBackgroundAudioOnlyAllowed = false;
   private wasAutoPausedDueToPermission = false;
 
   private listeners: {
@@ -168,8 +168,9 @@ export class TimerController {
       if (options.mode) {
         this.configuredMode = options.mode;
       }
-      if (options.allowBackgroundAudioOnly !== undefined) {
-        this.allowBackgroundAudioOnly = options.allowBackgroundAudioOnly;
+      if (options.isBackgroundAudioOnlyAllowed !== undefined) {
+        this.isBackgroundAudioOnlyAllowed =
+          options.isBackgroundAudioOnlyAllowed;
       }
       if (options.liveActivityDriver) {
         this.attachLiveActivityDriver(options.liveActivityDriver);
@@ -206,12 +207,12 @@ export class TimerController {
     }
   }
 
-  public setAllowBackgroundAudioOnly(allow: boolean): void {
-    this.allowBackgroundAudioOnly = allow;
+  public setIsBackgroundAudioOnlyAllowed(isAllowed: boolean): void {
+    this.isBackgroundAudioOnlyAllowed = isAllowed;
   }
 
-  public getAllowBackgroundAudioOnly(): boolean {
-    return this.allowBackgroundAudioOnly;
+  public getIsBackgroundAudioOnlyAllowed(): boolean {
+    return this.isBackgroundAudioOnlyAllowed;
   }
 
   public getWasAutoPausedDueToPermission(): boolean {
@@ -268,7 +269,7 @@ export class TimerController {
             const hasPermission =
               await this.liveActivityDriver?.hasNotificationPermission?.();
             if (hasPermission === false) {
-              if (this.allowBackgroundAudioOnly) {
+              if (this.isBackgroundAudioOnlyAllowed) {
                 if (this.engine.getIsRunning()) {
                   this.scheduleBackgroundMilestones();
                 }
@@ -277,7 +278,6 @@ export class TimerController {
               if (this.engine.getIsRunning()) {
                 this.wasAutoPausedDueToPermission = true;
                 this.pause();
-                this.emit(TimerEventType.AUTO_PAUSE_PERMISSION_DENIED);
               }
               return;
             }
@@ -739,7 +739,7 @@ export class TimerController {
         ? `${formatted.hours}:${formatted.minutes}:${formatted.seconds}`
         : `${formatted.minutes}:${formatted.seconds}`;
       this.dispatchDriverAction(async () => {
-        await this.liveActivityDriver?.pause(displayString);
+        await this.liveActivityDriver?.pause(displayString, displayMs);
       });
     }
   }
@@ -875,6 +875,9 @@ export class TimerController {
     this.liveActivityDriver = driver;
     this.milestoneScheduler.setBridge(driver.getMilestoneBridge?.() ?? null);
     this.driverTeardown = driver.attachController?.(this) ?? null;
+    if (typeof driver.areLiveUpdatesSupported === "function") {
+      void driver.areLiveUpdatesSupported();
+    }
 
     return () => {
       this.driverTeardown?.();

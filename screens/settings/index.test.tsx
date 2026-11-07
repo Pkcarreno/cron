@@ -82,11 +82,6 @@ describe("Settings screen", () => {
         "Allow background audio-only session (without notifications)"
       )
     ).toBeTruthy();
-    expect(
-      screen.getByText(
-        "Keeps workout audio active in background when notifications are blocked"
-      )
-    ).toBeTruthy();
 
     expect(screen.store.get(isBackgroundAudioOnlyAllowedAtom)).toBe(false);
 

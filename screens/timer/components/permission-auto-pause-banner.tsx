@@ -7,7 +7,7 @@ import { Text } from "@/components/text";
 import { colors } from "@/helpers/colors";
 
 export interface PermissionAutoPauseBannerProps {
-  onDismiss: () => void;
+  onDismiss?: () => void;
   onOpenSettings: () => void;
 }
 
@@ -33,14 +33,16 @@ export const PermissionAutoPauseBanner: FC<PermissionAutoPauseBannerProps> = ({
           notifications in Settings to allow background workout tracking.
         </Text>
       </View>
-      <Button
-        icon={XIcon}
-        size="icon"
-        variant="ghost"
-        onPress={onDismiss}
-        testID="dismiss-banner-button"
-        accessibilityLabel="Dismiss banner"
-      />
+      {onDismiss ? (
+        <Button
+          icon={XIcon}
+          size="icon"
+          variant="ghost"
+          onPress={onDismiss}
+          testID="dismiss-banner-button"
+          accessibilityLabel="Dismiss banner"
+        />
+      ) : null}
     </View>
     <View style={styles.actions}>
       <Button
