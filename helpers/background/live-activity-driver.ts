@@ -259,7 +259,9 @@ const resolveForegroundNotificationPayload = (
     });
   const color = session.accentColor ?? getPhaseAccentColor(session.phase);
   const secondaryLabel =
-    session.secondaryActionLabel ?? getSecondaryActionLabel(session.mode);
+    session.phase === TimerPhase.PREPARATION
+      ? undefined
+      : (session.secondaryActionLabel ?? getSecondaryActionLabel(session.mode));
 
   return {
     color,

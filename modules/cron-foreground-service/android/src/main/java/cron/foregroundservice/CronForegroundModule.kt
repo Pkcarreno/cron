@@ -164,7 +164,9 @@ class CronForegroundModule : Module() {
         (payload["subtitle"] as? String)?.let { intent.putExtra(CronForegroundService.EXTRA_SUBTITLE, it) }
         (payload["subText"] as? String)?.let { intent.putExtra(CronForegroundService.EXTRA_SUB_TEXT, it) }
         (payload["color"] as? String)?.let { intent.putExtra(CronForegroundService.EXTRA_COLOR, it) }
-        (payload["secondaryLabel"] as? String)?.let { intent.putExtra(CronForegroundService.EXTRA_SECONDARY_LABEL, it) }
+        if (payload.containsKey("secondaryLabel")) {
+            intent.putExtra(CronForegroundService.EXTRA_SECONDARY_LABEL, payload["secondaryLabel"] as? String)
+        }
         (payload["isPaused"] as? Boolean)?.let { intent.putExtra(CronForegroundService.EXTRA_IS_PAUSED, it) }
         (payload["isCountDown"] as? Boolean)?.let { intent.putExtra(CronForegroundService.EXTRA_IS_COUNT_DOWN, it) }
 

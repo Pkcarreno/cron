@@ -207,9 +207,10 @@ class CronForegroundService : Service() {
             builder.setSubText(currentSubText)
         }
 
-        // Launch app on notification body tap
+        // Launch app on notification body tap (deep link directly to active workout screen)
         val launchIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            data = android.net.Uri.parse("crn://timer")
         }
         if (launchIntent != null) {
             val pendingIntent = PendingIntent.getActivity(
@@ -219,6 +220,37 @@ class CronForegroundService : Service() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             builder.setContentIntent(pendingIntent)
+        }
+
+        // Interactive action buttons (clean labels without brackets)
+        val primaryActionType = if (currentIsPaused) "resume" else "pause"
+        val primaryActionTitle = if (currentIsPaused) "Resume" else "Pause"
+        val primaryIntent = Intent(this, CronActionReceiver::class.java).apply {
+            action = ACTION_NOTIFICATION_ACTION
+            putExtra(EXTRA_ACTION, primaryActionType)
+            data = android.net.Uri.parse("cron://action/$primaryActionType")
+        }
+        val primaryPendingIntent = PendingIntent.getBroadcast(
+            this,
+            1,
+            primaryIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        builder.addAction(0, primaryActionTitle, primaryPendingIntent)
+
+        if (!currentSecondaryLabel.isNullOrBlank()) {
+            val secondaryIntent = Intent(this, CronActionReceiver::class.java).apply {
+                action = ACTION_NOTIFICATION_ACTION
+                putExtra(EXTRA_ACTION, "checkpoint")
+                data = android.net.Uri.parse("cron://action/checkpoint")
+            }
+            val secondaryPendingIntent = PendingIntent.getBroadcast(
+                this,
+                2,
+                secondaryIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.addAction(0, currentSecondaryLabel, secondaryPendingIntent)
         }
 
         // Hardware chronometer
