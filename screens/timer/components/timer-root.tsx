@@ -23,6 +23,7 @@ import { TimerStatus, useTimerInstance } from "@/hooks/use-timer";
 import {
   isLowBatteryAtom,
   isPermissionAutoPauseBannerVisibleAtom,
+  resetTimerSessionAtom,
   timerCheckpointsAtom,
   timerConfigAtom,
   timerCurrentRoundAtom,
@@ -92,6 +93,7 @@ export const TimerRoot: FC<TimerRootProps> = ({
   const [isPermissionBannerVisible, setIsPermissionBannerVisible] = useAtom(
     isPermissionAutoPauseBannerVisibleAtom
   );
+  const resetTimerSession = useSetAtom(resetTimerSessionAtom);
 
   useTimerKeepAwake(status === TimerStatus.RUNNING);
 
@@ -255,7 +257,8 @@ export const TimerRoot: FC<TimerRootProps> = ({
     dismissPermissionBanner();
     setStatus(TimerStatus.READY);
     controllerRef.current?.reset();
-  }, [controllerRef, setStatus, dismissPermissionBanner]);
+    resetTimerSession();
+  }, [controllerRef, setStatus, dismissPermissionBanner, resetTimerSession]);
 
   const recordCheckpoint = useCallback(() => {
     controllerRef.current?.recordCheckpoint();
@@ -290,14 +293,16 @@ export const TimerRoot: FC<TimerRootProps> = ({
   }, [router]);
 
   useEffect(() => {
+    resetTimerSession();
     if (shouldAutoStart) {
       start();
     }
 
     return () => {
       reset();
+      resetTimerSession();
     };
-  }, [shouldAutoStart, start, reset]);
+  }, [shouldAutoStart, start, reset, resetTimerSession]);
 
   const actions = useMemo<TimerActions>(
     () => ({

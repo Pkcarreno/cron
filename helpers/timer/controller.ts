@@ -438,11 +438,21 @@ export class TimerController {
       );
     }
 
+    let roundsCompleted = finalState.currentRound;
+    if (this.configuredMode === TimerMode.AMRAP) {
+      roundsCompleted = this.checkpoints.length;
+    } else if (
+      this.configuredMode === TimerMode.FOR_TIME ||
+      this.configuredMode === TimerMode.STOP_WATCH
+    ) {
+      roundsCompleted = 0;
+    }
+
     return {
       activeSessionTimeMs,
       checkpoints: [...this.checkpoints],
       fullyCompleted,
-      roundsCompleted: finalState.currentRound,
+      roundsCompleted,
       totalSessionTimeMs,
     };
   }

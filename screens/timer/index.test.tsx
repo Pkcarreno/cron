@@ -9,6 +9,7 @@ import { AppState, Linking, Platform } from "react-native";
 import * as ForegroundModule from "@/modules/cron-foreground-service";
 import { Timer } from "@/screens/timer";
 import {
+  timerCheckpointsAtom,
   timerContextBannerAtom,
   timerMinutesStrAtom,
   timerModeAbbrAtom,
@@ -514,6 +515,27 @@ describe("Timer screen audio lifecycle", () => {
       });
 
       expect(screen.queryByTestId("permission-auto-pause-banner")).toBeNull();
+    });
+
+    it("purges session atoms on unmount preventing checkpoint leakage across consecutive sessions", async () => {
+      const store = createStore();
+      store.set(timerCheckpointsAtom, [
+        {
+          elapsedTimeMs: 15_000,
+          lap: 1,
+          lapDeltaMs: 0,
+          lapDurationMs: 15_000,
+          recordedAt: new Date(),
+        },
+      ]);
+
+      const screen = await renderWithProviders(<Timer />, { store });
+
+      await act(() => {
+        screen.unmount();
+      });
+
+      expect(store.get(timerCheckpointsAtom)).toEqual([]);
     });
   });
 });

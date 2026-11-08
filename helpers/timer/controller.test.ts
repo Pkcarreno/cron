@@ -1734,5 +1734,48 @@ describe("timerController", () => {
         expect(transitionEvents.length).toBeGreaterThan(0);
       });
     });
+
+    describe("SessionSummary roundsCompleted contract", () => {
+      it("computes roundsCompleted strictly from checkpoints.length in AMRAP mode", () => {
+        const strategy = new DownStrategy(600_000);
+        const controller = new TimerController(strategy, 0, {
+          mode: TimerMode.AMRAP,
+        });
+
+        controller.start();
+        expect(controller.getSummary().roundsCompleted).toBe(0);
+
+        controller.recordCheckpoint();
+        expect(controller.getSummary().roundsCompleted).toBe(1);
+
+        controller.recordCheckpoint();
+        expect(controller.getSummary().roundsCompleted).toBe(2);
+      });
+
+      it("returns 0 for roundsCompleted in STOP_WATCH mode", () => {
+        const strategy = new StopwatchStrategy();
+        const controller = new TimerController(strategy, 0, {
+          mode: TimerMode.STOP_WATCH,
+        });
+
+        controller.start();
+        controller.recordCheckpoint();
+        controller.recordCheckpoint();
+
+        const summary = controller.getSummary();
+        expect(summary.checkpoints).toHaveLength(2);
+        expect(summary.roundsCompleted).toBe(0);
+      });
+
+      it("returns 0 for roundsCompleted in FOR_TIME mode", () => {
+        const strategy = new UpStrategy(600_000);
+        const controller = new TimerController(strategy, 0, {
+          mode: TimerMode.FOR_TIME,
+        });
+
+        controller.start();
+        expect(controller.getSummary().roundsCompleted).toBe(0);
+      });
+    });
   });
 });
