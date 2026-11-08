@@ -54,7 +54,7 @@ export const SummaryFace: React.FC<SummaryFaceProps> = ({
       </View>
 
       <View style={styles.content}>
-        <RenderData summary={summary} />
+        <RenderData mode={mode} summary={summary} />
 
         <RenderCheckpoints
           summary={summary}
@@ -82,9 +82,9 @@ export const SummaryFace: React.FC<SummaryFaceProps> = ({
   );
 };
 
-type RenderDataProps = Pick<SummaryFaceProps, "summary">;
+type RenderDataProps = Pick<SummaryFaceProps, "mode" | "summary">;
 
-const RenderData: React.FC<RenderDataProps> = ({ summary }) => {
+const RenderData: React.FC<RenderDataProps> = ({ mode, summary }) => {
   if (!summary) {
     return (
       <View style={styles.data}>
@@ -95,6 +95,11 @@ const RenderData: React.FC<RenderDataProps> = ({ summary }) => {
 
   const totalTime = formatFullTimeToString(summary.totalSessionTimeMs);
   const activeTime = formatFullTimeToString(summary.activeSessionTimeMs);
+  const shouldShowRounds =
+    (mode === TimerMode.INTERVAL ||
+      mode === TimerMode.EMOM ||
+      mode === TimerMode.AMRAP) &&
+    summary.roundsCompleted > 0;
 
   return (
     <View style={styles.dataWrapper}>
@@ -122,7 +127,7 @@ const RenderData: React.FC<RenderDataProps> = ({ summary }) => {
         </Text>
       </View>
 
-      {summary.roundsCompleted > 1 && (
+      {shouldShowRounds && (
         <View style={styles.data}>
           <Text size={16}>Rounds</Text>
           <Text

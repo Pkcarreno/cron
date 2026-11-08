@@ -125,11 +125,11 @@ export const timerContextBannerAtom = atom<ContextBannerState>((get) => {
 
   switch (config.mode) {
     case TimerMode.AMRAP: {
-      const lastCheckpoint = checkpoints.at(-1);
+      const activeRound = checkpoints.length + 1;
       return {
-        label: lastCheckpoint?.lap ? "RND" : undefined,
+        label: "RND",
         labelColor: colors.red,
-        value: lastCheckpoint?.lap ?? undefined,
+        value: activeRound,
         valueColor: undefined,
       };
     }
@@ -171,11 +171,9 @@ export const timerQuickAccessInfoAtom = atom<string[]>((get) => {
   const checkpoints = get(timerCheckpointsAtom);
   const config = get(timerConfigAtom);
 
+  const activeLap =
+    config.mode === TimerMode.STOP_WATCH ? checkpoints.length + 1 : undefined;
   const lastCheckpoint = checkpoints.at(-1);
-  const lap =
-    checkpoints.length > 0 && config.mode === TimerMode.STOP_WATCH
-      ? lastCheckpoint?.lap
-      : undefined;
   const delta =
     checkpoints.length > 0 && config.mode === TimerMode.STOP_WATCH
       ? lastCheckpoint?.lapDeltaMs
@@ -184,7 +182,19 @@ export const timerQuickAccessInfoAtom = atom<string[]>((get) => {
   return [
     isLowBattery ? "[BAT LOW]" : null,
     hours ? `${hours}H` : null,
-    lap && lap > 0 ? `L${lap.toString().padStart(2, "0")}` : null,
-    delta ? formatDuration(delta, true) : null,
+    activeLap && activeLap > 0
+      ? `L${activeLap.toString().padStart(2, "0")}`
+      : null,
+    delta === undefined ? null : formatDuration(delta, true),
   ].filter((item): item is string => Boolean(item));
+});
+
+export const resetTimerSessionAtom = atom(null, (_get, set) => {
+  set(timerCheckpointsAtom, []);
+  set(timerCurrentRoundAtom, 0);
+  set(timerDisplayTimeMsAtom, 0);
+  set(timerPhaseAtom, TimerPhase.PREPARATION);
+  set(timerStartedAtAtom, null);
+  set(timerEndedAtAtom, null);
+  set(timerIsFinishedAtom, false);
 });

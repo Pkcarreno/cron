@@ -217,6 +217,24 @@ export interface LiveActivityDriver {
 
 ---
 
+### 2.8. Active Round/Lap Synchronization & In-Memory Session Isolation
+
+To eliminate cognitive friction and state discrepancies between foreground rendering and live background notifications:
+
+1. **Active Round & Lap Semantics**:
+   - Both the timer screen (`screens/timer/atoms.ts`) and live notifications (`helpers/background/live-activity-driver.ts`) consistently represent the **active, in-progress round or lap** computed deterministically as $\text{checkpoints.length} + 1$.
+   - **AMRAP**: Displays `RND 1` / `Round 1 | WORK` upon workout start, incrementing in 1:1 synchronization to `RND 2` / `Round 2 | WORK` on checkpoint registration.
+   - **STOPWATCH**: Displays `L01` in the QuickAccess header at start (without split delta). On lap registration, advances to `L02` and surfaces the delta duration of the closed first lap (`+MM:SS`). The notification renders `STOPWATCH` base and transitions to `Lap 2 | STOPWATCH` on first lap.
+
+2. **Session Atom Purging (`resetTimerSessionAtom`)**:
+   - Jotai module-level atoms (`timerCheckpointsAtom`, `timerCurrentRoundAtom`, `timerDisplayTimeMsAtom`, timestamps) are explicitly reset to initial default values via an atomic transaction invoked on `TimerRoot` mount, reset, and unmount. This guarantees zero in-memory checkpoint leakage across consecutive navigation lifecycles.
+
+3. **Session Summary Contract**:
+   - `TimerController.getSummary().roundsCompleted` strictly reflects completed closed rounds in `AMRAP` (`checkpoints.length`) and strategy rounds in `INTERVAL`/`EMOM`, while evaluating to `0` in time-only modes (`FOR_TIME`, `STOP_WATCH`).
+   - `SummaryFace` displays the "Rounds" metric card strictly for round-based modes (`INTERVAL`, `EMOM`, `AMRAP`) when `roundsCompleted > 0`, keeping `STOP_WATCH` and `FOR_TIME` clean and focused on their relevant data tables.
+
+---
+
 ## 3. Consequences
 
 ### Positive

@@ -25,8 +25,9 @@ Canonical vocabulary for the `cron` high-intensity interval training (HIIT) time
 
 ## 3. Session & Tracking
 
-- **Checkpoint** (`CheckpointData`): A discrete timestamped lap or round marker logged by user interaction (e.g. double-tap) during `AMRAP` or `STOP_WATCH`. Holds `lap`, `elapsedTimeMs`, `lapDurationMs`, and `lapDeltaMs`.
-- **Session Summary** (`SessionSummary`): The terminal record of a workout session, containing total elapsed time, active workout time, completed rounds, completion status, and logged checkpoints.
+- **Checkpoint** (`CheckpointData`): A discrete timestamped lap or round marker logged by user interaction (e.g. double-tap in UI or secondary action in live notification) during `AMRAP` or `STOP_WATCH`. Holds `lap`, `elapsedTimeMs`, `lapDurationMs`, and `lapDeltaMs`.
+- **Active Round / Lap**: The currently in-progress workout round or lap (`checkpoints.length + 1`), displayed in real time on both the timer face (`RND X` / `LXX`) and the live notification headline (`Round X` / `Lap X`), synchronizing user context across foreground and background channels.
+- **Session Summary** (`SessionSummary`): The terminal record of a workout session, containing total elapsed time, active workout time, completed rounds (strictly reflecting closed rounds in `AMRAP` and strategy rounds in `INTERVAL`/`EMOM`, or 0 in time-only modes), completion status, and logged checkpoints.
 - **Timecap**: Maximum permissible duration for a `FOR_TIME` workout.
 
 ---
@@ -81,6 +82,7 @@ Canonical vocabulary for the `cron` high-intensity interval training (HIIT) time
 - **Adaptive Tick Sampling**: Dynamic frequency governor in `TickEngine` alternating between an energy-efficient 20 Hz (50 ms) default interval loop and a 120 Hz continuous `requestAnimationFrame` loop, reducing JavaScript thread duty cycle by >80% during extended workouts.
 - **OLED Orbital Protector** (`OledBurnInProtector`): Reanimated wrapper applying imperceptible cyclic micro-translations (±1–2 px every 90 s) to periodically rotate electrical current across adjacent subpixels, preventing permanent burn-in on OLED panels during multi-hour screen-on sessions.
 - **Sub-Peak Luminance Capping**: Display standard clamping static user interface chrome (badges, labels, local clock) to `colors.neutral[400]` (`#A1A1AA`) over an absolute `#000000` true-black canvas, reducing power draw and organic diode degradation.
+- **Session Atom Purging** (`resetTimerSessionAtom`): Atomic state cleanup transaction in Jotai executed on mount, reset, and unmount of `TimerRoot`, eradicating in-memory state leakage (residual checkpoints, rounds, or timestamps) across consecutive navigation lifecycles.
 
 ---
 
