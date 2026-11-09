@@ -27,7 +27,7 @@ export const FormPager = <T extends string>({
   testID,
 }: FormPagerProps<T>) => {
   const insets = useSafeAreaInsets();
-  const formPaddingBottom = Math.max(96, 72 + insets.bottom);
+  const formPaddingBottom = Math.max(128, 102 + insets.bottom + 24);
 
   const {
     pagerRef,

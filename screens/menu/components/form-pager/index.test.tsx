@@ -34,7 +34,7 @@ describe("FormPager", () => {
     jest.clearAllMocks();
   });
 
-  it("renders edge-to-edge with minimum formPaddingBottom: 96 in content render functions", async () => {
+  it("renders edge-to-edge with minimum formPaddingBottom: 128 in content render functions", async () => {
     const screen = await renderWithProviders(
       <FormPager
         options={MOCK_OPTIONS}
@@ -46,10 +46,9 @@ describe("FormPager", () => {
     expect(screen.getByTestId("custom-pager")).toBeTruthy();
     expect(screen.getByTestId("segmented-tab-bar")).toBeTruthy();
 
-    // Verify content render function was called with bottom padding at least 96
     expect(contentSpy).toHaveBeenCalled();
     const [firstCall] = contentSpy.mock.calls;
-    expect(firstCall[0].bottom).toBeGreaterThanOrEqual(96);
+    expect(firstCall[0].bottom).toBeGreaterThanOrEqual(128);
   });
 
   it("propagates page selection from native PagerView to onValueChange upon gesture completion", async () => {

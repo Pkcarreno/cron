@@ -1,6 +1,5 @@
-import { formOptions } from "@tanstack/form-core";
 import { useAtom } from "jotai/react";
-import { useCallback, useEffect } from "react";
+import { useCallback, useMemo } from "react";
 import { ScrollView } from "react-native";
 
 import {
@@ -12,18 +11,12 @@ import {
   FieldSet,
 } from "@/components/field";
 import { Col, Grid, Row } from "@/components/grid";
+import { NumberField } from "@/screens/menu/components/number-field";
 import { IntervalPresetButton } from "@/screens/menu/components/preset-button";
-import { intervalDefaults, intervalSchema } from "@/screens/menu/schema";
+import { TimeField } from "@/screens/menu/components/time-field";
+import type { IntervalFormValues } from "@/screens/menu/schema";
+import { intervalSchema } from "@/screens/menu/schema";
 import { intervalWorkoutAtom } from "@/stores/workout";
-
-import { useAppForm } from "./form-utils";
-
-const intervalFormOpts = formOptions({
-  defaultValues: intervalDefaults,
-  validators: {
-    onChange: intervalSchema,
-  },
-});
 
 export interface IntervalFormProps {
   paddingBottom: number;
@@ -32,50 +25,50 @@ export interface IntervalFormProps {
 export const IntervalForm = ({ paddingBottom }: IntervalFormProps) => {
   const [interval, setInterval] = useAtom(intervalWorkoutAtom);
 
-  const form = useAppForm({
-    ...intervalFormOpts,
-    defaultValues: interval,
-  });
-
-  useEffect(() => {
-    form.validateSync("change");
-    const subscription = form.store.subscribe(() => {
-      setInterval((prev) => {
-        const next = form.state.values;
-        if (
-          prev.restMs === next.restMs &&
-          prev.totalRounds === next.totalRounds &&
-          prev.workMs === next.workMs
-        ) {
-          return prev;
-        }
-        return next;
-      });
-    });
-
-    return () => {
-      subscription.unsubscribe();
+  const errorsByField = useMemo(() => {
+    const result = intervalSchema.safeParse(interval);
+    const errors: Record<string, { message?: string }[]> = {
+      restMs: [],
+      totalRounds: [],
+      workMs: [],
     };
-  }, [form, setInterval]);
-
-  useEffect(() => {
-    if (
-      form.state.values.restMs !== interval.restMs ||
-      form.state.values.totalRounds !== interval.totalRounds ||
-      form.state.values.workMs !== interval.workMs
-    ) {
-      form.reset(interval);
-      form.validateSync("change");
+    if (!result.success) {
+      for (const issue of result.error.issues) {
+        const [path] = issue.path;
+        if (typeof path === "string" && errors[path]) {
+          errors[path].push(issue);
+        }
+      }
     }
-  }, [interval, form]);
+    return errors;
+  }, [interval]);
 
-  const presetSelectors = useCallback(
-    (state: typeof form.state) => ({
-      restMs: state.values.restMs,
-      totalRounds: state.values.totalRounds,
-      workMs: state.values.workMs,
-    }),
-    []
+  const handleTotalRoundsChange = useCallback(
+    (totalRounds: number) => {
+      setInterval((prev) => ({ ...prev, totalRounds }));
+    },
+    [setInterval]
+  );
+
+  const handleWorkMsChange = useCallback(
+    (workMs: number) => {
+      setInterval((prev) => ({ ...prev, workMs }));
+    },
+    [setInterval]
+  );
+
+  const handleRestMsChange = useCallback(
+    (restMs: number) => {
+      setInterval((prev) => ({ ...prev, restMs }));
+    },
+    [setInterval]
+  );
+
+  const handlePresetValueChange = useCallback(
+    (field: keyof IntervalFormValues, value: number) => {
+      setInterval((prev) => ({ ...prev, [field]: value }));
+    },
+    [setInterval]
   );
 
   return (
@@ -91,74 +84,61 @@ export const IntervalForm = ({ paddingBottom }: IntervalFormProps) => {
             </FieldContent>
             <Grid columns={2} gap={12}>
               <Row>
-                <form.Subscribe selector={presetSelectors}>
-                  {({ workMs, restMs, totalRounds }) => (
-                    <>
-                      <Col>
-                        <IntervalPresetButton
-                          title="TABATA"
-                          totalRounds={8}
-                          workMs={20_000}
-                          restMs={10_000}
-                          disabled={
-                            workMs === 20_000 &&
-                            restMs === 10_000 &&
-                            totalRounds === 8
-                          }
-                          setValue={form.setFieldValue}
-                        />
-                      </Col>
-                      <Col>
-                        <IntervalPresetButton
-                          title='30" / 30"'
-                          workMs={30_000}
-                          restMs={30_000}
-                          disabled={workMs === 30_000 && restMs === 30_000}
-                          setValue={form.setFieldValue}
-                        />
-                      </Col>
-                    </>
-                  )}
-                </form.Subscribe>
+                <Col>
+                  <IntervalPresetButton
+                    title="TABATA"
+                    totalRounds={8}
+                    workMs={20_000}
+                    restMs={10_000}
+                    disabled={
+                      interval.workMs === 20_000 &&
+                      interval.restMs === 10_000 &&
+                      interval.totalRounds === 8
+                    }
+                    setValue={handlePresetValueChange}
+                  />
+                </Col>
+                <Col>
+                  <IntervalPresetButton
+                    title='30" / 30"'
+                    workMs={30_000}
+                    restMs={30_000}
+                    disabled={
+                      interval.workMs === 30_000 && interval.restMs === 30_000
+                    }
+                    setValue={handlePresetValueChange}
+                  />
+                </Col>
               </Row>
             </Grid>
           </Field>
 
-          <form.AppField name="totalRounds">
-            {(field) => (
-              <Field>
-                <FieldContent>
-                  <FieldLabel>Rounds</FieldLabel>
-                </FieldContent>
-                <field.NumberField />
-                <FieldError errors={field.state.meta.errors} />
-              </Field>
-            )}
-          </form.AppField>
+          <Field>
+            <FieldContent>
+              <FieldLabel>Rounds</FieldLabel>
+            </FieldContent>
+            <NumberField
+              value={interval.totalRounds}
+              onChange={handleTotalRoundsChange}
+            />
+            <FieldError errors={errorsByField.totalRounds} />
+          </Field>
 
-          <form.AppField name="workMs">
-            {(field) => (
-              <Field>
-                <FieldContent>
-                  <FieldLabel>Work phase duration</FieldLabel>
-                </FieldContent>
-                <field.TimeField />
-                <FieldError errors={field.state.meta.errors} />
-              </Field>
-            )}
-          </form.AppField>
+          <Field>
+            <FieldContent>
+              <FieldLabel>Work phase duration</FieldLabel>
+            </FieldContent>
+            <TimeField value={interval.workMs} onChange={handleWorkMsChange} />
+            <FieldError errors={errorsByField.workMs} />
+          </Field>
 
-          <form.AppField name="restMs">
-            {(field) => (
-              <Field>
-                <FieldContent>
-                  <FieldLabel>Rest phase duration</FieldLabel>
-                </FieldContent>
-                <field.TimeField />
-                <FieldError errors={field.state.meta.errors} />
-              </Field>
-            )}
-          </form.AppField>
+          <Field>
+            <FieldContent>
+              <FieldLabel>Rest phase duration</FieldLabel>
+            </FieldContent>
+            <TimeField value={interval.restMs} onChange={handleRestMsChange} />
+            <FieldError errors={errorsByField.restMs} />
+          </Field>
         </FieldGroup>
       </FieldSet>
     </ScrollView>

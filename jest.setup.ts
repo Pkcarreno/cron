@@ -68,29 +68,6 @@ jest.mock("@lodev09/react-native-true-sheet", () => {
   return { TrueSheet };
 });
 
-jest.mock("@tanstack/devtools-event-client", () => ({
-  EventClient: class {
-    emit() {}
-    on() {
-      return () => {
-        // no-op
-      };
-    }
-    onAll() {
-      return () => {
-        // no-op
-      };
-    }
-    onAllPluginEvents() {
-      return () => {
-        // no-op
-      };
-    }
-    startConnectLoop() {}
-    stopConnectLoop() {}
-  },
-}));
-
 jest.mock("react-native-pager-view", () => {
   const ReactMock = require("react");
   const { View } = require("react-native");

@@ -1,6 +1,5 @@
-import { formOptions } from "@tanstack/form-core";
 import { useAtom } from "jotai/react";
-import { useEffect } from "react";
+import { useCallback, useMemo } from "react";
 import { ScrollView } from "react-native";
 
 import {
@@ -11,17 +10,9 @@ import {
   FieldLabel,
   FieldSet,
 } from "@/components/field";
-import { amrapDefaults, amrapSchema } from "@/screens/menu/schema";
+import { TimeField } from "@/screens/menu/components/time-field";
+import { amrapSchema } from "@/screens/menu/schema";
 import { amrapWorkoutAtom } from "@/stores/workout";
-
-import { useAppForm } from "./form-utils";
-
-const amrapFormOpts = formOptions({
-  defaultValues: amrapDefaults,
-  validators: {
-    onChange: amrapSchema,
-  },
-});
 
 export interface AmrapFormProps {
   paddingBottom: number;
@@ -30,34 +21,20 @@ export interface AmrapFormProps {
 export const AmrapForm = ({ paddingBottom }: AmrapFormProps) => {
   const [amrap, setAmrap] = useAtom(amrapWorkoutAtom);
 
-  const form = useAppForm({
-    ...amrapFormOpts,
-    defaultValues: amrap,
-  });
-
-  useEffect(() => {
-    form.validateSync("change");
-    const subscription = form.store.subscribe(() => {
-      setAmrap((prev) => {
-        const next = form.state.values;
-        if (prev.durationMs === next.durationMs) {
-          return prev;
-        }
-        return next;
-      });
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [form, setAmrap]);
-
-  useEffect(() => {
-    if (form.state.values.durationMs !== amrap.durationMs) {
-      form.reset(amrap);
-      form.validateSync("change");
+  const errors = useMemo(() => {
+    const result = amrapSchema.safeParse(amrap);
+    if (result.success) {
+      return [];
     }
-  }, [amrap, form]);
+    return result.error.issues;
+  }, [amrap]);
+
+  const handleDurationChange = useCallback(
+    (durationMs: number) => {
+      setAmrap((prev) => ({ ...prev, durationMs }));
+    },
+    [setAmrap]
+  );
 
   return (
     <ScrollView
@@ -66,17 +43,16 @@ export const AmrapForm = ({ paddingBottom }: AmrapFormProps) => {
     >
       <FieldSet>
         <FieldGroup>
-          <form.AppField name="durationMs">
-            {(field) => (
-              <Field>
-                <FieldContent>
-                  <FieldLabel>Duration</FieldLabel>
-                </FieldContent>
-                <field.TimeField />
-                <FieldError errors={field.state.meta.errors} />
-              </Field>
-            )}
-          </form.AppField>
+          <Field>
+            <FieldContent>
+              <FieldLabel>Duration</FieldLabel>
+            </FieldContent>
+            <TimeField
+              value={amrap.durationMs}
+              onChange={handleDurationChange}
+            />
+            <FieldError errors={errors} />
+          </Field>
         </FieldGroup>
       </FieldSet>
     </ScrollView>
