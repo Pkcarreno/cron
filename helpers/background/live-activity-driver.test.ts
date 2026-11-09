@@ -8,6 +8,7 @@ import {
   formatClockDuration,
   formatHeadline,
   formatModePrefix,
+  formatStaticCardHeadline,
   formatSubtitle,
   formatTier2Headline,
   getPhaseAccentColor,
@@ -129,9 +130,13 @@ describe("liveActivityDriver", () => {
     });
   });
 
-  describe("formatTier2Headline", () => {
+  describe("formatStaticCardHeadline", () => {
+    it("is aliased by formatTier2Headline for backwards compatibility", () => {
+      expect(formatTier2Headline).toBe(formatStaticCardHeadline);
+    });
+
     it("formats preparation phase with static duration", () => {
-      const headline = formatTier2Headline({
+      const headline = formatStaticCardHeadline({
         currentRound: 0,
         mode: TimerMode.INTERVAL,
         phase: TimerPhase.PREPARATION,
@@ -648,7 +653,7 @@ describe("liveActivityDriver", () => {
       expect(areSupportedSpy).toHaveBeenCalledTimes(1);
     });
 
-    it("formats Tier 2 static notification card and suppresses chronometer countdown when live updates are disabled", async () => {
+    it("formats Tier 2 standard notification with clean headline and active hardware chronometer when live updates (status bar chip) are disabled", async () => {
       const startSpy = jest
         .spyOn(Module, "startForegroundService")
         .mockResolvedValue(true);
@@ -658,6 +663,65 @@ describe("liveActivityDriver", () => {
 
       const driver = new AndroidForegroundDriver({
         supportsLiveUpdates: false,
+      });
+
+      await driver.start({
+        currentRound: 1,
+        isCountDown: true,
+        isPaused: false,
+        mode: TimerMode.INTERVAL,
+        nextPhase: TimerPhase.REST,
+        nextPhaseDurationMs: 15_000,
+        phase: TimerPhase.WORK,
+        phaseDurationMs: 30_000,
+        targetTimestampMs: 1_700_000_030_000,
+        totalRounds: 5,
+      });
+
+      expect(startSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          headline: "Round 1/5 | WORK",
+          isCountDown: true,
+          supportsLiveUpdates: false,
+          targetTimestampMs: 1_700_000_030_000,
+          useChronometer: true,
+        })
+      );
+
+      await driver.update({
+        currentRound: 1,
+        isCountDown: true,
+        isPaused: false,
+        mode: TimerMode.INTERVAL,
+        nextPhase: TimerPhase.WORK,
+        nextPhaseDurationMs: 30_000,
+        phase: TimerPhase.REST,
+        phaseDurationMs: 15_000,
+        targetTimestampMs: 1_700_000_045_000,
+        totalRounds: 5,
+      });
+
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          headline: "Round 1/5 | REST",
+          isCountDown: true,
+          supportsLiveUpdates: false,
+          targetTimestampMs: 1_700_000_045_000,
+          useChronometer: true,
+        })
+      );
+    });
+
+    it("formats Tier 3 static notification card and suppresses chronometer when useChronometer is explicitly false", async () => {
+      const startSpy = jest
+        .spyOn(Module, "startForegroundService")
+        .mockResolvedValue(true);
+      const updateSpy = jest
+        .spyOn(Module, "updateForegroundService")
+        .mockResolvedValue(true);
+
+      const driver = new AndroidForegroundDriver({
+        useChronometer: false,
       });
 
       await driver.start({
@@ -676,8 +740,8 @@ describe("liveActivityDriver", () => {
         expect.objectContaining({
           headline: "Round 1/5 | WORK (00:30)",
           isCountDown: false,
-          supportsLiveUpdates: false,
           targetTimestampMs: 0,
+          useChronometer: false,
         })
       );
 
@@ -697,13 +761,13 @@ describe("liveActivityDriver", () => {
         expect.objectContaining({
           headline: "Round 1/5 | REST (00:15)",
           isCountDown: false,
-          supportsLiveUpdates: false,
           targetTimestampMs: 0,
+          useChronometer: false,
         })
       );
     });
 
-    it("updates Tier 2 static headline with frozen remaining duration upon pause", async () => {
+    it("freezes chronometer and preserves clean headline in Tier 2 pause", async () => {
       jest.spyOn(Module, "startForegroundService").mockResolvedValue(true);
       const updateSpy = jest
         .spyOn(Module, "updateForegroundService")
@@ -727,10 +791,44 @@ describe("liveActivityDriver", () => {
 
       expect(updateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
+          headline: "Round 1/5 | WORK",
+          isPaused: true,
+          subtitle: "Interval. Paused at 00:35",
+          targetTimestampMs: 0,
+          useChronometer: true,
+        })
+      );
+    });
+
+    it("updates Tier 3 static headline with frozen remaining duration upon pause", async () => {
+      jest.spyOn(Module, "startForegroundService").mockResolvedValue(true);
+      const updateSpy = jest
+        .spyOn(Module, "updateForegroundService")
+        .mockResolvedValue(true);
+
+      const driver = new AndroidForegroundDriver({
+        useChronometer: false,
+      });
+
+      await driver.start({
+        currentRound: 1,
+        isPaused: false,
+        mode: TimerMode.INTERVAL,
+        phase: TimerPhase.WORK,
+        phaseDurationMs: 60_000,
+        targetTimestampMs: 1_700_000_060_000,
+        totalRounds: 5,
+      });
+
+      await driver.pause("00:35", 25_000);
+
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
           headline: "Round 1/5 | WORK (00:25)",
           isPaused: true,
-          supportsLiveUpdates: false,
+          subtitle: "Interval. Paused at 00:35",
           targetTimestampMs: 0,
+          useChronometer: false,
         })
       );
     });

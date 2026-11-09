@@ -24,6 +24,8 @@ export interface ForegroundNotificationPayload {
   color?: string;
   /** Contextual secondary action button label (e.g., "Record Round", "Lap"). */
   secondaryLabel?: string;
+  /** Whether the notification should render the real-time hardware chronometer. Defaults to true on Android. */
+  useChronometer?: boolean;
   /** Whether the notification should use live updates / hardware chronometer (Tier 1) or static text (Tier 2). */
   supportsLiveUpdates?: boolean;
 }
@@ -61,6 +63,7 @@ declare class CronForegroundNativeModule extends NativeModule<{
 }> {
   areLiveUpdatesSupported(): Promise<boolean>;
   clearMilestones(): Promise<boolean>;
+  hasNotificationChronometerSupport?(): Promise<boolean>;
   hasNotificationPermission(): Promise<boolean>;
   isServiceRunning(): Promise<boolean>;
   scheduleMilestones(payload: ScheduledMilestonesPayload): Promise<boolean>;
@@ -163,6 +166,25 @@ export const hasNotificationPermission = async (): Promise<boolean> => {
     return false;
   }
   return await mod.hasNotificationPermission();
+};
+
+/**
+ * Checks whether hardware chronometers in notifications are supported on the device.
+ * Always true on Android (API 26+), false on iOS/web without live activity extensions.
+ */
+export const hasNotificationChronometerSupport = async (): Promise<boolean> => {
+  if (Platform.OS !== "android") {
+    return false;
+  }
+  const mod = getNativeModule();
+  if (!mod || typeof mod.hasNotificationChronometerSupport !== "function") {
+    return true;
+  }
+  try {
+    return await mod.hasNotificationChronometerSupport();
+  } catch {
+    return true;
+  }
 };
 
 /**

@@ -69,13 +69,14 @@ When an athlete backgrounds the app:
 
 ---
 
-## 4. Multi-Tier Fallback Architecture
+## 4. Multi-Tier Capability Architecture
 
-To ensure a continuous experience across all device tiers:
+To ensure a continuous experience across all platform tiers (formalized in ADR 0011):
 
-- **Tier 1 — Live Notification (Primary):** On devices supporting status-bar chips / Live Updates, displays a live pill in the status bar and an ongoing lock-screen countdown with action buttons (`Pause`/`Resume` and contextual `Lap`/`Record Round`).
-- **Tier 2 — Normal Notification (Visual Fallback):** On devices without status-bar chip support, displays standard Material 3 notification cards updated discretely upon phase transitions (`PHASE_CHANGE`, `ROUND_CHANGE`, `PAUSE`).
-- **Tier 3 — Auto-Pause Fallback (Permissions Denied):** Automatically pauses the workout upon backgrounding to prevent unguided time loss, showing an in-app banner upon return.
+- **Tier 1 — Promoted Live Notification (Primary):** On devices supporting status-bar chips / Live Updates (Android 16+ API 36+, iOS 16.1+ ActivityKit), displays a live pill in the status bar and an ongoing lock-screen countdown with action buttons (`Pause`/`Resume` and contextual `Lap`/`Record Round`).
+- **Tier 2 — Standard Dynamic Notification (Android Default):** On devices without status-bar chip support (Android API 26–35), displays standard Material 3 notification cards with live ticking hardware chronometer (`setUsesChronometer(true)`) in the notification shade with 0% JS CPU duty cycle.
+- **Tier 3 — Static Card Fallback:** On platforms without native notification chronometers (iOS without ActivityKit, or explicit suppression), displays standard notification cards updated discretely upon phase transitions (`PHASE_CHANGE`, `ROUND_CHANGE`, `PAUSE`) with static duration in headline.
+- **Tier 4 — Auto-Pause Fallback (Permissions Denied):** Automatically pauses the workout upon backgrounding to prevent unguided time loss, showing an in-app banner upon return.
 
 ---
 
