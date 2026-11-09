@@ -70,4 +70,26 @@ describe("Text component", () => {
     expect(flatStyle.fontSize).toBe(32);
     expect(flatStyle.color).toBe(colors.white);
   });
+
+  it("applies valid mono font weights and rejects unsupported weights at compile time", async () => {
+    const screen = await renderWithProviders(
+      <>
+        <Text testID="mono-300" fontType="mono" weight="300">
+          Light Mono
+        </Text>
+        <Text testID="mono-800" fontType="mono" weight="800">
+          ExtraBold Mono
+        </Text>
+        {/* @ts-expect-error Weight 500 is not bundled for Geist Mono */}
+        <Text testID="mono-invalid-500" fontType="mono" weight="500">
+          Invalid
+        </Text>
+      </>
+    );
+
+    const mono300 = screen.getByTestId("mono-300");
+    const mono800 = screen.getByTestId("mono-800");
+    expect(StyleSheet.flatten(mono300.props.style).fontWeight).toBe("300");
+    expect(StyleSheet.flatten(mono800.props.style).fontWeight).toBe("800");
+  });
 });

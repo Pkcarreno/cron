@@ -5,8 +5,22 @@ import { StyleSheet, Text as RNText } from "react-native";
 import { colors } from "@/helpers/colors";
 
 type RNTextProps = React.ComponentProps<typeof RNText>;
-type FontType = "default" | "mono";
-export type FontWeight = "200" | "300" | "400" | "500" | "600" | "700" | "800";
+export type FontType = "default" | "mono";
+
+export type DefaultFontWeight =
+  | "200"
+  | "300"
+  | "400"
+  | "500"
+  | "600"
+  | "700"
+  | "800";
+
+export type MonoFontWeight = "300" | "400" | "800";
+
+export type FontWeight<T extends FontType = "default"> = T extends "mono"
+  ? MonoFontWeight
+  : DefaultFontWeight;
 
 type ThemeColors = typeof colors;
 type AllColorKeys = keyof ThemeColors;
@@ -35,22 +49,22 @@ interface SolidProps {
   colorSubtone?: never;
 }
 
-export type TextProps = RNTextProps & {
-  fontType?: FontType;
-  weight?: FontWeight;
+export type TextProps<T extends FontType = "default"> = RNTextProps & {
+  fontType?: T;
+  weight?: FontWeight<T>;
   size?: TextStyle["fontSize"];
 } & (DefaultColorProps | OtherScaleProps | SolidProps);
 
-export const Text = ({
+export const Text = <T extends FontType = "default">({
   color = "neutral",
   colorSubtone = "400",
-  fontType = "default",
-  weight = "400",
+  fontType = "default" as T,
+  weight = "400" as FontWeight<T>,
   size,
   style,
   children,
   ...rest
-}: TextProps) => {
+}: TextProps<T>) => {
   const colorValue = colors[color as AllColorKeys];
 
   const hexColor =
