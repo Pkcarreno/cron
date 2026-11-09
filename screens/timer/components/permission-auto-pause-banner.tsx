@@ -1,4 +1,4 @@
-import { BellSlashIcon, XIcon } from "phosphor-react-native";
+import { BellSlashIcon } from "phosphor-react-native";
 import type { FC } from "react";
 import { StyleSheet, View } from "react-native";
 
@@ -12,7 +12,6 @@ export interface PermissionAutoPauseBannerProps {
 }
 
 export const PermissionAutoPauseBanner: FC<PermissionAutoPauseBannerProps> = ({
-  onDismiss,
   onOpenSettings,
 }) => (
   <View
@@ -20,33 +19,19 @@ export const PermissionAutoPauseBanner: FC<PermissionAutoPauseBannerProps> = ({
     testID="permission-auto-pause-banner"
     accessibilityRole="alert"
   >
-    <View style={styles.content}>
-      <View style={styles.iconContainer}>
-        <BellSlashIcon size={20} color={colors.orange} />
-      </View>
-      <View style={styles.textContainer}>
-        <Text colorSubtone="100" weight="600" size={13}>
-          Background Tracking Paused
-        </Text>
-        <Text colorSubtone="400" size={12} style={styles.messageText}>
-          Session paused because notifications are disabled. Enable
-          notifications in Settings to allow background workout tracking.
-        </Text>
-      </View>
-      {onDismiss ? (
-        <Button
-          icon={XIcon}
-          size="icon"
-          variant="ghost"
-          onPress={onDismiss}
-          testID="dismiss-banner-button"
-          accessibilityLabel="Dismiss banner"
-        />
-      ) : null}
+    <View style={styles.header}>
+      <BellSlashIcon size={18} color={colors.orange} />
+      <Text colorSubtone="100" weight="600" size={13}>
+        Background Tracking Paused
+      </Text>
     </View>
+    <Text colorSubtone="400" size={12} style={styles.messageText}>
+      Session paused because notifications are disabled. Enable notifications in
+      Settings to allow background workout tracking.
+    </Text>
     <View style={styles.actions}>
       <Button
-        title="Enable Notifications"
+        title="Open Settings"
         size="sm"
         variant="secondary"
         onPress={onOpenSettings}
@@ -58,33 +43,22 @@ export const PermissionAutoPauseBanner: FC<PermissionAutoPauseBannerProps> = ({
 
 const styles = StyleSheet.create({
   actions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    paddingTop: 4,
+    width: "100%",
   },
   container: {
-    backgroundColor: colors.neutral[900],
+    backgroundColor: colors.transparent,
     borderColor: colors.neutral[800],
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    gap: 8,
-    marginHorizontal: 16,
-    marginVertical: 8,
+    gap: 10,
     padding: 12,
   },
-  content: {
-    alignItems: "flex-start",
+  header: {
+    alignItems: "center",
     flexDirection: "row",
-    gap: 10,
-  },
-  iconContainer: {
-    paddingTop: 2,
+    gap: 8,
   },
   messageText: {
     lineHeight: 16,
-  },
-  textContainer: {
-    flex: 1,
-    gap: 4,
   },
 });

@@ -39,7 +39,6 @@ export const SummaryFace: React.FC<SummaryFaceProps> = ({
 
   return (
     <SafeAreaView style={styles.container}>
-      {banner}
       <View style={styles.header}>
         <View style={styles.info}>
           <Text>session summary</Text>
@@ -55,6 +54,8 @@ export const SummaryFace: React.FC<SummaryFaceProps> = ({
 
       <View style={styles.content}>
         <RenderData mode={mode} summary={summary} />
+
+        {banner}
 
         <RenderCheckpoints
           summary={summary}
