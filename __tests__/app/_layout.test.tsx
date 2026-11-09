@@ -14,10 +14,6 @@ jest.mock("expo-router", () => ({
   Stack: () => null,
 }));
 
-jest.mock("@rn-primitives/portal", () => ({
-  PortalHost: () => null,
-}));
-
 describe("RootLayout", () => {
   it("wraps layout in GestureHandlerRootView with flex: 1 style for full viewport bounds", () => {
     let tree: renderer.ReactTestRenderer | undefined;

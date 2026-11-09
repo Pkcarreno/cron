@@ -1,4 +1,3 @@
-import { PortalHost } from "@rn-primitives/portal";
 import type {
   RenderHookOptions,
   RenderHookResult,
@@ -38,10 +37,7 @@ export const TestProviders = ({
 }: TestProvidersProps) => (
   <GestureHandlerRootView style={styles.container}>
     <SafeAreaProvider initialMetrics={initialMetrics}>
-      <Provider store={store}>
-        {children}
-        <PortalHost />
-      </Provider>
+      <Provider store={store}>{children}</Provider>
     </SafeAreaProvider>
   </GestureHandlerRootView>
 );

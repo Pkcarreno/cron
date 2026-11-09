@@ -1,4 +1,3 @@
-import { PortalHost } from "@rn-primitives/portal";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -35,8 +34,6 @@ export default function RootLayout() {
             },
           }}
         />
-
-        <PortalHost />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
