@@ -1,5 +1,6 @@
 import React from "react";
 
+import { Text } from "@/components/text";
 import { TimerMode } from "@/helpers/timer/factory";
 import type { UISessionSummary } from "@/hooks/use-timer";
 import { renderWithProviders } from "@/test-utils/render-with-providers";
@@ -113,5 +114,20 @@ describe("SummaryFace", () => {
 
     expect(screen.getByText("Rounds")).toBeTruthy();
     expect(screen.getByText("8")).toBeTruthy();
+  });
+
+  it("renders banner content within the details section when provided", async () => {
+    const screen = await renderWithProviders(
+      <SummaryFace
+        banner={<Text testID="custom-summary-banner">Warning Notice</Text>}
+        handleEndSession={handleEndSession}
+        handleResumeSession={handleResumeSession}
+        mode={TimerMode.FOR_TIME}
+        summary={baseSummary}
+      />
+    );
+
+    expect(screen.getByTestId("custom-summary-banner")).toBeTruthy();
+    expect(screen.getByText("Warning Notice")).toBeTruthy();
   });
 });

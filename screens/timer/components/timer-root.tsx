@@ -341,7 +341,6 @@ export const TimerRoot: FC<TimerRootProps> = ({
       <HideNavigationBar />
 
       <View style={styles.container} testID="timer-screen" collapsable={false}>
-        {bannerNode}
         {children ?? (
           <OledBurnInProtector>
             <TimerGestureOverlay>
