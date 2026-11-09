@@ -1,6 +1,5 @@
-import { formOptions } from "@tanstack/form-core";
 import { useAtom } from "jotai/react";
-import { useCallback, useEffect } from "react";
+import { useCallback, useMemo } from "react";
 import { ScrollView } from "react-native";
 
 import {
@@ -12,18 +11,12 @@ import {
   FieldSet,
 } from "@/components/field";
 import { Col, Grid, Row } from "@/components/grid";
+import { NumberField } from "@/screens/menu/components/number-field";
 import { EmomPresetButton } from "@/screens/menu/components/preset-button";
-import { emomDefaults, emomSchema } from "@/screens/menu/schema";
+import { TimeField } from "@/screens/menu/components/time-field";
+import type { EmomFormValues } from "@/screens/menu/schema";
+import { emomSchema } from "@/screens/menu/schema";
 import { emomWorkoutAtom } from "@/stores/workout";
-
-import { useAppForm } from "./form-utils";
-
-const emomFormOpts = formOptions({
-  defaultValues: emomDefaults,
-  validators: {
-    onChange: emomSchema,
-  },
-});
 
 export interface EmomFormProps {
   paddingBottom: number;
@@ -32,47 +25,42 @@ export interface EmomFormProps {
 export const EmomForm = ({ paddingBottom }: EmomFormProps) => {
   const [emom, setEmom] = useAtom(emomWorkoutAtom);
 
-  const form = useAppForm({
-    ...emomFormOpts,
-    defaultValues: emom,
-  });
-
-  useEffect(() => {
-    form.validateSync("change");
-    const subscription = form.store.subscribe(() => {
-      setEmom((prev) => {
-        const next = form.state.values;
-        if (
-          prev.roundDurationMs === next.roundDurationMs &&
-          prev.totalRounds === next.totalRounds
-        ) {
-          return prev;
-        }
-        return next;
-      });
-    });
-
-    return () => {
-      subscription.unsubscribe();
+  const errorsByField = useMemo(() => {
+    const result = emomSchema.safeParse(emom);
+    const errors: Record<string, { message?: string }[]> = {
+      roundDurationMs: [],
+      totalRounds: [],
     };
-  }, [form, setEmom]);
-
-  useEffect(() => {
-    if (
-      form.state.values.roundDurationMs !== emom.roundDurationMs ||
-      form.state.values.totalRounds !== emom.totalRounds
-    ) {
-      form.reset(emom);
-      form.validateSync("change");
+    if (!result.success) {
+      for (const issue of result.error.issues) {
+        const [path] = issue.path;
+        if (typeof path === "string" && errors[path]) {
+          errors[path].push(issue);
+        }
+      }
     }
-  }, [emom, form]);
+    return errors;
+  }, [emom]);
 
-  const presetSelectors = useCallback(
-    (state: typeof form.state) => ({
-      roundDurationMs: state.values.roundDurationMs,
-      totalRounds: state.values.totalRounds,
-    }),
-    []
+  const handleTotalRoundsChange = useCallback(
+    (totalRounds: number) => {
+      setEmom((prev) => ({ ...prev, totalRounds }));
+    },
+    [setEmom]
+  );
+
+  const handleRoundDurationChange = useCallback(
+    (roundDurationMs: number) => {
+      setEmom((prev) => ({ ...prev, roundDurationMs }));
+    },
+    [setEmom]
+  );
+
+  const handlePresetValueChange = useCallback(
+    (field: keyof EmomFormValues, value: number) => {
+      setEmom((prev) => ({ ...prev, [field]: value }));
+    },
+    [setEmom]
   );
 
   return (
@@ -88,53 +76,47 @@ export const EmomForm = ({ paddingBottom }: EmomFormProps) => {
             </FieldContent>
             <Grid columns={2} gap={12}>
               <Row>
-                <form.Subscribe selector={presetSelectors}>
-                  {({ roundDurationMs }) => (
-                    <>
-                      <Col>
-                        <EmomPresetButton
-                          title="1 min"
-                          roundDurationMs={60_000}
-                          disabled={roundDurationMs === 60_000}
-                          setValue={form.setFieldValue}
-                        />
-                      </Col>
-                      <Col>
-                        <EmomPresetButton
-                          title="45 sec"
-                          roundDurationMs={45_000}
-                          disabled={roundDurationMs === 45_000}
-                          setValue={form.setFieldValue}
-                        />
-                      </Col>
-                    </>
-                  )}
-                </form.Subscribe>
+                <Col>
+                  <EmomPresetButton
+                    title="1 min"
+                    roundDurationMs={60_000}
+                    disabled={emom.roundDurationMs === 60_000}
+                    setValue={handlePresetValueChange}
+                  />
+                </Col>
+                <Col>
+                  <EmomPresetButton
+                    title="45 sec"
+                    roundDurationMs={45_000}
+                    disabled={emom.roundDurationMs === 45_000}
+                    setValue={handlePresetValueChange}
+                  />
+                </Col>
               </Row>
             </Grid>
           </Field>
 
-          <form.AppField name="totalRounds">
-            {(field) => (
-              <Field>
-                <FieldLabel>Rounds</FieldLabel>
-                <field.NumberField min={0} max={99} />
-                <FieldError errors={field.state.meta.errors} />
-              </Field>
-            )}
-          </form.AppField>
+          <Field>
+            <FieldLabel>Rounds</FieldLabel>
+            <NumberField
+              min={0}
+              max={99}
+              value={emom.totalRounds}
+              onChange={handleTotalRoundsChange}
+            />
+            <FieldError errors={errorsByField.totalRounds} />
+          </Field>
 
-          <form.AppField name="roundDurationMs">
-            {(field) => (
-              <Field>
-                <FieldContent>
-                  <FieldLabel>Round Duration</FieldLabel>
-                </FieldContent>
-                <field.TimeField />
-                <FieldError errors={field.state.meta.errors} />
-              </Field>
-            )}
-          </form.AppField>
+          <Field>
+            <FieldContent>
+              <FieldLabel>Round Duration</FieldLabel>
+            </FieldContent>
+            <TimeField
+              value={emom.roundDurationMs}
+              onChange={handleRoundDurationChange}
+            />
+            <FieldError errors={errorsByField.roundDurationMs} />
+          </Field>
         </FieldGroup>
       </FieldSet>
     </ScrollView>
