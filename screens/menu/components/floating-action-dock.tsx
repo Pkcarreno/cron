@@ -1,10 +1,10 @@
 import { Link } from "expo-router";
 import { useAtomValue } from "jotai";
-import { SlidersIcon } from "phosphor-react-native";
 import type { StyleProp, ViewStyle } from "react-native";
 import { StyleSheet, View } from "react-native";
 
 import Button from "@/components/button";
+import { SlidersIcon } from "@/components/icons/sliders-icon";
 import { isCurrentTimerValidAtom } from "@/stores/workout";
 
 import { useStartTimer } from "../hooks/use-start-timer";

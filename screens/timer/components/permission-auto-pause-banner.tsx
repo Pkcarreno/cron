@@ -1,8 +1,8 @@
-import { BellSlashIcon } from "phosphor-react-native";
 import type { FC } from "react";
 import { StyleSheet, View } from "react-native";
 
 import Button from "@/components/button";
+import { BellSlashIcon } from "@/components/icons/bell-slash-icon";
 import { Text } from "@/components/text";
 import { colors } from "@/helpers/colors";
 

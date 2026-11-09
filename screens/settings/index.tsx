@@ -1,9 +1,9 @@
 import { Link, Stack } from "expo-router";
 import { useAtom } from "jotai/react";
-import { CaretRightIcon } from "phosphor-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { AppState, ScrollView, StyleSheet, View } from "react-native";
 
+import { CaretRightIcon } from "@/components/icons/caret-right-icon";
 import { NumberPickerSheet } from "@/components/input-number";
 import {
   Menu,
