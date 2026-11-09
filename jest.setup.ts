@@ -1,6 +1,5 @@
 /* oxlint-disable eslint/class-methods-use-this, eslint/no-empty-function, node/global-require, unicorn/prefer-module, typescript/no-explicit-any, eslint/max-classes-per-file */
 import "react-native-gesture-handler/jestSetup";
-import type React from "react";
 
 const {
   createJSReanimatedModule,
@@ -67,40 +66,6 @@ jest.mock("@lodev09/react-native-true-sheet", () => {
   TrueSheet.prototype.dismiss = jest.fn(() => Promise.resolve());
 
   return { TrueSheet };
-});
-
-jest.mock("@rn-primitives/portal", () => ({
-  Portal: ({ children }: { children: React.ReactNode }) => children,
-  PortalHost: () => null,
-}));
-
-jest.mock("@rn-primitives/dropdown-menu", () => {
-  const ReactMock = require("react");
-  const { Pressable, Text } = require("react-native");
-
-  return {
-    Content: ({ children }: { children: React.ReactNode }) => children,
-    Group: ({ children }: { children: React.ReactNode }) => children,
-    Item: ({ children, onPress, ...props }: any) =>
-      ReactMock.createElement(Pressable, { onPress, ...props }, children),
-    Label: ({ children, ...props }: any) =>
-      ReactMock.createElement(Text, props, children),
-    Overlay: ({ children }: { children: React.ReactNode }) => children,
-    Portal: ({ children }: { children: React.ReactNode }) => children,
-    Root: ({ children }: { children: React.ReactNode }) => children,
-    Separator: () => null,
-    Sub: ({ children }: { children: React.ReactNode }) => children,
-    Trigger: ({ children, onPress, ...props }: any) => {
-      if (typeof children === "function") {
-        return children({ pressed: false });
-      }
-      return ReactMock.createElement(
-        Pressable,
-        { onPress, ...props },
-        children
-      );
-    },
-  };
 });
 
 jest.mock("@rn-primitives/switch", () => {
