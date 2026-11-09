@@ -52,4 +52,12 @@ export class IosNoopLiveActivityDriver implements LiveActivityDriver {
   public areLiveUpdatesSupported(): Promise<boolean> {
     return Promise.resolve(false);
   }
+
+  public hasNotificationChronometerSupport(): Promise<boolean> {
+    return Promise.resolve(false);
+  }
+
+  public getUseChronometer(): boolean {
+    return false;
+  }
 }

@@ -36,6 +36,7 @@ class CronForegroundService : Service() {
         const val EXTRA_COLOR = "color"
         const val EXTRA_SECONDARY_LABEL = "secondaryLabel"
         const val EXTRA_SUPPORTS_LIVE_UPDATES = "supportsLiveUpdates"
+        const val EXTRA_USE_CHRONOMETER = "useChronometer"
         const val EXTRA_ACTION = "action"
 
         var isRunning: Boolean = false
@@ -48,6 +49,7 @@ class CronForegroundService : Service() {
     private var currentTargetTimestampMs: Long = 0L
     private var currentIsPaused: Boolean = false
     private var currentIsCountDown: Boolean = true
+    private var currentUseChronometer: Boolean = true
     private var currentSupportsLiveUpdates: Boolean = true
     private var currentColorHex: String = "#008153"
     private var currentSecondaryLabel: String? = null
@@ -171,6 +173,9 @@ class CronForegroundService : Service() {
         if (intent.hasExtra(EXTRA_SUPPORTS_LIVE_UPDATES)) {
             currentSupportsLiveUpdates = intent.getBooleanExtra(EXTRA_SUPPORTS_LIVE_UPDATES, true)
         }
+        if (intent.hasExtra(EXTRA_USE_CHRONOMETER)) {
+            currentUseChronometer = intent.getBooleanExtra(EXTRA_USE_CHRONOMETER, true)
+        }
     }
 
     private fun createNotificationChannel() {
@@ -258,8 +263,8 @@ class CronForegroundService : Service() {
             builder.addAction(0, currentSecondaryLabel, secondaryPendingIntent)
         }
 
-        // Hardware chronometer: Tier 1 utilizes live ticking chronometer. Tier 2 uses static text.
-        if (!currentSupportsLiveUpdates || currentIsPaused || currentTargetTimestampMs <= 0L) {
+        // Hardware chronometer: Enabled by default on Android (Tier 1 & Tier 2). Tier 3 disables chronometer.
+        if (!currentUseChronometer || currentIsPaused || currentTargetTimestampMs <= 0L) {
             builder.setUsesChronometer(false)
             builder.setShowWhen(false)
         } else {

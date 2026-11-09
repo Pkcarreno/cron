@@ -40,6 +40,7 @@ export interface ActiveSessionPayload {
   nextPhaseDurationMs?: number;
   displayTimeMs?: number;
   capDurationMs?: number;
+  useChronometer?: boolean;
 }
 
 /**
@@ -61,6 +62,9 @@ export interface LiveActivityDriver {
   areLiveUpdatesSupported?: () => Promise<boolean>;
   setSupportsLiveUpdates?: (supported: boolean) => void;
   getSupportsLiveUpdates?: () => boolean;
+  hasNotificationChronometerSupport?: () => Promise<boolean>;
+  setUseChronometer?: (enabled: boolean) => void;
+  getUseChronometer?: () => boolean;
 }
 
 /**
@@ -148,11 +152,11 @@ export const formatHeadline = (payload: NotificationContextPayload): string =>
   formatSessionContext(payload, false);
 
 /**
- * Formats a standard Material 3 notification card headline with static text
- * (phase name, round, and remaining duration) for Tier 2 fallback when Live Updates
- * (status bar chips / rich ongoing notifications) are unsupported or disabled.
+ * Formats a standard notification card headline with static text
+ * (phase name, round, and remaining duration) for Tier 3 fallback when live ticking
+ * chronometers are unsupported or disabled (e.g., iOS without ActivityKit).
  */
-export const formatTier2Headline = (
+export const formatStaticCardHeadline = (
   payload: NotificationContextPayload
 ): string => {
   const baseHeadline = formatHeadline(payload);
@@ -160,6 +164,11 @@ export const formatTier2Headline = (
   const durationText = formatClockDuration(remainingMs);
   return `${baseHeadline} (${durationText})`;
 };
+
+/**
+ * Backward-compatibility alias for formatStaticCardHeadline.
+ */
+export const formatTier2Headline = formatStaticCardHeadline;
 
 /**
  * Formats the compact chip badge using single-digit values when applicable.
@@ -267,17 +276,20 @@ export const getSecondaryActionLabel = (
 
 export interface AndroidForegroundDriverOptions {
   supportsLiveUpdates?: boolean;
+  useChronometer?: boolean;
 }
 
 const resolveForegroundNotificationPayload = (
   session: ActiveSessionPayload,
-  supportsLiveUpdates = true
+  supportsLiveUpdates = true,
+  useChronometer = true
 ): ForegroundNotificationPayload => {
+  const effectiveUseChronometer = session.useChronometer ?? useChronometer;
   const headline =
     session.headline ??
-    (supportsLiveUpdates
+    (effectiveUseChronometer
       ? formatHeadline(session)
-      : formatTier2Headline(session));
+      : formatStaticCardHeadline(session));
   const { subText } = session;
   const subtitle =
     session.subtitle ??
@@ -297,13 +309,14 @@ const resolveForegroundNotificationPayload = (
   return {
     color,
     headline,
-    isCountDown: supportsLiveUpdates ? session.isCountDown : false,
+    isCountDown: effectiveUseChronometer ? session.isCountDown : false,
     isPaused: session.isPaused,
     secondaryLabel,
     subText,
     subtitle,
     supportsLiveUpdates,
-    targetTimestampMs: supportsLiveUpdates ? session.targetTimestampMs : 0,
+    targetTimestampMs: effectiveUseChronometer ? session.targetTimestampMs : 0,
+    useChronometer: effectiveUseChronometer,
   };
 };
 
@@ -317,12 +330,27 @@ export class AndroidForegroundDriver implements LiveActivityDriver {
   private controllerSubscription: { remove: () => void } | null = null;
   private supportsLiveUpdates = true;
   private hasExplicitSupportsLiveUpdates = false;
+  private useChronometer = true;
+  private hasExplicitUseChronometer = false;
 
   constructor(options?: AndroidForegroundDriverOptions) {
     if (options?.supportsLiveUpdates !== undefined) {
       this.supportsLiveUpdates = options.supportsLiveUpdates;
       this.hasExplicitSupportsLiveUpdates = true;
     }
+    if (options?.useChronometer !== undefined) {
+      this.useChronometer = options.useChronometer;
+      this.hasExplicitUseChronometer = true;
+    }
+  }
+
+  public setUseChronometer(enabled: boolean): void {
+    this.useChronometer = enabled;
+    this.hasExplicitUseChronometer = true;
+  }
+
+  public getUseChronometer(): boolean {
+    return this.useChronometer;
   }
 
   public setSupportsLiveUpdates(supported: boolean): void {
@@ -343,11 +371,19 @@ export class AndroidForegroundDriver implements LiveActivityDriver {
     return supported;
   }
 
+  public hasNotificationChronometerSupport(): Promise<boolean> {
+    return Promise.resolve(true);
+  }
+
   public async start(session: ActiveSessionPayload): Promise<void> {
     this.lastSessionPayload = session;
     this.isServiceActive = true;
     await startForegroundService(
-      resolveForegroundNotificationPayload(session, this.supportsLiveUpdates)
+      resolveForegroundNotificationPayload(
+        session,
+        this.supportsLiveUpdates,
+        session.useChronometer ?? this.useChronometer
+      )
     );
   }
 
@@ -359,7 +395,11 @@ export class AndroidForegroundDriver implements LiveActivityDriver {
     }
 
     await updateForegroundService(
-      resolveForegroundNotificationPayload(session, this.supportsLiveUpdates)
+      resolveForegroundNotificationPayload(
+        session,
+        this.supportsLiveUpdates,
+        session.useChronometer ?? this.useChronometer
+      )
     );
   }
 
@@ -377,13 +417,27 @@ export class AndroidForegroundDriver implements LiveActivityDriver {
       pausedElapsedDisplayTime: elapsedDisplayTime,
     });
 
+    const effectiveUseChronometer =
+      this.lastSessionPayload.useChronometer ?? this.useChronometer;
+
+    const pausedHeadline = effectiveUseChronometer
+      ? (this.lastSessionPayload.headline ??
+        formatHeadline(this.lastSessionPayload))
+      : formatStaticCardHeadline({
+          ...this.lastSessionPayload,
+          displayTimeMs:
+            remainingDisplayTimeMs ?? this.lastSessionPayload.displayTimeMs,
+        });
+
     const pausedSession: ActiveSessionPayload = {
       ...this.lastSessionPayload,
       displayTimeMs:
         remainingDisplayTimeMs ?? this.lastSessionPayload.displayTimeMs,
+      headline: pausedHeadline,
       isPaused: true,
       subtitle: pausedSubtitle,
       targetTimestampMs: 0,
+      useChronometer: effectiveUseChronometer,
     };
 
     await this.update(pausedSession);

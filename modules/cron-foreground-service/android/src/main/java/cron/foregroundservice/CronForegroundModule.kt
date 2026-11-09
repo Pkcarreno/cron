@@ -114,6 +114,11 @@ class CronForegroundModule : Module() {
             androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
         }
 
+        AsyncFunction("hasNotificationChronometerSupport") {
+            // Android NotificationCompat supports hardware chronometers on all supported OS versions (API 26+)
+            true
+        }
+
         AsyncFunction("areLiveUpdatesSupported") {
             if (Build.VERSION.SDK_INT < 36) {
                 return@AsyncFunction false
@@ -189,6 +194,7 @@ class CronForegroundModule : Module() {
         (payload["isPaused"] as? Boolean)?.let { intent.putExtra(CronForegroundService.EXTRA_IS_PAUSED, it) }
         (payload["isCountDown"] as? Boolean)?.let { intent.putExtra(CronForegroundService.EXTRA_IS_COUNT_DOWN, it) }
         (payload["supportsLiveUpdates"] as? Boolean)?.let { intent.putExtra(CronForegroundService.EXTRA_SUPPORTS_LIVE_UPDATES, it) }
+        (payload["useChronometer"] as? Boolean)?.let { intent.putExtra(CronForegroundService.EXTRA_USE_CHRONOMETER, it) }
 
         val targetTimestamp = (payload["targetTimestampMs"] as? Number)?.toLong()
         if (targetTimestamp != null) {
