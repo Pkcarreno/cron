@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors } from "@/helpers/colors";
-import { formatDuration } from "@/helpers/timer/utils/formatter";
+import { formatDelta } from "@/helpers/timer/utils/formatter";
 import { useIsLowBattery } from "@/hooks/use-is-low-battery";
 import type { timerType } from "@/hooks/use-timer";
 import { ContextBannerSvg } from "@/screens/timer/components/svg/context-banner-svg";
@@ -48,7 +48,7 @@ export const TimerFace: FC<Props> = ({
         isLowBattery ? "[BAT LOW]" : null,
         hours ? `${hours}H` : null,
         lap && lap > 0 ? `L${lap.toString().padStart(2, "0")}` : null,
-        delta ? formatDuration(delta, true) : null,
+        delta === undefined ? null : formatDelta(delta),
       ].filter(Boolean),
     [hours, lap, delta, isLowBattery]
   );

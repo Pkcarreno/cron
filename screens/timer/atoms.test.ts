@@ -165,8 +165,8 @@ describe("Timer Atoms", () => {
 
       const quickAccess = store.get(timerQuickAccessInfoAtom);
       expect(quickAccess).toContain("L03");
-      // Delta for 2nd checkpoint (+15s)
-      expect(quickAccess).toContain("+15s");
+      // Delta for 2nd checkpoint (+15.00s)
+      expect(quickAccess).toContain("+15.00s");
     });
   });
 

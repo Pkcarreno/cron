@@ -59,8 +59,24 @@ export const formatFullTimeToString = (totalMs: number) => {
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 };
 
+export interface FormatDurationOptions {
+  fixedDecimals?: boolean;
+  showSign?: boolean;
+}
+
 // oxlint-disable eslint/max-statements
-export const formatDuration = (ms: number, showSign = false): string => {
+export const formatDuration = (
+  ms: number,
+  optionsOrShowSign: boolean | FormatDurationOptions = false
+): string => {
+  const options: FormatDurationOptions =
+    typeof optionsOrShowSign === "boolean"
+      ? { showSign: optionsOrShowSign }
+      : optionsOrShowSign;
+
+  const showSign = options.showSign ?? false;
+  const fixedDecimals = options.fixedDecimals ?? false;
+
   const isNegative = ms < 0;
   const absMs = Math.abs(ms);
 
@@ -71,13 +87,16 @@ export const formatDuration = (ms: number, showSign = false): string => {
     sign = "-";
   }
 
-  if (absMs < 1000) {
-    return `${sign}${absMs}ms`;
+  if (!fixedDecimals && absMs < 1000) {
+    return `${sign}${Math.round(absMs)}ms`;
   }
 
   const totalSeconds = absMs / 1000;
 
   if (totalSeconds < 60) {
+    if (fixedDecimals) {
+      return `${sign}${totalSeconds.toFixed(2)}s`;
+    }
     return `${sign}${Number(totalSeconds.toFixed(3))}s`;
   }
 
@@ -97,6 +116,30 @@ export const formatDuration = (ms: number, showSign = false): string => {
     .padStart(2, "0");
 
   return `${sign}${hours}:${remainingMinutes}:${formattedSeconds}`;
+};
+
+/**
+ * Formats a delta duration with explicit sign, strict 2-decimal precision (centiseconds),
+ * and standard tabular alignment across all scales (including sub-second values in seconds).
+ *
+ * Examples:
+ * - 0 ms        -> "+0.00s"
+ * - 412.4 ms    -> "+0.41s"
+ * - -200 ms     -> "-0.20s"
+ * - 4300 ms     -> "+4.30s"
+ * - 65500 ms    -> "+1:05.50"
+ */
+export const formatDelta = (deltaMs: number): string => {
+  // In centiseconds (0.01s = 10ms), values strictly within (-5ms, 5ms) round to zero.
+  // We represent zero delta with canonical positive neutral sign (+0.00s).
+  if (Math.abs(deltaMs) < 5) {
+    return "+0.00s";
+  }
+
+  return formatDuration(deltaMs, {
+    fixedDecimals: true,
+    showSign: true,
+  });
 };
 
 export const getModeAbbreviation = (mode: TimerMode): string => {

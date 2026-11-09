@@ -130,4 +130,42 @@ describe("SummaryFace", () => {
     expect(screen.getByTestId("custom-summary-banner")).toBeTruthy();
     expect(screen.getByText("Warning Notice")).toBeTruthy();
   });
+
+  it("renders checkpoints table with 2-decimal fixed precision for Time, Duration, and Delta", async () => {
+    const screen = await renderWithProviders(
+      <SummaryFace
+        handleEndSession={handleEndSession}
+        handleResumeSession={handleResumeSession}
+        mode={TimerMode.STOP_WATCH}
+        summary={{
+          ...baseSummary,
+          checkpoints: [
+            {
+              elapsedTimeMs: 45_250,
+              lap: 1,
+              lapDeltaMs: 0,
+              lapDurationMs: 45_250,
+              recordedAt: new Date(),
+            },
+            {
+              elapsedTimeMs: 91_000,
+              lap: 2,
+              lapDeltaMs: 500,
+              lapDurationMs: 45_750,
+              recordedAt: new Date(),
+            },
+          ],
+          roundsCompleted: 0,
+        }}
+      />
+    );
+
+    // Lap 1: 45.25s duration, +0.00s delta
+    expect(screen.getAllByText("45.25s").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("+0.00s")).toBeTruthy();
+
+    // Lap 2: 45.75s duration, +0.50s delta
+    expect(screen.getByText("45.75s")).toBeTruthy();
+    expect(screen.getByText("+0.50s")).toBeTruthy();
+  });
 });
