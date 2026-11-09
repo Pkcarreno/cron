@@ -6,16 +6,7 @@ import { colors } from "@/helpers/colors";
 
 type RNTextProps = React.ComponentProps<typeof RNText>;
 type FontType = "default" | "mono";
-type FontWeight =
-  | "100"
-  | "200"
-  | "300"
-  | "400"
-  | "500"
-  | "600"
-  | "700"
-  | "800"
-  | "900";
+export type FontWeight = "200" | "300" | "400" | "500" | "600" | "700" | "800";
 
 type ThemeColors = typeof colors;
 type AllColorKeys = keyof ThemeColors;
