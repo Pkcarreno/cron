@@ -46,7 +46,6 @@ describe("FormPager", () => {
     expect(screen.getByTestId("custom-pager")).toBeTruthy();
     expect(screen.getByTestId("segmented-tab-bar")).toBeTruthy();
 
-    // Verify content render function was called with bottom padding at least 128 to clear FloatingActionDock
     expect(contentSpy).toHaveBeenCalled();
     const [firstCall] = contentSpy.mock.calls;
     expect(firstCall[0].bottom).toBeGreaterThanOrEqual(128);

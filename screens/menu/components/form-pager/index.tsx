@@ -27,8 +27,6 @@ export const FormPager = <T extends string>({
   testID,
 }: FormPagerProps<T>) => {
   const insets = useSafeAreaInsets();
-  // FloatingActionDock height is paddingTop(16) + button(74) + paddingBottom(12 + insets.bottom) = 102 + insets.bottom.
-  // Adding 24px clearance above the dock ensures bottom-most fields are fully visible when scrolled to the end.
   const formPaddingBottom = Math.max(128, 102 + insets.bottom + 24);
 
   const {
