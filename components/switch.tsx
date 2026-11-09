@@ -1,10 +1,13 @@
-import * as SwitchPrimitives from "@rn-primitives/switch";
-import { useEffect } from "react";
-import type { Ref } from "react";
-import type { StyleProp, ViewStyle } from "react-native";
-import { StyleSheet } from "react-native";
-import {
-  createAnimatedComponent,
+import type { ComponentRef } from "react";
+import { useCallback, useEffect } from "react";
+import type {
+  GestureResponderEvent,
+  PressableProps,
+  StyleProp,
+  ViewStyle,
+} from "react-native";
+import { Pressable, StyleSheet } from "react-native";
+import Animated, {
   interpolateColor,
   useAnimatedStyle,
   useSharedValue,
@@ -13,20 +16,33 @@ import {
 
 import { colors } from "@/helpers/colors";
 
-interface SwitchProps extends SwitchPrimitives.RootProps {
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+export interface SwitchProps extends Omit<
+  PressableProps,
+  "style" | "onPress" | "children"
+> {
+  checked: boolean;
+  onCheckedChange?: (checked: boolean) => void;
   style?: StyleProp<ViewStyle>;
-  ref?: Ref<SwitchPrimitives.RootRef>;
+  ref?: React.Ref<ComponentRef<typeof Pressable>>;
 }
 
-const AnimatedRoot = createAnimatedComponent(SwitchPrimitives.Root);
-const AnimatedThumb = createAnimatedComponent(SwitchPrimitives.Thumb);
-
-export const Switch = ({ style, ref, ...props }: SwitchProps) => {
-  const progress = useSharedValue(props.checked ? 1 : 0);
+export const Switch = ({
+  checked,
+  onCheckedChange,
+  disabled,
+  style,
+  ref,
+  accessibilityRole = "switch",
+  accessibilityState,
+  ...props
+}: SwitchProps) => {
+  const progress = useSharedValue(checked ? 1 : 0);
 
   useEffect(() => {
-    progress.value = withTiming(props.checked ? 1 : 0, { duration: 150 });
-  }, [props.checked, progress]);
+    progress.value = withTiming(checked ? 1 : 0, { duration: 150 });
+  }, [checked, progress]);
 
   const rootAnimatedStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(
@@ -40,19 +56,40 @@ export const Switch = ({ style, ref, ...props }: SwitchProps) => {
     transform: [{ translateX: progress.value * 14 }],
   }));
 
+  const handlePress = useCallback(
+    (_event: GestureResponderEvent) => {
+      if (disabled) {
+        return;
+      }
+      onCheckedChange?.(!checked);
+    },
+    [checked, disabled, onCheckedChange]
+  );
+
   return (
-    <AnimatedRoot
+    <AnimatedPressable
       ref={ref}
+      accessibilityRole={accessibilityRole}
+      accessibilityState={{
+        checked,
+        disabled: Boolean(disabled),
+        ...accessibilityState,
+      }}
+      aria-checked={checked}
+      aria-disabled={Boolean(disabled)}
+      disabled={disabled}
+      onPress={handlePress}
+      role="switch"
       style={[
         styles.root,
-        props.disabled && styles.disabled,
+        disabled && styles.disabled,
         rootAnimatedStyle,
         style,
       ]}
       {...props}
     >
-      <AnimatedThumb style={[styles.thumb, thumbAnimatedStyle]} />
-    </AnimatedRoot>
+      <Animated.View style={[styles.thumb, thumbAnimatedStyle]} />
+    </AnimatedPressable>
   );
 };
 

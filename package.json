@@ -29,7 +29,6 @@
   },
   "dependencies": {
     "@lodev09/react-native-true-sheet": "^3.11.18",
-    "@rn-primitives/switch": "^1.5.2",
     "@tanstack/react-form": "^1.29.1",
     "cron-foreground-service": "file:./modules/cron-foreground-service",
     "expo": "~58.0.16",
