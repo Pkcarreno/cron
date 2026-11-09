@@ -8,6 +8,7 @@ import { Text } from "@/components/text";
 import { colors } from "@/helpers/colors";
 import { TimerMode } from "@/helpers/timer/factory";
 import {
+  formatDelta,
   formatDuration,
   formatFullTimeToString,
 } from "@/helpers/timer/utils/formatter";
@@ -190,7 +191,7 @@ const RenderCheckpoints: React.FC<RenderCheckpointsProps> = ({
       </Grid>
       <Grid columns={4} gap={8} style={checkpointsStyle.containerPadding}>
         {summary.checkpoints.map((item) => {
-          const isDeltaColored = item.lapDeltaMs !== 0;
+          const isDeltaColored = Math.abs(item.lapDeltaMs) >= 5;
           const deltaColor =
             item.lapDeltaMs > 0 ? "redHighlight" : "greenHighlight";
           return (
@@ -200,12 +201,12 @@ const RenderCheckpoints: React.FC<RenderCheckpointsProps> = ({
               </Col>
               <Col style={checkpointsStyle.gridColumnCenter}>
                 <Text fontType="mono">
-                  {formatDuration(item.elapsedTimeMs)}
+                  {formatDuration(item.elapsedTimeMs, { fixedDecimals: true })}
                 </Text>
               </Col>
               <Col style={checkpointsStyle.gridColumnCenter}>
                 <Text fontType="mono">
-                  {formatDuration(item.lapDurationMs)}
+                  {formatDuration(item.lapDurationMs, { fixedDecimals: true })}
                 </Text>
               </Col>
               <Col style={checkpointsStyle.gridColumnRight}>
@@ -213,7 +214,7 @@ const RenderCheckpoints: React.FC<RenderCheckpointsProps> = ({
                   fontType="mono"
                   color={isDeltaColored ? deltaColor : undefined}
                 >
-                  {formatDuration(item.lapDeltaMs, true)}
+                  {formatDelta(item.lapDeltaMs)}
                 </Text>
               </Col>
             </Row>

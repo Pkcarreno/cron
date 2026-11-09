@@ -3,6 +3,7 @@ import { describe, expect, it } from "@jest/globals";
 import { TimerMode } from "@/helpers/timer/factory";
 import {
   convertTimeToMs,
+  formatDelta,
   formatDuration,
   formatFullTimeToString,
   formatTimeForDisplay,
@@ -218,6 +219,47 @@ describe("formatter", () => {
 
     it("añade un cero inicial a los segundos si son menores a 10 en formato de minutos/horas", () => {
       expect(formatDuration(65_500, false)).toBe("1:05.50");
+    });
+
+    it("respeta fixedDecimals para ancho tabular uniforme con 2 decimales", () => {
+      expect(formatDuration(500, { fixedDecimals: true })).toBe("0.50s");
+      expect(formatDuration(4300, { fixedDecimals: true })).toBe("4.30s");
+      expect(formatDuration(30_000, { fixedDecimals: true })).toBe("30.00s");
+      expect(formatDuration(120_000, { fixedDecimals: true })).toBe("2:00.00");
+    });
+  });
+
+  describe("formatDelta function", () => {
+    it("formatea delta cero como +0.00s con dos decimales fijos", () => {
+      expect(formatDelta(0)).toBe("+0.00s");
+      expect(formatDelta(0.001)).toBe("+0.00s");
+      expect(formatDelta(-0.001)).toBe("+0.00s");
+      expect(formatDelta(-2.5)).toBe("+0.00s");
+      expect(formatDelta(3.2)).toBe("+0.00s");
+    });
+
+    it("formatea deltas menores a 1 segundo en segundos con dos decimales", () => {
+      expect(formatDelta(412.39999997615814)).toBe("+0.41s");
+      expect(formatDelta(500)).toBe("+0.50s");
+      expect(formatDelta(-200)).toBe("-0.20s");
+      expect(formatDelta(-200.00004768371582)).toBe("-0.20s");
+    });
+
+    it("mantiene ceros fijos a la derecha para deltas menores a 60 segundos", () => {
+      expect(formatDelta(4300)).toBe("+4.30s");
+      expect(formatDelta(15_000)).toBe("+15.00s");
+      expect(formatDelta(-15_000)).toBe("-15.00s");
+    });
+
+    it("formatea deltas mayores a 1 minuto en notación de reloj M:SS.ss sin sufijo 's'", () => {
+      expect(formatDelta(65_500)).toBe("+1:05.50");
+      expect(formatDelta(330_340)).toBe("+5:30.34");
+      expect(formatDelta(-330_340)).toBe("-5:30.34");
+    });
+
+    it("formatea deltas mayores a 1 hora en notación de reloj H:MM:SS.ss", () => {
+      expect(formatDelta(3_930_340)).toBe("+1:05:30.34");
+      expect(formatDelta(-3_930_340)).toBe("-1:05:30.34");
     });
   });
 

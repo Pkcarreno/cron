@@ -6,7 +6,7 @@ import type { TimerConfig } from "@/helpers/timer/factory";
 import { TimerMode } from "@/helpers/timer/factory";
 import { TimerPhase } from "@/helpers/timer/strategy";
 import {
-  formatDuration,
+  formatDelta,
   formatTimeForDisplay,
   getModeAbbreviation,
 } from "@/helpers/timer/utils/formatter";
@@ -185,7 +185,7 @@ export const timerQuickAccessInfoAtom = atom<string[]>((get) => {
     activeLap && activeLap > 0
       ? `L${activeLap.toString().padStart(2, "0")}`
       : null,
-    delta === undefined ? null : formatDuration(delta, true),
+    delta === undefined ? null : formatDelta(delta),
   ].filter((item): item is string => Boolean(item));
 });
 
