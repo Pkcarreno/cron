@@ -1,31 +1,43 @@
-import { z } from "zod";
+import * as v from "valibot";
 
 import type { TimerConfig } from "@/helpers/timer/factory";
 import { TimerMode } from "@/helpers/timer/factory";
 
-export const amrapSchema = z.object({
-  durationMs: z.coerce.number().min(1, "Duration must be at least 1ms"),
+const coercedPositiveNumber = (minMessage: string) =>
+  v.pipe(v.unknown(), v.toNumber(), v.number(), v.minValue(1, minMessage));
+
+const coercedPositiveInteger = (minMessage: string) =>
+  v.pipe(
+    v.unknown(),
+    v.toNumber(),
+    v.number(),
+    v.integer(),
+    v.minValue(1, minMessage)
+  );
+
+export const amrapSchema = v.object({
+  durationMs: coercedPositiveNumber("Duration must be at least 1ms"),
 });
 
-export const forTimeSchema = z.object({
-  timecapMs: z.coerce.number().min(1, "Time cap must be at least 1ms"),
+export const forTimeSchema = v.object({
+  timecapMs: coercedPositiveNumber("Time cap must be at least 1ms"),
 });
 
-export const emomSchema = z.object({
-  roundDurationMs: z.coerce
-    .number()
-    .min(1, "Round duration must be at least 1ms"),
-  totalRounds: z.coerce.number().int().min(1, "Rounds must be at least 1"),
+export const emomSchema = v.object({
+  roundDurationMs: coercedPositiveNumber("Round duration must be at least 1ms"),
+  totalRounds: coercedPositiveInteger("Rounds must be at least 1"),
 });
 
-export const intervalSchema = z.object({
-  restMs: z.coerce.number().min(1, "Rest duration must be at least 1ms"),
-  totalRounds: z.coerce.number().int().min(1, "Rounds must be at least 1"),
-  workMs: z.coerce.number().min(1, "Work duration must be at least 1ms"),
+export const intervalSchema = v.object({
+  restMs: coercedPositiveNumber("Rest duration must be at least 1ms"),
+  totalRounds: coercedPositiveInteger("Rounds must be at least 1"),
+  workMs: coercedPositiveNumber("Work duration must be at least 1ms"),
 });
 
-export const stopWatchSchema = z.object({
-  uiTickResolutionMs: z.coerce.number().positive().optional(),
+export const stopWatchSchema = v.object({
+  uiTickResolutionMs: v.optional(
+    v.pipe(v.unknown(), v.toNumber(), v.number(), v.minValue(1))
+  ),
 });
 
 export const amrapDefaults = {
@@ -75,29 +87,29 @@ export const DEFAULT_CONFIG_BY_MODE: Record<TimerMode, TimerConfig> = {
 export const DEFAULT_TIMER_CONFIG: TimerConfig =
   DEFAULT_CONFIG_BY_MODE[TimerMode.FOR_TIME];
 
-export const timerConfigSchema = z.discriminatedUnion("mode", [
-  z.object({
-    durationMs: amrapSchema.shape.durationMs,
-    mode: z.literal(TimerMode.AMRAP),
+export const timerConfigSchema = v.variant("mode", [
+  v.object({
+    durationMs: amrapSchema.entries.durationMs,
+    mode: v.literal(TimerMode.AMRAP),
   }),
-  z.object({
-    mode: z.literal(TimerMode.FOR_TIME),
-    timecapMs: forTimeSchema.shape.timecapMs,
+  v.object({
+    mode: v.literal(TimerMode.FOR_TIME),
+    timecapMs: forTimeSchema.entries.timecapMs,
   }),
-  z.object({
-    mode: z.literal(TimerMode.EMOM),
-    roundDurationMs: emomSchema.shape.roundDurationMs,
-    totalRounds: emomSchema.shape.totalRounds,
+  v.object({
+    mode: v.literal(TimerMode.EMOM),
+    roundDurationMs: emomSchema.entries.roundDurationMs,
+    totalRounds: emomSchema.entries.totalRounds,
   }),
-  z.object({
-    mode: z.literal(TimerMode.INTERVAL),
-    restMs: intervalSchema.shape.restMs,
-    totalRounds: intervalSchema.shape.totalRounds,
-    workMs: intervalSchema.shape.workMs,
+  v.object({
+    mode: v.literal(TimerMode.INTERVAL),
+    restMs: intervalSchema.entries.restMs,
+    totalRounds: intervalSchema.entries.totalRounds,
+    workMs: intervalSchema.entries.workMs,
   }),
-  z.object({
-    mode: z.literal(TimerMode.STOP_WATCH),
-    uiTickResolutionMs: stopWatchSchema.shape.uiTickResolutionMs,
+  v.object({
+    mode: v.literal(TimerMode.STOP_WATCH),
+    uiTickResolutionMs: stopWatchSchema.entries.uiTickResolutionMs,
   }),
 ]);
 
@@ -128,9 +140,9 @@ export const deserializeTimerConfig = (
     ? DEFAULT_CONFIG_BY_MODE[rawMode as TimerMode]
     : DEFAULT_TIMER_CONFIG;
 
-  const parseResult = timerConfigSchema.safeParse(normalizedParams);
+  const parseResult = v.safeParse(timerConfigSchema, normalizedParams);
   if (parseResult.success) {
-    return parseResult.data as TimerConfig;
+    return parseResult.output as TimerConfig;
   }
 
   return fallbackForMode;

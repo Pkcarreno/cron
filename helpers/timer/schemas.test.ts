@@ -1,3 +1,5 @@
+import * as v from "valibot";
+
 import { TimerMode } from "@/helpers/timer/factory";
 
 import {
@@ -24,19 +26,20 @@ describe("timer schemas and defaults", () => {
 
   it("validates all defaults with schemasByMode successfully", () => {
     expect(
-      schemasByMode[TimerMode.FOR_TIME].safeParse(forTimeDefaults).success
+      v.safeParse(schemasByMode[TimerMode.FOR_TIME], forTimeDefaults).success
     ).toBe(true);
     expect(
-      schemasByMode[TimerMode.AMRAP].safeParse(amrapDefaults).success
-    ).toBe(true);
-    expect(schemasByMode[TimerMode.EMOM].safeParse(emomDefaults).success).toBe(
-      true
-    );
-    expect(
-      schemasByMode[TimerMode.INTERVAL].safeParse(intervalDefaults).success
+      v.safeParse(schemasByMode[TimerMode.AMRAP], amrapDefaults).success
     ).toBe(true);
     expect(
-      schemasByMode[TimerMode.STOP_WATCH].safeParse(stopWatchDefaults).success
+      v.safeParse(schemasByMode[TimerMode.EMOM], emomDefaults).success
+    ).toBe(true);
+    expect(
+      v.safeParse(schemasByMode[TimerMode.INTERVAL], intervalDefaults).success
+    ).toBe(true);
+    expect(
+      v.safeParse(schemasByMode[TimerMode.STOP_WATCH], stopWatchDefaults)
+        .success
     ).toBe(true);
   });
 

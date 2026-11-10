@@ -1,6 +1,7 @@
 import { useAtom } from "jotai/react";
 import { useCallback, useMemo } from "react";
 import { ScrollView } from "react-native";
+import * as v from "valibot";
 
 import {
   Field,
@@ -22,11 +23,11 @@ export const ForTimeForm = ({ paddingBottom }: ForTimeFormProps) => {
   const [forTime, setForTime] = useAtom(forTimeWorkoutAtom);
 
   const errors = useMemo(() => {
-    const result = forTimeSchema.safeParse(forTime);
+    const result = v.safeParse(forTimeSchema, forTime);
     if (result.success) {
       return [];
     }
-    return result.error.issues;
+    return result.issues;
   }, [forTime]);
 
   const handleTimecapChange = useCallback(

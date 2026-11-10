@@ -1,6 +1,7 @@
 import { useAtom } from "jotai/react";
 import { useCallback, useMemo } from "react";
 import { ScrollView } from "react-native";
+import * as v from "valibot";
 
 import {
   Field,
@@ -26,16 +27,27 @@ export const EmomForm = ({ paddingBottom }: EmomFormProps) => {
   const [emom, setEmom] = useAtom(emomWorkoutAtom);
 
   const errorsByField = useMemo(() => {
-    const result = emomSchema.safeParse(emom);
+    const result = v.safeParse(emomSchema, emom);
     const errors: Record<string, { message?: string }[]> = {
       roundDurationMs: [],
       totalRounds: [],
     };
     if (!result.success) {
-      for (const issue of result.error.issues) {
-        const [path] = issue.path;
-        if (typeof path === "string" && errors[path]) {
-          errors[path].push(issue);
+      for (const issue of result.issues) {
+        const pathItem = issue.path?.[0];
+        let key: string | undefined;
+        if (
+          typeof pathItem === "object" &&
+          pathItem !== null &&
+          "key" in pathItem
+        ) {
+          key = String(pathItem.key);
+        } else if (typeof pathItem === "string") {
+          key = pathItem;
+        }
+
+        if (key && errors[key]) {
+          errors[key].push(issue);
         }
       }
     }
