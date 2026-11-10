@@ -1,5 +1,6 @@
 import type { Getter } from "jotai";
 import { atom } from "jotai";
+import * as v from "valibot";
 
 import type { TimerConfig } from "@/helpers/timer/factory";
 import { TimerMode } from "@/helpers/timer/factory";
@@ -59,25 +60,28 @@ export const workoutAtoms = {
 const evaluateActiveTimerValidity = (mode: TimerMode, get: Getter): boolean => {
   switch (mode) {
     case TimerMode.FOR_TIME: {
-      return schemasByMode[TimerMode.FOR_TIME].safeParse(
+      return v.safeParse(
+        schemasByMode[TimerMode.FOR_TIME],
         get(forTimeWorkoutAtom)
       ).success;
     }
     case TimerMode.AMRAP: {
-      return schemasByMode[TimerMode.AMRAP].safeParse(get(amrapWorkoutAtom))
+      return v.safeParse(schemasByMode[TimerMode.AMRAP], get(amrapWorkoutAtom))
         .success;
     }
     case TimerMode.EMOM: {
-      return schemasByMode[TimerMode.EMOM].safeParse(get(emomWorkoutAtom))
+      return v.safeParse(schemasByMode[TimerMode.EMOM], get(emomWorkoutAtom))
         .success;
     }
     case TimerMode.INTERVAL: {
-      return schemasByMode[TimerMode.INTERVAL].safeParse(
+      return v.safeParse(
+        schemasByMode[TimerMode.INTERVAL],
         get(intervalWorkoutAtom)
       ).success;
     }
     case TimerMode.STOP_WATCH: {
-      return schemasByMode[TimerMode.STOP_WATCH].safeParse(
+      return v.safeParse(
+        schemasByMode[TimerMode.STOP_WATCH],
         get(stopWatchWorkoutAtom)
       ).success;
     }

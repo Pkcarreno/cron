@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as v from "valibot";
 
 import type {
   AmrapConfig,
@@ -17,34 +17,58 @@ export {
   stopWatchDefaults,
 } from "@/helpers/timer/utils/config-serializer";
 
-export const emomSchema = z.object({
-  roundDurationMs: z.number().min(1, "Round duration must be at least 1ms"),
-  totalRounds: z.number().min(1, "Rounds must be at least 1"),
-}) satisfies z.ZodType<Omit<EmomConfig, "mode">>;
+export const emomSchema = v.object({
+  roundDurationMs: v.pipe(
+    v.number(),
+    v.minValue(1, "Round duration must be at least 1ms")
+  ),
+  totalRounds: v.pipe(v.number(), v.minValue(1, "Rounds must be at least 1")),
+});
 
-export const amrapSchema = z.object({
-  durationMs: z.number().min(1, "Duration must be at least 1ms"),
-}) satisfies z.ZodType<Omit<AmrapConfig, "mode">>;
+export const amrapSchema = v.object({
+  durationMs: v.pipe(
+    v.number(),
+    v.minValue(1, "Duration must be at least 1ms")
+  ),
+});
 
-export const intervalSchema = z.object({
-  restMs: z.number().min(1, "Rest duration must be at least 1ms"),
-  totalRounds: z.number().min(1, "Rounds must be at least 1"),
-  workMs: z.number().min(1, "Work duration must be at least 1ms"),
-}) satisfies z.ZodType<Omit<IntervalConfig, "mode">>;
+export const intervalSchema = v.object({
+  restMs: v.pipe(
+    v.number(),
+    v.minValue(1, "Rest duration must be at least 1ms")
+  ),
+  totalRounds: v.pipe(v.number(), v.minValue(1, "Rounds must be at least 1")),
+  workMs: v.pipe(
+    v.number(),
+    v.minValue(1, "Work duration must be at least 1ms")
+  ),
+});
 
-export const forTimeSchema = z.object({
-  timecapMs: z.number().min(1, "Time cap must be at least 1ms"),
-}) satisfies z.ZodType<Omit<ForTimeConfig, "mode">>;
+export const forTimeSchema = v.object({
+  timecapMs: v.pipe(v.number(), v.minValue(1, "Time cap must be at least 1ms")),
+});
 
-export const stopWatchSchema = z.object({
-  uiTickResolutionMs: z.number().positive().optional(),
-}) satisfies z.ZodType<Omit<StopWatchConfig, "mode">>;
+export const stopWatchSchema = v.object({
+  uiTickResolutionMs: v.optional(v.pipe(v.number(), v.minValue(1))),
+});
 
-export type EmomFormValues = z.infer<typeof emomSchema>;
-export type AmrapFormValues = z.infer<typeof amrapSchema>;
-export type IntervalFormValues = z.infer<typeof intervalSchema>;
-export type ForTimeFormValues = z.infer<typeof forTimeSchema>;
-export type StopWatchFormValues = z.infer<typeof stopWatchSchema>;
+export type EmomFormValues = v.InferOutput<typeof emomSchema>;
+export type AmrapFormValues = v.InferOutput<typeof amrapSchema>;
+export type IntervalFormValues = v.InferOutput<typeof intervalSchema>;
+export type ForTimeFormValues = v.InferOutput<typeof forTimeSchema>;
+export type StopWatchFormValues = v.InferOutput<typeof stopWatchSchema>;
+
+// Compile-time checks that form values match Omit<*Config, "mode">
+type _AssertEmom =
+  EmomFormValues extends Omit<EmomConfig, "mode"> ? true : false;
+type _AssertAmrap =
+  AmrapFormValues extends Omit<AmrapConfig, "mode"> ? true : false;
+type _AssertInterval =
+  IntervalFormValues extends Omit<IntervalConfig, "mode"> ? true : false;
+type _AssertForTime =
+  ForTimeFormValues extends Omit<ForTimeConfig, "mode"> ? true : false;
+type _AssertStopWatch =
+  StopWatchFormValues extends Omit<StopWatchConfig, "mode"> ? true : false;
 
 export const TIMER_MODES = [
   TimerMode.FOR_TIME,

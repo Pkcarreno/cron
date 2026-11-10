@@ -1,6 +1,7 @@
 import { useAtom } from "jotai/react";
 import { useCallback, useMemo } from "react";
 import { ScrollView } from "react-native";
+import * as v from "valibot";
 
 import {
   Field,
@@ -22,11 +23,11 @@ export const AmrapForm = ({ paddingBottom }: AmrapFormProps) => {
   const [amrap, setAmrap] = useAtom(amrapWorkoutAtom);
 
   const errors = useMemo(() => {
-    const result = amrapSchema.safeParse(amrap);
+    const result = v.safeParse(amrapSchema, amrap);
     if (result.success) {
       return [];
     }
-    return result.error.issues;
+    return result.issues;
   }, [amrap]);
 
   const handleDurationChange = useCallback(

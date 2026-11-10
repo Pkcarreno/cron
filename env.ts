@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as v from "valibot";
 
 import packageJSON from "./package.json";
 
@@ -8,19 +8,21 @@ const getBuildNumber = (): number => {
 };
 
 // Single unified environment schema
-const envSchema = z.object({
-  EXPO_PUBLIC_APP_ENV: z.enum(["development", "preview", "production"]),
-  EXPO_PUBLIC_BUILD_NUMBER: z.number(),
-  EXPO_PUBLIC_BUNDLE_ID: z.string(),
-  EXPO_PUBLIC_NAME: z.string(),
-  EXPO_PUBLIC_PACKAGE: z.string(),
-  EXPO_PUBLIC_SCHEME: z.string(),
-  EXPO_PUBLIC_VERSION: z.string(),
+const envSchema = v.object({
+  EXPO_PUBLIC_APP_ENV: v.picklist(["development", "preview", "production"]),
+  EXPO_PUBLIC_BUILD_NUMBER: v.number(),
+  EXPO_PUBLIC_BUNDLE_ID: v.string(),
+  EXPO_PUBLIC_NAME: v.string(),
+  EXPO_PUBLIC_PACKAGE: v.string(),
+  EXPO_PUBLIC_SCHEME: v.string(),
+  EXPO_PUBLIC_VERSION: v.string(),
 });
+
+type EnvValues = v.InferOutput<typeof envSchema>;
 
 // Config records per environment
 const EXPO_PUBLIC_APP_ENV = (process.env.EXPO_PUBLIC_APP_ENV ??
-  "development") as z.infer<typeof envSchema>["EXPO_PUBLIC_APP_ENV"];
+  "development") as EnvValues["EXPO_PUBLIC_APP_ENV"];
 
 const BUNDLE_IDS = {
   development: "com.pkcarreno.cron.development",
@@ -50,7 +52,7 @@ const NAME = {
 const STRICT_ENV_VALIDATION = process.env.STRICT_ENV_VALIDATION === "1";
 
 // Build env object
-const _env: z.infer<typeof envSchema> = {
+const _env: EnvValues = {
   EXPO_PUBLIC_APP_ENV,
   EXPO_PUBLIC_BUILD_NUMBER: getBuildNumber(),
   EXPO_PUBLIC_BUNDLE_ID: BUNDLE_IDS[EXPO_PUBLIC_APP_ENV],
@@ -60,13 +62,14 @@ const _env: z.infer<typeof envSchema> = {
   EXPO_PUBLIC_VERSION: packageJSON.version,
 };
 
-const getValidatedEnv = (env: z.infer<typeof envSchema>) => {
-  const parsed = envSchema.safeParse(env);
+const getValidatedEnv = (env: EnvValues) => {
+  const parsed = v.safeParse(envSchema, env);
 
   if (parsed.success === false) {
+    const fieldErrors = v.flatten(parsed.issues).nested;
     const errorMessage =
       `❌ Invalid environment variables:${JSON.stringify(
-        parsed.error.flatten().fieldErrors,
+        fieldErrors,
         null,
         2
       )}\n❌ Missing variables in .env file for APP_ENV=${EXPO_PUBLIC_APP_ENV}` +
@@ -80,7 +83,7 @@ const getValidatedEnv = (env: z.infer<typeof envSchema>) => {
     console.log("✅ Environment variables validated successfully");
   }
 
-  return parsed.success ? parsed.data : env;
+  return parsed.success ? parsed.output : env;
 };
 
 const Env = STRICT_ENV_VALIDATION ? getValidatedEnv(_env) : _env;

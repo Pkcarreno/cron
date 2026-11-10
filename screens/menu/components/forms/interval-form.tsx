@@ -1,6 +1,7 @@
 import { useAtom } from "jotai/react";
 import { useCallback, useMemo } from "react";
 import { ScrollView } from "react-native";
+import * as v from "valibot";
 
 import {
   Field,
@@ -26,17 +27,28 @@ export const IntervalForm = ({ paddingBottom }: IntervalFormProps) => {
   const [interval, setInterval] = useAtom(intervalWorkoutAtom);
 
   const errorsByField = useMemo(() => {
-    const result = intervalSchema.safeParse(interval);
+    const result = v.safeParse(intervalSchema, interval);
     const errors: Record<string, { message?: string }[]> = {
       restMs: [],
       totalRounds: [],
       workMs: [],
     };
     if (!result.success) {
-      for (const issue of result.error.issues) {
-        const [path] = issue.path;
-        if (typeof path === "string" && errors[path]) {
-          errors[path].push(issue);
+      for (const issue of result.issues) {
+        const pathItem = issue.path?.[0];
+        let key: string | undefined;
+        if (
+          typeof pathItem === "object" &&
+          pathItem !== null &&
+          "key" in pathItem
+        ) {
+          key = String(pathItem.key);
+        } else if (typeof pathItem === "string") {
+          key = pathItem;
+        }
+
+        if (key && errors[key]) {
+          errors[key].push(issue);
         }
       }
     }
