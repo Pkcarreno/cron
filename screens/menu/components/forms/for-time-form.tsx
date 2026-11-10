@@ -16,10 +16,14 @@ import { forTimeSchema } from "@/screens/menu/schema";
 import { forTimeWorkoutAtom } from "@/stores/workout";
 
 export interface ForTimeFormProps {
-  paddingBottom: number;
+  paddingTop?: number;
+  paddingBottom?: number;
 }
 
-export const ForTimeForm = ({ paddingBottom }: ForTimeFormProps) => {
+export const ForTimeForm = ({
+  paddingTop = 0,
+  paddingBottom = 0,
+}: ForTimeFormProps) => {
   const [forTime, setForTime] = useAtom(forTimeWorkoutAtom);
 
   const errors = useMemo(() => {
@@ -39,8 +43,16 @@ export const ForTimeForm = ({ paddingBottom }: ForTimeFormProps) => {
 
   return (
     <ScrollView
+      testID="for-time-form-scroll"
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom }}
+      contentContainerStyle={{
+        paddingBottom,
+        paddingTop,
+      }}
+      scrollIndicatorInsets={{
+        bottom: paddingBottom,
+        top: paddingTop,
+      }}
     >
       <FieldSet>
         <FieldGroup>

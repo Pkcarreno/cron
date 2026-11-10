@@ -20,10 +20,14 @@ import { emomSchema } from "@/screens/menu/schema";
 import { emomWorkoutAtom } from "@/stores/workout";
 
 export interface EmomFormProps {
-  paddingBottom: number;
+  paddingTop?: number;
+  paddingBottom?: number;
 }
 
-export const EmomForm = ({ paddingBottom }: EmomFormProps) => {
+export const EmomForm = ({
+  paddingTop = 0,
+  paddingBottom = 0,
+}: EmomFormProps) => {
   const [emom, setEmom] = useAtom(emomWorkoutAtom);
 
   const errorsByField = useMemo(() => {
@@ -77,8 +81,16 @@ export const EmomForm = ({ paddingBottom }: EmomFormProps) => {
 
   return (
     <ScrollView
+      testID="emom-form-scroll"
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom }}
+      contentContainerStyle={{
+        paddingBottom,
+        paddingTop,
+      }}
+      scrollIndicatorInsets={{
+        bottom: paddingBottom,
+        top: paddingTop,
+      }}
     >
       <FieldSet>
         <FieldGroup>
