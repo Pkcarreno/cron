@@ -1,6 +1,8 @@
 export const colors = {
   black: "#000000",
   blue: "#0E76FF",
+  glassBorder: "rgba(255, 255, 255, 0.08)",
+  glassFallback: "rgba(20, 20, 20, 0.75)",
   green: "#008153",
   greenHighlight: "#B1D732",
   neutral: {

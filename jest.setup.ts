@@ -86,3 +86,39 @@ jest.mock("react-native-pager-view", () => {
     default: PagerView,
   };
 });
+
+jest.mock("expo-blur", () => {
+  const ReactMock = require("react");
+  const { View } = require("react-native");
+
+  const BlurView = ReactMock.forwardRef((props: any, ref: any) =>
+    ReactMock.createElement(
+      View,
+      {
+        ...props,
+        ref,
+      },
+      props.children
+    )
+  );
+  BlurView.displayName = "BlurView";
+
+  const BlurTargetView = ReactMock.forwardRef((props: any, ref: any) =>
+    ReactMock.createElement(
+      View,
+      {
+        ...props,
+        ref,
+      },
+      props.children
+    )
+  );
+  BlurTargetView.displayName = "BlurTargetView";
+
+  return {
+    BlurTargetView,
+    BlurView,
+    __esModule: true,
+    default: BlurView,
+  };
+});
