@@ -12,6 +12,7 @@ const AnimatedPagerView = createAnimatedComponent(PagerView);
 
 export const FormPagerViewport = ({
   pageStyle,
+  pagerStyle,
   style,
   testID = "form-pager-view",
 }: FormPagerViewportProps) => {
@@ -42,7 +43,7 @@ export const FormPagerViewport = ({
         testID={testID}
         collapsable={false}
         ref={pagerRef}
-        style={styles.pagerView}
+        style={[styles.pagerView, pagerStyle]}
         initialPage={selectedIndex}
         overdrag={true}
         onPageScroll={
@@ -74,6 +75,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   pagerView: {
+    ...StyleSheet.absoluteFill,
     flex: 1,
   },
   viewportWrapper: {

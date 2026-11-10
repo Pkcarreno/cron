@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent } from "@testing-library/react-native";
 import { createStore } from "jotai";
 import React from "react";
+import { StyleSheet } from "react-native";
 
 import { TimerMode } from "@/helpers/timer/factory";
 import { serializeTimerConfig } from "@/helpers/timer/utils/config-serializer";
@@ -284,5 +285,75 @@ describe("Menu integration", () => {
       expect(tab).toBeTruthy();
       expect(tab.props.collapsable).toBe(false);
     }
+  });
+
+  it("composes edge-to-edge layout with compound FormPager hierarchy and AnimatedPagerView filling the screen", async () => {
+    const store = createStore();
+    const screen = await renderWithProviders(<Menu />, { store });
+
+    const menuScreen = screen.getByTestId("menu-screen");
+    expect(menuScreen).toBeTruthy();
+
+    const pagerView = screen.getByTestId("form-pager-view");
+    expect(pagerView).toBeTruthy();
+
+    const flattenedPagerStyle = StyleSheet.flatten(pagerView.props.style);
+    expect(flattenedPagerStyle.position).toBe("absolute");
+    expect(flattenedPagerStyle.top).toBe(0);
+    expect(flattenedPagerStyle.bottom).toBe(0);
+    expect(flattenedPagerStyle.left).toBe(0);
+    expect(flattenedPagerStyle.right).toBe(0);
+  });
+
+  it("integrates Cron, Logo, Job subtitle, and TabBar inside top floating header over GlassSurface with pointerEvents box-none", async () => {
+    const store = createStore();
+    const screen = await renderWithProviders(<Menu />, { store });
+
+    const header = screen.getByTestId("menu-floating-header");
+    expect(header).toBeTruthy();
+    expect(header.props.pointerEvents).toBe("box-none");
+
+    const headerGlass = screen.getByTestId("menu-header-glass");
+    expect(headerGlass).toBeTruthy();
+    expect(headerGlass.props.pointerEvents).toBe("box-none");
+
+    expect(screen.getByText("Cron")).toBeTruthy();
+    expect(screen.getByText("Job")).toBeTruthy();
+    expect(screen.getByTestId("segmented-tab-bar")).toBeTruthy();
+  });
+
+  it("renders floating action dock island wrapped in GlassSurface with borderRadius 28", async () => {
+    const store = createStore();
+    const screen = await renderWithProviders(<Menu />, { store });
+
+    const dockSlot = screen.getByTestId("menu-floating-dock");
+    expect(dockSlot).toBeTruthy();
+    expect(dockSlot.props.pointerEvents).toBe("box-none");
+
+    const dock = screen.getByTestId("floating-action-dock");
+    expect(dock).toBeTruthy();
+
+    const flattenedDockStyle = StyleSheet.flatten(dock.props.style);
+    expect(flattenedDockStyle.borderRadius).toBe(28);
+  });
+
+  it("ensures form items in IntervalForm receive top and bottom insets to scroll behind header blur and dock capsule", async () => {
+    const store = createStore();
+    const screen = await renderWithProviders(<Menu />, { store });
+
+    // Switch to INTERVAL mode (index 2 in TIMER_MODES: FOR_TIME=0, AMRAP=1, INTERVAL=2)
+    const pagerView = screen.getByTestId("form-pager-view");
+    await act(() => {
+      fireEvent(pagerView, "onPageSelected", {
+        nativeEvent: { position: 2 },
+      });
+    });
+
+    const intervalScrollView = screen.getByTestId("interval-form-scroll");
+    expect(intervalScrollView).toBeTruthy();
+
+    const contentStyle = intervalScrollView.props.contentContainerStyle;
+    expect(contentStyle.paddingTop).toBeGreaterThanOrEqual(156);
+    expect(contentStyle.paddingBottom).toBeGreaterThanOrEqual(128);
   });
 });

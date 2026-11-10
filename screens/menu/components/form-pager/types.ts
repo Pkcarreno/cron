@@ -64,6 +64,7 @@ export interface FormPagerViewportProps {
   testID?: string;
   style?: StyleProp<ViewStyle>;
   pageStyle?: StyleProp<ViewStyle>;
+  pagerStyle?: StyleProp<ViewStyle>;
 }
 
 export interface FormPagerDockProps extends ViewProps {

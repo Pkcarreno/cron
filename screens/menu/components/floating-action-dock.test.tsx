@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent } from "@testing-library/react-native";
 import { createStore } from "jotai";
 import React from "react";
+import { StyleSheet } from "react-native";
 
 import { TimerMode } from "@/helpers/timer/factory";
 import { serializeTimerConfig } from "@/helpers/timer/utils/config-serializer";
@@ -70,5 +71,38 @@ describe("FloatingActionDock", () => {
     });
 
     expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it("renders inside GlassSurface capsule with borderRadius 28 and full border treatment", async () => {
+    const store = createStore();
+    const screen = await renderWithProviders(<FloatingActionDock />, { store });
+
+    const dock = screen.getByTestId("floating-action-dock");
+    expect(dock).toBeTruthy();
+
+    const flattenedStyle = StyleSheet.flatten(dock.props.style);
+    expect(flattenedStyle.borderRadius).toBe(28);
+    expect(flattenedStyle.borderWidth).toBeDefined();
+    expect(flattenedStyle.borderColor).toBeDefined();
+  });
+
+  it("applies bottom safe-area offset to the container", async () => {
+    const store = createStore();
+    const customMetrics = {
+      frame: { height: 844, width: 390, x: 0, y: 0 },
+      insets: { bottom: 34, left: 0, right: 0, top: 47 },
+    };
+
+    const screen = await renderWithProviders(<FloatingActionDock />, {
+      initialMetrics: customMetrics,
+      store,
+    });
+
+    const dock = screen.getByTestId("floating-action-dock");
+    const container = dock.parent;
+    expect(container).toBeTruthy();
+
+    const containerStyle = StyleSheet.flatten(container?.props.style);
+    expect(containerStyle.paddingBottom).toBe(34);
   });
 });
