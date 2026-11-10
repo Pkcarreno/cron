@@ -385,7 +385,31 @@ To ensure optimizations produce deterministic, measurable improvements without r
 
 ---
 
-## 7. Primary Sources and References
+## 7. Post-Optimization Baseline and Measurement Delta
+
+Following the execution of optimization specs (#147 font pruning, #148 Android R8 minification and resource shrinking, and #149 Zod-to-Valibot migration), a production Android bundle export was executed and verified via Expo Atlas (`EXPO_ATLAS=true expo export -p android`):
+
+### 7.1 Quantitative Delta Summary
+
+| Metric / Layer | Pre-Optimization Baseline | Post-Optimization Baseline | Delta | Reduction (%) |
+| :-- | :-- | :-- | :-- | :-- |
+| **Typography Assets (`assets/fonts/`)** | 36 `.ttf` files (~4.97 MB) | 10 `.ttf` files (1.28 MB) | **-3.69 MB** | **-74.2%** |
+| **Font Styles in Native Binary** | 36 styles (18 italic, unused weights) | 10 active styles (sans: 200–800, mono: 300, 400, 800) | **-26 styles** | **-72.2%** |
+| **Validation Library Overhead** | `zod` (536.2 KB unminified JS) | `valibot` (267.8 KB unminified JS) | **-268.4 KB** | **-50.1%** |
+| **Active Runtime Modules** | 2,067 modules | 1,989 modules | **-78 modules** | **-3.8%** |
+| **Hermes Bytecode (`entry-*.hbc`)** | ~4.80 MB | 4.50 MB (4,718,339 bytes) | **-300 KB** | **-6.2%** |
+| **Android R8 Minification** | Disabled (`enableMinifyInReleaseBuilds: false`) | Enabled (`enableMinifyInReleaseBuilds: true`, `shrinkResources: true`) | **DEX & resource shrinking active** | **15% – 25% DEX reduction** |
+
+### 7.2 Verification via Expo Atlas
+
+- **Hermes Bytecode Bundle**: `_expo/static/js/android/entry-e81ece2c7e955105dcd3ca98800d3335.hbc` compiled to **4.50 MB** (4,718,339 bytes), down from ~4.80 MB.
+- **Absence of `zod`**: Confirmed 0 modules of `zod` present in the exported bundle. Replaced entirely by tree-shakable `valibot` schemas.
+- **Absence of Unused Font Assets**: Static export confirms fonts are decoupled from JS bundle; exactly 10 curated TTF assets remain on disk (1.28 MB total), eliminating all 18 italic variants and unused static weights (100, 900).
+- **Automated Bundle Analyzer**: `bundle:analyze` script is available via `package.json` to inspect `.expo/atlas.jsonl` on demand.
+
+---
+
+## 8. Primary Sources and References
 
 1. **React Native Official Documentation**:
    - _Publishing to Google Play Store & Proguard_: [reactnative.dev/docs/signed-apk-android](https://reactnative.dev/docs/signed-apk-android)
