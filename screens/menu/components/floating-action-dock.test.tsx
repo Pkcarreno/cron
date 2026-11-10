@@ -73,7 +73,7 @@ describe("FloatingActionDock", () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
-  it("renders inside GlassSurface capsule with borderRadius 28 and full border treatment", async () => {
+  it("renders inside GlassSurface container with borderRadius 14 and full border treatment", async () => {
     const store = createStore();
     const screen = await renderWithProviders(<FloatingActionDock />, { store });
 
@@ -81,7 +81,7 @@ describe("FloatingActionDock", () => {
     expect(dock).toBeTruthy();
 
     const flattenedStyle = StyleSheet.flatten(dock.props.style);
-    expect(flattenedStyle.borderRadius).toBe(28);
+    expect(flattenedStyle.borderRadius).toBe(14);
     expect(flattenedStyle.borderWidth).toBeDefined();
     expect(flattenedStyle.borderColor).toBeDefined();
   });
