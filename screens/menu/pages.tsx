@@ -19,7 +19,9 @@ export const MENU_PAGES: FormTabOption<TimerMode>[] = TIMER_MODES.map(
   (mode) => {
     const FormComponent = FORM_COMPONENTS[mode];
     return {
-      content: (inset) => <FormComponent paddingBottom={inset.bottom} />,
+      content: (insets) => (
+        <FormComponent paddingTop={insets.top} paddingBottom={insets.bottom} />
+      ),
       label: mode,
       value: mode,
     };

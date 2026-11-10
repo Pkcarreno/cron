@@ -3,14 +3,29 @@ import { ScrollView, StyleSheet, View } from "react-native";
 import { Text } from "@/components/text";
 
 export interface StopWatchFormProps {
-  paddingBottom: number;
+  paddingTop?: number;
+  paddingBottom?: number;
 }
 
-export const StopWatchForm = ({ paddingBottom }: StopWatchFormProps) => (
+export const StopWatchForm = ({
+  paddingTop = 0,
+  paddingBottom = 0,
+}: StopWatchFormProps) => (
   <ScrollView
+    testID="stopwatch-form-scroll"
     showsVerticalScrollIndicator={false}
     style={styles.container}
-    contentContainerStyle={[styles.contentContainer, { paddingBottom }]}
+    contentContainerStyle={[
+      styles.contentContainer,
+      {
+        paddingBottom,
+        paddingTop,
+      },
+    ]}
+    scrollIndicatorInsets={{
+      bottom: paddingBottom,
+      top: paddingTop,
+    }}
   >
     <View style={styles.contentWrapper}>
       <View style={styles.header}>

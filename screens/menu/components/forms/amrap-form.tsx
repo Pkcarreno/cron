@@ -16,10 +16,14 @@ import { amrapSchema } from "@/screens/menu/schema";
 import { amrapWorkoutAtom } from "@/stores/workout";
 
 export interface AmrapFormProps {
-  paddingBottom: number;
+  paddingTop?: number;
+  paddingBottom?: number;
 }
 
-export const AmrapForm = ({ paddingBottom }: AmrapFormProps) => {
+export const AmrapForm = ({
+  paddingTop = 0,
+  paddingBottom = 0,
+}: AmrapFormProps) => {
   const [amrap, setAmrap] = useAtom(amrapWorkoutAtom);
 
   const errors = useMemo(() => {
@@ -39,8 +43,16 @@ export const AmrapForm = ({ paddingBottom }: AmrapFormProps) => {
 
   return (
     <ScrollView
+      testID="amrap-form-scroll"
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom }}
+      contentContainerStyle={{
+        paddingBottom,
+        paddingTop,
+      }}
+      scrollIndicatorInsets={{
+        bottom: paddingBottom,
+        top: paddingTop,
+      }}
     >
       <FieldSet>
         <FieldGroup>

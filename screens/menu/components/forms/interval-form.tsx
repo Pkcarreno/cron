@@ -20,10 +20,14 @@ import { intervalSchema } from "@/screens/menu/schema";
 import { intervalWorkoutAtom } from "@/stores/workout";
 
 export interface IntervalFormProps {
-  paddingBottom: number;
+  paddingTop?: number;
+  paddingBottom?: number;
 }
 
-export const IntervalForm = ({ paddingBottom }: IntervalFormProps) => {
+export const IntervalForm = ({
+  paddingTop = 0,
+  paddingBottom = 0,
+}: IntervalFormProps) => {
   const [interval, setInterval] = useAtom(intervalWorkoutAtom);
 
   const errorsByField = useMemo(() => {
@@ -85,8 +89,16 @@ export const IntervalForm = ({ paddingBottom }: IntervalFormProps) => {
 
   return (
     <ScrollView
+      testID="interval-form-scroll"
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom }}
+      contentContainerStyle={{
+        paddingBottom,
+        paddingTop,
+      }}
+      scrollIndicatorInsets={{
+        bottom: paddingBottom,
+        top: paddingTop,
+      }}
     >
       <FieldSet>
         <FieldGroup>
