@@ -26,8 +26,8 @@ export const PermissionAutoPauseBanner: FC<PermissionAutoPauseBannerProps> = ({
       </Text>
     </View>
     <Text colorSubtone="400" size={12} style={styles.messageText}>
-      Session paused because notifications are disabled. Enable notifications in
-      Settings to allow background workout tracking.
+      The workout paused because notifications are turned off. Turn on
+      notifications in Settings to track your workout in the background.
     </Text>
     <View style={styles.actions}>
       <Button

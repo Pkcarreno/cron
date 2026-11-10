@@ -38,7 +38,12 @@ export const FloatingActionDock = ({ style }: FloatingActionDockProps) => {
         style={styles.capsule}
       >
         <Link href="/settings" asChild>
-          <Button size="icon" icon={SlidersIcon} variant="clear" />
+          <Button
+            size="icon"
+            icon={SlidersIcon}
+            variant="clear"
+            accessibilityLabel="Settings"
+          />
         </Link>
 
         <Button

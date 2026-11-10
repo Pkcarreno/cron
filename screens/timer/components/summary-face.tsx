@@ -174,7 +174,7 @@ const RenderCheckpoints: React.FC<RenderCheckpointsProps> = ({
           </Col>
           <Col style={checkpointsStyle.gridColumnCenter}>
             <Text colorSubtone="300" weight="600">
-              Time
+              Elapsed
             </Text>
           </Col>
           <Col style={checkpointsStyle.gridColumnCenter}>
