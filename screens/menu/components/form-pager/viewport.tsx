@@ -1,3 +1,4 @@
+import { BlurTargetView } from "expo-blur";
 import { use } from "react";
 import type { NativeSyntheticEvent } from "react-native";
 import { StyleSheet, View } from "react-native";
@@ -34,7 +35,7 @@ export const FormPagerViewport = ({
   } = context;
 
   return (
-    <View
+    <BlurTargetView
       ref={blurTargetRef}
       collapsable={false}
       style={[styles.viewportWrapper, style]}
@@ -65,7 +66,7 @@ export const FormPagerViewport = ({
           </View>
         ))}
       </AnimatedPagerView>
-    </View>
+    </BlurTargetView>
   );
 };
 
