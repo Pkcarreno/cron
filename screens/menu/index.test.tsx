@@ -79,7 +79,7 @@ describe("Menu integration", () => {
     expect(mockPush).not.toHaveBeenCalled();
 
     // 3. Inline error message should be displayed
-    expect(screen.getByText("Time cap must be at least 1ms")).toBeTruthy();
+    expect(screen.getByText("Time cap must be at least 1 second")).toBeTruthy();
   });
 
   it("re-enables Start button and clears error when input is corrected", async () => {
@@ -90,7 +90,7 @@ describe("Menu integration", () => {
 
     const startButton = screen.getByRole("button", { name: "Start" });
     expect(startButton.props.accessibilityState?.disabled).toBe(true);
-    expect(screen.getByText("Time cap must be at least 1ms")).toBeTruthy();
+    expect(screen.getByText("Time cap must be at least 1 second")).toBeTruthy();
 
     // Correct the minutes from 0 to 5
     const [minutesTrigger] = screen.getAllByText("00");
@@ -109,7 +109,7 @@ describe("Menu integration", () => {
     });
 
     // Error should be cleared and Start button re-enabled
-    expect(screen.queryByText("Time cap must be at least 1ms")).toBeNull();
+    expect(screen.queryByText("Time cap must be at least 1 second")).toBeNull();
     expect(startButton.props.accessibilityState?.disabled).toBe(false);
 
     await act(() => {

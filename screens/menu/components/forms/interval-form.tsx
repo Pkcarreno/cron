@@ -124,7 +124,7 @@ export const IntervalForm = ({
                 </Col>
                 <Col>
                   <IntervalPresetButton
-                    title='30" / 30"'
+                    title="30s / 30s"
                     workMs={30_000}
                     restMs={30_000}
                     disabled={
@@ -150,7 +150,7 @@ export const IntervalForm = ({
 
           <Field>
             <FieldContent>
-              <FieldLabel>Work phase duration</FieldLabel>
+              <FieldLabel>Work Duration</FieldLabel>
             </FieldContent>
             <TimeField value={interval.workMs} onChange={handleWorkMsChange} />
             <FieldError errors={errorsByField.workMs} />
@@ -158,7 +158,7 @@ export const IntervalForm = ({
 
           <Field>
             <FieldContent>
-              <FieldLabel>Rest phase duration</FieldLabel>
+              <FieldLabel>Rest Duration</FieldLabel>
             </FieldContent>
             <TimeField value={interval.restMs} onChange={handleRestMsChange} />
             <FieldError errors={errorsByField.restMs} />

@@ -20,7 +20,7 @@ export {
 export const emomSchema = v.object({
   roundDurationMs: v.pipe(
     v.number(),
-    v.minValue(1, "Round duration must be at least 1ms")
+    v.minValue(1, "Round duration must be at least 1 second")
   ),
   totalRounds: v.pipe(v.number(), v.minValue(1, "Rounds must be at least 1")),
 });
@@ -28,24 +28,27 @@ export const emomSchema = v.object({
 export const amrapSchema = v.object({
   durationMs: v.pipe(
     v.number(),
-    v.minValue(1, "Duration must be at least 1ms")
+    v.minValue(1, "Duration must be at least 1 second")
   ),
 });
 
 export const intervalSchema = v.object({
   restMs: v.pipe(
     v.number(),
-    v.minValue(1, "Rest duration must be at least 1ms")
+    v.minValue(1, "Rest duration must be at least 1 second")
   ),
   totalRounds: v.pipe(v.number(), v.minValue(1, "Rounds must be at least 1")),
   workMs: v.pipe(
     v.number(),
-    v.minValue(1, "Work duration must be at least 1ms")
+    v.minValue(1, "Work duration must be at least 1 second")
   ),
 });
 
 export const forTimeSchema = v.object({
-  timecapMs: v.pipe(v.number(), v.minValue(1, "Time cap must be at least 1ms")),
+  timecapMs: v.pipe(
+    v.number(),
+    v.minValue(1, "Time cap must be at least 1 second")
+  ),
 });
 
 export const stopWatchSchema = v.object({

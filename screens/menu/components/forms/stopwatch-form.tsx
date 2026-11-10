@@ -30,18 +30,15 @@ export const StopWatchForm = ({
     <View style={styles.contentWrapper}>
       <View style={styles.header}>
         <Text color="white" size={22} weight="700">
-          All set!
+          Stopwatch
         </Text>
       </View>
       <View style={styles.content}>
-        <Text colorSubtone="300">
-          You are in control. The timer will only end when you choose to stop
-          it.
-        </Text>
+        <Text colorSubtone="300">This timer counts up with no time limit.</Text>
         <View>
-          <Text>Quick tips:</Text>
-          <Text>- Long press anywhere to finish the timer.</Text>
-          <Text>- Double tap to log a checkpoint.</Text>
+          <Text>Controls:</Text>
+          <Text>- Press and hold the screen to pause or finish.</Text>
+          <Text>- Double-tap to record a lap.</Text>
         </View>
       </View>
     </View>

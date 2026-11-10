@@ -36,9 +36,9 @@ describe("Settings screen", () => {
     expect(screen.getByText("Haptics")).toBeTruthy();
     expect(screen.getByText("High-precision timer")).toBeTruthy();
     expect(
-      screen.getByText("Increases battery consumption in extended workouts")
+      screen.getByText("Uses more battery during long workouts")
     ).toBeTruthy();
-    expect(screen.getByText("About & Support")).toBeTruthy();
+    expect(screen.getByText("About and Support")).toBeTruthy();
     expect(screen.getByText("Developer")).toBeTruthy();
   });
 
@@ -78,9 +78,7 @@ describe("Settings screen", () => {
     });
 
     expect(
-      screen.getByText(
-        "Allow background audio-only session (without notifications)"
-      )
+      screen.getByText("Background audio without notifications")
     ).toBeTruthy();
 
     expect(screen.store.get(isBackgroundAudioOnlyAllowedAtom)).toBe(false);
@@ -104,9 +102,7 @@ describe("Settings screen", () => {
     });
 
     expect(
-      screen.queryByText(
-        "Allow background audio-only session (without notifications)"
-      )
+      screen.queryByText("Background audio without notifications")
     ).toBeNull();
   });
 });

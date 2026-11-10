@@ -475,7 +475,7 @@ describe("Timer screen audio lifecycle", () => {
       expect(screen.getByTestId("permission-auto-pause-banner")).toBeTruthy();
       expect(
         screen.getByText(
-          "Session paused because notifications are disabled. Enable notifications in Settings to allow background workout tracking."
+          "The workout paused because notifications are turned off. Turn on notifications in Settings to track your workout in the background."
         )
       ).toBeTruthy();
 

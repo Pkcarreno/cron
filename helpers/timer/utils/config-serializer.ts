@@ -16,22 +16,24 @@ const coercedPositiveInteger = (minMessage: string) =>
   );
 
 export const amrapSchema = v.object({
-  durationMs: coercedPositiveNumber("Duration must be at least 1ms"),
+  durationMs: coercedPositiveNumber("Duration must be at least 1 second"),
 });
 
 export const forTimeSchema = v.object({
-  timecapMs: coercedPositiveNumber("Time cap must be at least 1ms"),
+  timecapMs: coercedPositiveNumber("Time cap must be at least 1 second"),
 });
 
 export const emomSchema = v.object({
-  roundDurationMs: coercedPositiveNumber("Round duration must be at least 1ms"),
+  roundDurationMs: coercedPositiveNumber(
+    "Round duration must be at least 1 second"
+  ),
   totalRounds: coercedPositiveInteger("Rounds must be at least 1"),
 });
 
 export const intervalSchema = v.object({
-  restMs: coercedPositiveNumber("Rest duration must be at least 1ms"),
+  restMs: coercedPositiveNumber("Rest duration must be at least 1 second"),
   totalRounds: coercedPositiveInteger("Rounds must be at least 1"),
-  workMs: coercedPositiveNumber("Work duration must be at least 1ms"),
+  workMs: coercedPositiveNumber("Work duration must be at least 1 second"),
 });
 
 export const stopWatchSchema = v.object({

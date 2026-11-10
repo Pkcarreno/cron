@@ -59,7 +59,7 @@ export const Settings = () => {
         </Menu>
 
         <Menu>
-          <MenuTopic>About & Support</MenuTopic>
+          <MenuTopic>About and Support</MenuTopic>
           <MenuGroup>
             <Link href="https://www.pkcarreno.com/projects/cron" asChild>
               <MenuPressableItem>
@@ -187,7 +187,7 @@ const HighPrecisionTimerSwitchItem = () => {
       <View style={styles.switchTextContainer}>
         <MenuItemText>High-precision timer</MenuItemText>
         <Text colorSubtone="500" size={12}>
-          Increases battery consumption in extended workouts
+          Uses more battery during long workouts
         </Text>
       </View>
       <Switch
@@ -241,11 +241,9 @@ const BackgroundAudioOnlySwitchItem = () => {
 
   return (
     <MenuItem>
-      <MenuItemText>
-        Allow background audio-only session (without notifications)
-      </MenuItemText>
+      <MenuItemText>Background audio without notifications</MenuItemText>
       <Switch
-        accessibilityLabel="Allow background audio-only session (without notifications)"
+        accessibilityLabel="Background audio without notifications"
         checked={isBackgroundAudioOnlyAllowed}
         onCheckedChange={setIsBackgroundAudioOnlyAllowed}
         testID="background-audio-only-switch"
