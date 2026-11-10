@@ -33,6 +33,7 @@
     "cron-foreground-service": "file:./modules/cron-foreground-service",
     "expo": "~58.0.16",
     "expo-battery": "~58.0.3",
+    "expo-blur": "~58.0.5",
     "expo-build-properties": "~58.0.12",
     "expo-constants": "~58.0.12",
     "expo-font": "~58.0.9",
