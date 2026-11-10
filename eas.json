@@ -45,6 +45,9 @@
         "EXPO_PUBLIC_APP_ENV": "production"
       }
     },
+    "production": {
+      "extends": "production-apk"
+    },
     "production-store": {
       "distribution": "store",
       "environment": "production",
