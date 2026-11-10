@@ -15,7 +15,7 @@ export const MENU_HEADER_METRICS = {
 } as const;
 
 export const MENU_DOCK_METRICS = {
-  dockHeight: 56,
+  dockHeight: 84,
   dockMarginBottom: 24,
   dockPaddingTop: 16,
   minBottomInset: 128,

@@ -38,12 +38,7 @@ export const FloatingActionDock = ({ style }: FloatingActionDockProps) => {
         style={styles.capsule}
       >
         <Link href="/settings" asChild>
-          <Button
-            size="icon"
-            icon={SlidersIcon}
-            variant="ghost"
-            style={styles.settingsButton}
-          />
+          <Button size="icon" icon={SlidersIcon} variant="clear" />
         </Link>
 
         <Button
@@ -61,7 +56,7 @@ export const FloatingActionDock = ({ style }: FloatingActionDockProps) => {
 const styles = StyleSheet.create({
   capsule: {
     alignItems: "center",
-    borderRadius: 28,
+    borderRadius: 14,
     flexDirection: "row",
     gap: 8,
     padding: 6,
@@ -70,11 +65,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     pointerEvents: "box-none",
   },
-  settingsButton: {
-    borderRadius: 22,
-  },
   startButton: {
-    borderRadius: 22,
     flex: 1,
   },
 });

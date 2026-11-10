@@ -11,7 +11,7 @@ import { colors } from "@/helpers/colors";
 
 import { Text } from "./text";
 
-type ButtonVariant = "primary" | "secondary" | "outline" | "ghost";
+type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "clear";
 type ButtonSize = "md" | "sm" | "icon";
 
 export interface IconProps {
@@ -118,6 +118,12 @@ const styles = StyleSheet.create({
 });
 
 const variantStyles = StyleSheet.create({
+  clear: {
+    backgroundColor: colors.transparent,
+  },
+  clearText: {
+    color: colors.neutral[300],
+  },
   ghost: {
     backgroundColor: colors.neutral[950],
   },

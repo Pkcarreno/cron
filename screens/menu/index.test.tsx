@@ -322,7 +322,7 @@ describe("Menu integration", () => {
     expect(screen.getByTestId("segmented-tab-bar")).toBeTruthy();
   });
 
-  it("renders floating action dock island wrapped in GlassSurface with borderRadius 28", async () => {
+  it("renders floating action dock island wrapped in GlassSurface with borderRadius 14", async () => {
     const store = createStore();
     const screen = await renderWithProviders(<Menu />, { store });
 
@@ -334,7 +334,7 @@ describe("Menu integration", () => {
     expect(dock).toBeTruthy();
 
     const flattenedDockStyle = StyleSheet.flatten(dock.props.style);
-    expect(flattenedDockStyle.borderRadius).toBe(28);
+    expect(flattenedDockStyle.borderRadius).toBe(14);
   });
 
   it("ensures form items in IntervalForm receive top and bottom insets to scroll behind header blur and dock capsule", async () => {
