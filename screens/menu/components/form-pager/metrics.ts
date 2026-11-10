@@ -5,6 +5,7 @@ import type { FormInsets } from "./types";
  * Eliminates layout thrashing and first-frame visual flicker by avoiding runtime onLayout measurements.
  */
 export const MENU_HEADER_METRICS = {
+  contentClearance: 20,
   headerMarginBottom: 16,
   headerTitleHeight: 58,
   jobLabelHeight: 18,
@@ -30,7 +31,8 @@ export const getMenuTopInset = (safeAreaTop: number): number =>
   MENU_HEADER_METRICS.jobLabelHeight +
   MENU_HEADER_METRICS.jobMarginBottom +
   MENU_HEADER_METRICS.tabBarHeight +
-  MENU_HEADER_METRICS.tabBarMarginBottom;
+  MENU_HEADER_METRICS.tabBarMarginBottom +
+  MENU_HEADER_METRICS.contentClearance;
 
 /**
  * Compute the bottom content inset deterministically from the safe area bottom inset and dock metrics.
