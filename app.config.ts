@@ -136,6 +136,20 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     "expo-router",
     [
+      "expo-build-properties",
+      {
+        android: {
+          enableBundleCompression: true,
+          enableMinifyInReleaseBuilds: true,
+          enableShrinkResourcesInReleaseBuilds: true,
+          shrinkResources: true,
+        },
+        ios: {
+          deploymentTarget: "16.4",
+        },
+      },
+    ],
+    [
       "expo-font",
       {
         android: {
