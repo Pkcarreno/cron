@@ -7,6 +7,18 @@ const {
 
 createJSReanimatedModule().constructor.prototype.setCSSEventHandler = () => {};
 
+const { StyleSheet } = require("react-native");
+
+if (!StyleSheet.absoluteFillObject) {
+  StyleSheet.absoluteFillObject = {
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  };
+}
+
 jest.mock("react-native-nitro-modules", () => ({
   NitroModules: {},
   isRuntimeAlive: () => true,

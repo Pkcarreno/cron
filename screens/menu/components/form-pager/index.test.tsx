@@ -96,7 +96,8 @@ describe("FormPager", () => {
       MENU_HEADER_METRICS.jobLabelHeight +
       MENU_HEADER_METRICS.jobMarginBottom +
       MENU_HEADER_METRICS.tabBarHeight +
-      MENU_HEADER_METRICS.tabBarMarginBottom;
+      MENU_HEADER_METRICS.tabBarMarginBottom +
+      MENU_HEADER_METRICS.contentClearance;
     const expectedBottom = Math.max(
       MENU_DOCK_METRICS.minBottomInset,
       102 + 34 + 24

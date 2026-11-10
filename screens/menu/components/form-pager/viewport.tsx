@@ -1,3 +1,4 @@
+import { BlurTargetView } from "expo-blur";
 import { use } from "react";
 import type { NativeSyntheticEvent } from "react-native";
 import { StyleSheet, View } from "react-native";
@@ -12,6 +13,7 @@ const AnimatedPagerView = createAnimatedComponent(PagerView);
 
 export const FormPagerViewport = ({
   pageStyle,
+  pagerStyle,
   style,
   testID = "form-pager-view",
 }: FormPagerViewportProps) => {
@@ -33,7 +35,7 @@ export const FormPagerViewport = ({
   } = context;
 
   return (
-    <View
+    <BlurTargetView
       ref={blurTargetRef}
       collapsable={false}
       style={[styles.viewportWrapper, style]}
@@ -42,7 +44,7 @@ export const FormPagerViewport = ({
         testID={testID}
         collapsable={false}
         ref={pagerRef}
-        style={styles.pagerView}
+        style={[styles.pagerView, pagerStyle]}
         initialPage={selectedIndex}
         overdrag={true}
         onPageScroll={
@@ -64,7 +66,7 @@ export const FormPagerViewport = ({
           </View>
         ))}
       </AnimatedPagerView>
-    </View>
+    </BlurTargetView>
   );
 };
 
@@ -74,6 +76,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   pagerView: {
+    ...StyleSheet.absoluteFill,
     flex: 1,
   },
   viewportWrapper: {
