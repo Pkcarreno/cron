@@ -143,21 +143,7 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
             {
               fontDefinitions: [
                 {
-                  path: "./assets/fonts/Geist-Thin.ttf",
-                  weight: 100,
-                },
-                {
-                  path: "./assets/fonts/Geist-ThinItalic.ttf",
-                  style: "italic",
-                  weight: 100,
-                },
-                {
                   path: "./assets/fonts/Geist-ExtraLight.ttf",
-                  weight: 200,
-                },
-                {
-                  path: "./assets/fonts/Geist-ExtraLightItalic.ttf",
-                  style: "italic",
                   weight: 200,
                 },
                 {
@@ -165,17 +151,7 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
                   weight: 300,
                 },
                 {
-                  path: "./assets/fonts/Geist-LightItalic.ttf",
-                  style: "italic",
-                  weight: 300,
-                },
-                {
                   path: "./assets/fonts/Geist-Regular.ttf",
-                  weight: 400,
-                },
-                {
-                  path: "./assets/fonts/Geist-Italic.ttf",
-                  style: "italic",
                   weight: 400,
                 },
                 {
@@ -183,17 +159,7 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
                   weight: 500,
                 },
                 {
-                  path: "./assets/fonts/Geist-MediumItalic.ttf",
-                  style: "italic",
-                  weight: 500,
-                },
-                {
                   path: "./assets/fonts/Geist-SemiBold.ttf",
-                  weight: 600,
-                },
-                {
-                  path: "./assets/fonts/Geist-SemiBoldItalic.ttf",
-                  style: "italic",
                   weight: 600,
                 },
                 {
@@ -201,27 +167,8 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
                   weight: 700,
                 },
                 {
-                  path: "./assets/fonts/Geist-BoldItalic.ttf",
-                  style: "italic",
-                  weight: 700,
-                },
-                {
                   path: "./assets/fonts/Geist-ExtraBold.ttf",
                   weight: 800,
-                },
-                {
-                  path: "./assets/fonts/Geist-ExtraBoldItalic.ttf",
-                  style: "italic",
-                  weight: 800,
-                },
-                {
-                  path: "./assets/fonts/Geist-Black.ttf",
-                  weight: 900,
-                },
-                {
-                  path: "./assets/fonts/Geist-BlackItalic.ttf",
-                  style: "italic",
-                  weight: 900,
                 },
               ],
               fontFamily: "Geist",
@@ -229,30 +176,7 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
             {
               fontDefinitions: [
                 {
-                  path: "./assets/fonts/GeistMono-Thin.ttf",
-                  weight: 100,
-                },
-                {
-                  path: "./assets/fonts/GeistMono-ThinItalic.ttf",
-                  style: "italic",
-                  weight: 100,
-                },
-                {
-                  path: "./assets/fonts/GeistMono-ExtraLight.ttf",
-                  weight: 200,
-                },
-                {
-                  path: "./assets/fonts/GeistMono-ExtraLightItalic.ttf",
-                  style: "italic",
-                  weight: 200,
-                },
-                {
                   path: "./assets/fonts/GeistMono-Light.ttf",
-                  weight: 300,
-                },
-                {
-                  path: "./assets/fonts/GeistMono-LightItalic.ttf",
-                  style: "italic",
                   weight: 300,
                 },
                 {
@@ -260,54 +184,8 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
                   weight: 400,
                 },
                 {
-                  path: "./assets/fonts/GeistMono-Italic.ttf",
-                  style: "italic",
-                  weight: 400,
-                },
-                {
-                  path: "./assets/fonts/GeistMono-Medium.ttf",
-                  weight: 500,
-                },
-                {
-                  path: "./assets/fonts/GeistMono-MediumItalic.ttf",
-                  style: "italic",
-                  weight: 500,
-                },
-                {
-                  path: "./assets/fonts/GeistMono-SemiBold.ttf",
-                  weight: 600,
-                },
-                {
-                  path: "./assets/fonts/GeistMono-SemiBoldItalic.ttf",
-                  style: "italic",
-                  weight: 600,
-                },
-                {
-                  path: "./assets/fonts/GeistMono-Bold.ttf",
-                  weight: 700,
-                },
-                {
-                  path: "./assets/fonts/GeistMono-BoldItalic.ttf",
-                  style: "italic",
-                  weight: 700,
-                },
-                {
                   path: "./assets/fonts/GeistMono-ExtraBold.ttf",
                   weight: 800,
-                },
-                {
-                  path: "./assets/fonts/GeistMono-ExtraBoldItalic.ttf",
-                  style: "italic",
-                  weight: 800,
-                },
-                {
-                  path: "./assets/fonts/GeistMono-Black.ttf",
-                  weight: 900,
-                },
-                {
-                  path: "./assets/fonts/GeistMono-BlackItalic.ttf",
-                  style: "italic",
-                  weight: 900,
                 },
               ],
               fontFamily: "Geist Mono",
@@ -315,42 +193,16 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
           ],
         },
         fonts: [
-          "./assets/fonts/Geist-Black.ttf",
-          "./assets/fonts/Geist-BlackItalic.ttf",
           "./assets/fonts/Geist-Bold.ttf",
-          "./assets/fonts/Geist-BoldItalic.ttf",
           "./assets/fonts/Geist-ExtraBold.ttf",
-          "./assets/fonts/Geist-ExtraBoldItalic.ttf",
           "./assets/fonts/Geist-ExtraLight.ttf",
-          "./assets/fonts/Geist-ExtraLightItalic.ttf",
-          "./assets/fonts/Geist-Italic.ttf",
           "./assets/fonts/Geist-Light.ttf",
-          "./assets/fonts/Geist-LightItalic.ttf",
           "./assets/fonts/Geist-Medium.ttf",
-          "./assets/fonts/Geist-MediumItalic.ttf",
           "./assets/fonts/Geist-Regular.ttf",
           "./assets/fonts/Geist-SemiBold.ttf",
-          "./assets/fonts/Geist-SemiBoldItalic.ttf",
-          "./assets/fonts/Geist-Thin.ttf",
-          "./assets/fonts/Geist-ThinItalic.ttf",
-          "./assets/fonts/GeistMono-Black.ttf",
-          "./assets/fonts/GeistMono-BlackItalic.ttf",
-          "./assets/fonts/GeistMono-Bold.ttf",
-          "./assets/fonts/GeistMono-BoldItalic.ttf",
           "./assets/fonts/GeistMono-ExtraBold.ttf",
-          "./assets/fonts/GeistMono-ExtraBoldItalic.ttf",
-          "./assets/fonts/GeistMono-ExtraLight.ttf",
-          "./assets/fonts/GeistMono-ExtraLightItalic.ttf",
-          "./assets/fonts/GeistMono-Italic.ttf",
           "./assets/fonts/GeistMono-Light.ttf",
-          "./assets/fonts/GeistMono-LightItalic.ttf",
-          "./assets/fonts/GeistMono-Medium.ttf",
-          "./assets/fonts/GeistMono-MediumItalic.ttf",
           "./assets/fonts/GeistMono-Regular.ttf",
-          "./assets/fonts/GeistMono-SemiBold.ttf",
-          "./assets/fonts/GeistMono-SemiBoldItalic.ttf",
-          "./assets/fonts/GeistMono-Thin.ttf",
-          "./assets/fonts/GeistMono-ThinItalic.ttf",
         ],
       },
     ],
