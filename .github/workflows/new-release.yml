@@ -60,11 +60,33 @@ jobs:
       # - name: Clear Metro cache
       #   run: rm -rf ${TMPDIR:-/tmp}/metro-cache
 
-      - name: Build APK
-        run: eas build --platform android --profile production-apk --local --output cron-v${{ env.APP_VERSION }}.apk --non-interactive
+      - name: Build APKs
+        run: eas build --platform android --profile production-apk --local --non-interactive
+
+      - name: Prepare Release APKs
+        run: |
+          mkdir -p release-apks
+          for apk in android/app/build/outputs/apk/release/*.apk; do
+            filename=$(basename "$apk")
+            case "$filename" in
+              *arm64-v8a*)
+                cp "$apk" "release-apks/cron-v${{ env.APP_VERSION }}-arm64-v8a.apk"
+                ;;
+              *armeabi-v7a*)
+                cp "$apk" "release-apks/cron-v${{ env.APP_VERSION }}-armeabi-v7a.apk"
+                ;;
+              *x86_64*)
+                cp "$apk" "release-apks/cron-v${{ env.APP_VERSION }}-x86_64.apk"
+                ;;
+              *universal*)
+                cp "$apk" "release-apks/cron-v${{ env.APP_VERSION }}-universal.apk"
+                ;;
+            esac
+          done
+          ls -la release-apks/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: cron-v${{ env.APP_VERSION }}.apk
+          files: release-apks/*.apk
           generate_release_notes: true
