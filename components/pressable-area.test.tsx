@@ -47,6 +47,7 @@ interface RenderOptions {
   onDoublePress?: () => void;
   onLongPress?: () => void;
   onPress?: () => void;
+  onUnassignedTap?: () => void;
 }
 
 let activeTrees: renderer.ReactTestRenderer[] = [];
@@ -370,5 +371,62 @@ describe("PressableArea", () => {
 
     expect(screen.getByTestId("harness-target")).toBeTruthy();
     expect(screen.getByText("Harness Target")).toBeTruthy();
+  });
+
+  it("triggers onUnassignedTap without firing press haptics when onPress is omitted", () => {
+    const onUnassignedTap = jest.fn();
+    const onDoublePress = jest.fn();
+    const onLongPress = jest.fn();
+
+    const { singleTap } = renderPressableArea({
+      onDoublePress,
+      onLongPress,
+      onUnassignedTap,
+    });
+
+    act(() => {
+      fireGestureHandler(singleTap, [{ state: State.ACTIVE }]);
+    });
+
+    expect(onUnassignedTap).toHaveBeenCalledTimes(1);
+    expect(triggerHaptic).not.toHaveBeenCalled();
+    expect(triggerAndroidHaptic).not.toHaveBeenCalled();
+  });
+
+  it("enables single-tap gesture when only onUnassignedTap is provided", () => {
+    const { singleTap } = renderPressableArea({
+      onUnassignedTap: jest.fn(),
+    });
+
+    expect(singleTap.config.enabled).toBe(true);
+  });
+
+  it("renders the hold progress bar element", () => {
+    const { tree } = renderPressableArea();
+    const views = tree.root.findAllByType(Reanimated.default.View);
+    const progressBar = views.find(
+      (view) => view.props.testID === "pressable-area-progress-bar"
+    );
+
+    expect(progressBar).toBeDefined();
+    expect(progressBar?.props.pointerEvents).toBe("none");
+  });
+
+  it("animates hold progress with timing over 600ms on begin", () => {
+    const withTimingSpy = jest.spyOn(Reanimated, "withTiming");
+    const onLongPress = jest.fn();
+
+    const { longPress } = renderPressableArea({
+      onLongPress,
+    });
+    const controller = createGestureController(longPress);
+
+    act(() => {
+      controller.begin();
+    });
+
+    expect(withTimingSpy).toHaveBeenCalledWith(1, {
+      duration: 600,
+    });
   });
 });

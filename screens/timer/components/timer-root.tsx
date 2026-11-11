@@ -33,6 +33,7 @@ import {
   timerPhaseAtom,
   timerStartedAtAtom,
   timerStatusAtom,
+  timerSuccessfulPausesCountAtom,
   timerTotalRoundsAtom,
 } from "@/screens/timer/atoms";
 import { OledBurnInProtector } from "@/screens/timer/components/oled-burn-in-protector";
@@ -94,6 +95,7 @@ export const TimerRoot: FC<TimerRootProps> = ({
     isPermissionAutoPauseBannerVisibleAtom
   );
   const resetTimerSession = useSetAtom(resetTimerSessionAtom);
+  const setSuccessfulPausesCount = useSetAtom(timerSuccessfulPausesCountAtom);
 
   useTimerKeepAwake(status === TimerStatus.RUNNING);
 
@@ -243,9 +245,10 @@ export const TimerRoot: FC<TimerRootProps> = ({
   }, [setIsPermissionBannerVisible]);
 
   const pause = useCallback(() => {
+    setSuccessfulPausesCount((prev) => prev + 1);
     setStatus(TimerStatus.PAUSED);
     controllerRef.current?.pause();
-  }, [controllerRef, setStatus]);
+  }, [controllerRef, setStatus, setSuccessfulPausesCount]);
 
   const start = useCallback(() => {
     dismissPermissionBanner();

@@ -16,8 +16,10 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withTiming,
 } from "react-native-reanimated";
 
+import { colors } from "@/helpers/colors";
 import {
   triggerAndroidHaptic,
   triggerHaptic,
@@ -34,6 +36,7 @@ interface PressableAreaProps {
   onDoublePress?: () => void;
   onLongPress?: () => void;
   onPress?: () => void;
+  onUnassignedTap?: () => void;
 }
 
 export const PressableArea = ({
@@ -43,12 +46,18 @@ export const PressableArea = ({
   onDoublePress,
   onLongPress,
   onPress,
+  onUnassignedTap,
 }: PressableAreaProps) => {
   const scale = useSharedValue(1);
+  const holdProgress = useSharedValue(0);
   const lastDoubleTapTimestampRef = useRef<number>(0);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.get() }],
+  }));
+
+  const progressAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scaleX: holdProgress.get() }],
   }));
 
   const doubleTap = useTapGesture({
@@ -76,6 +85,7 @@ export const PressableArea = ({
     minDuration: LONG_PRESS_DURATION,
     onActivate: () => {
       scale.set(withSpring(1, { dampingRatio: 1, duration: 150 }));
+      holdProgress.set(0);
       triggerAndroidHaptic(AndroidHaptics.Long_Press, {
         mode: ImpactFeedbackStyle.Heavy,
         type: triggerType.Impact,
@@ -84,21 +94,27 @@ export const PressableArea = ({
     },
     onBegin: () => {
       scale.set(withSpring(0.98, { dampingRatio: 1, duration: 150 }));
+      holdProgress.set(withTiming(1, { duration: LONG_PRESS_DURATION }));
     },
     onFinalize: () => {
+      holdProgress.set(withSpring(0, { dampingRatio: 1, duration: 150 }));
       scale.set(withSpring(1, { dampingRatio: 1, duration: 150 }));
     },
     runOnJS: true,
   });
 
   const singleTap = useTapGesture({
-    enabled: Boolean(onPress),
+    enabled: Boolean(onPress || onUnassignedTap),
     onActivate: () => {
-      triggerHaptic({
-        mode: ImpactFeedbackStyle.Medium,
-        type: triggerType.Impact,
-      });
-      onPress?.();
+      if (onPress) {
+        triggerHaptic({
+          mode: ImpactFeedbackStyle.Medium,
+          type: triggerType.Impact,
+        });
+        onPress();
+      } else {
+        onUnassignedTap?.();
+      }
     },
     requireToFail: [doubleTap, longPress],
     runOnJS: true,
@@ -109,6 +125,12 @@ export const PressableArea = ({
   return (
     <Animated.View style={[styles.container, animatedStyle]}>
       {children}
+
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.progressBar, progressAnimatedStyle]}
+        testID="pressable-area-progress-bar"
+      />
 
       <View
         pointerEvents="box-none"
@@ -128,5 +150,14 @@ export const PressableArea = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  progressBar: {
+    backgroundColor: colors.neutral[300],
+    height: 2.5,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+    transformOrigin: "left",
   },
 });

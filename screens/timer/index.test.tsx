@@ -14,6 +14,7 @@ import {
   timerMinutesStrAtom,
   timerModeAbbrAtom,
   timerSecondsStrAtom,
+  timerSuccessfulPausesCountAtom,
 } from "@/screens/timer/atoms";
 import { FeedbackService } from "@/services/audio/feedback-service";
 import { isBackgroundAudioOnlyAllowedAtom } from "@/stores/settings";
@@ -123,6 +124,8 @@ describe("Timer screen audio lifecycle", () => {
     await act(() => {
       fireEvent.press(pressable);
     });
+
+    expect(store.get(timerSuccessfulPausesCountAtom)).toBe(1);
 
     // Summary screen should now display "Back to menu" button
     const backButton = screen.getByText("Back to menu");
