@@ -1,0 +1,16 @@
+Cron is a distraction-free HIIT and interval timer built for high visibility and effortless control.
+
+Inspired by gym wall timers, Cron emphasizes massive, glanceable numbers that you can easily read from across the room even during exhausting workouts.
+
+Features:
+* 5 Versatile Timer Modes:
+  - INTERVALS: Alternating work and rest periods with round counts
+  - AMRAP: As Many Rounds As Possible within a fixed time window
+  - EMOM: Every Minute On the Minute with configurable intervals
+  - FOR TIME: Countdown to beat your target time
+  - STOPWATCH: Precision open-ended timing with lap/checkpoint logging
+* High-Contrast Visibility: Pure black OLED contrast with screen-filling numbers designed for quick glances.
+* Intuitive Gesture Controls: Adjust intervals effortlessly with a tactile thumbwheel, and control workouts with natural gestures like long-press to pause.
+* Sound & Vibration Cues: Distinct audio beeps and vibration cues that guide your pace through your workout music without interrupting voiceovers.
+* Privacy & Independence: 100% offline. Zero network permissions requested or used. No ads, tracking, or telemetry.
+* Free and Open Source: Licensed under the GNU General Public License v3.0 (GPL-3.0-only).
