@@ -188,46 +188,45 @@ Rather than relying on a single trick, the optimal UX combines **Patterns A, B, 
 
 #### 1. Tier 1: Ambient Monospace Ghost Guide
 
-- **Location**: Rendered inside [`TimerHeader`](file:///home/pk/.t3/worktrees/cron/t3-1a0ea765-14d91e96428ee0f5/screens/timer/components/timer-header.tsx) or centered directly below [`TimerContextBanner`](file:///home/pk/.t3/worktrees/cron/t3-1a0ea765-14d91e96428ee0f5/screens/timer/components/timer-display.tsx#L28-L45).
+- **Location**: Rendered inside [`TimerGestureOverlay`](file:///home/pk/.t3/worktrees/cron/t3-1a0ea765-14d91e96428ee0f5/screens/timer/components/timer-gesture-overlay.tsx) centered along the bottom safe area inset.
 - **Copy**:
-  - For AMRAP / StopWatch: `"HOLD TO PAUSE • DOUBLE-TAP FOR LAP"`
-  - For For Time / Interval / EMOM: `"HOLD ANYWHERE TO PAUSE"`
+  - Both pause and lap unlearned: `"HOLD TO PAUSE | DOUBLE-TAP FOR LAP"`
+  - Pause learned, lap unlearned: `"DOUBLE-TAP TO RECORD LAP"`
+  - Non-checkpoint modes (For Time, Tabata, EMOM): `"HOLD ANYWHERE TO PAUSE"`
 - **Typography & Color**: `fontFamily: 'Geist Mono'`, `fontSize: 11`, `letterSpacing: 1.2`, `color: colors.neutral[500]`.
 - **Motion**:
   - Mounts at `opacity: 0`.
   - Animates to `opacity: 0.8` (`duration: 300ms ease-out`).
-  - Stays for 3000ms.
+  - Stays for 3200ms (`AMBIENT_HINT_DURATION_MS`).
   - Fades to `opacity: 0` (`duration: 500ms ease-in-out`).
-- **Memory**: Stored in a persisted key `has_seen_timer_gesture_hint`. After 3 sessions, it is skipped entirely.
+- **Memory & Session-Guarded Learning**:
+  - Evaluated against two distinct atoms in MMKV: `timerSuccessfulPausesCountAtom` and `timerCheckpointsLoggedCountAtom`.
+  - Increments are guarded per distinct workout session (`hasPausedInSessionRef`, `hasLoggedCheckpointInSessionRef`).
+  - Practicing multiple rounds in a single session only counts as 1 session of experience, requiring 3 distinct workout sessions to permanently retire guidance.
 
 #### 2. Tier 2: Real-Time Hold-to-Pause Tension
 
 - **Component**: Integrated directly into [`components/pressable-area.tsx`](file:///home/pk/.t3/worktrees/cron/t3-1a0ea765-14d91e96428ee0f5/components/pressable-area.tsx).
-- **Visuals**:
-  - An absolute-positioned SVG perimeter frame or edge line along the top/bottom bezel (`height: 3px`, `backgroundColor: colors.neutral[300]`).
-  - `progress = useSharedValue(0)` animates from `0` to `1` with `withTiming(1, { duration: 600, easing: Easing.bezier(0.25, 0.1, 0.25, 1) })`.
-  - Display scale animates from `1.0` to `0.96` (`duration: 600ms`).
-- **Haptic Sequence**:
-  - `onBegin`: `ImpactFeedbackStyle.Light` (acknowledging touch contact).
-  - `onActivate` (at 600ms): `ImpactFeedbackStyle.Heavy` + `NotificationFeedbackType.Success` (session paused).
-  - `onFinalize` (if released prior to 600ms): `withSpring(0, { dampingRatio: 1, duration: 150 })` on progress and scale.
+- **Decoupled Architecture**:
+  - The progress bar is rendered at the root level outside the `<Animated.View>` container that applies `scale: 0.98`.
+  - Width animates via percentage (`0%` to `100%`) from `left: 0` (`height: 2.5px`, `backgroundColor: colors.neutral[400]`).
+  - This ensures the progress bar never jumps or visually clips down by ~8px during touch-down.
+- **Commit-Only Haptics**:
+  - Adhering to the learnings from PR #95, touch-down (`onBegin`) produces **zero vibration** to avoid actuator saturation and false double-tap collisions.
+  - `onActivate` (at 600ms): triggers heavy impact haptic upon successful pause commitment.
+  - `onFinalize` (if released early): resets progress and scale back to defaults via spring.
 
-#### 3. Tier 3: Reactive Micro-Shake & Guidance Pill
+#### 3. Tier 3: Reactive Guidance Pill
 
-- **Trigger**: In [`PressableArea`](file:///home/pk/.t3/worktrees/cron/t3-1a0ea765-14d91e96428ee0f5/components/pressable-area.tsx), bind `singleTap` with an informative fallback:
-  - If `onPress` is not passed by parent, `singleTap` triggers a local guidance toast:
-    ```tsx
-    const handleSingleTap = () => {
-      triggerHaptic({
-        mode: ImpactFeedbackStyle.Light,
-        type: triggerType.Impact,
-      });
-      showGuidanceHint("Hold anywhere to pause");
-    };
-    ```
+- **Trigger**: On unassigned single tap while running, `PressableArea` invokes `onUnassignedTap`.
+- **Debounce**: 1500ms debounce prevents visual churn during accidental touch bursts.
+- **Copy**:
+  - For checkpoint-capable modes (`hasCheckpointsBehavior`): `"Hold to pause | Double-tap for lap"`
+  - For non-checkpoint modes: `"Hold to pause"`
 - **Visual Presentation**:
-  - A subtle floating pill in `colors.neutral[900]` with `colors.neutral[200]` text, centered 40px below the notch.
-  - Accompanied by a quick 2px horizontal translation shake (`-3px -> +3px -> 0px` over 140ms) on the timer digits.
+  - Rendered in [`TimerTapRecoveryPill`](file:///home/pk/.t3/worktrees/cron/t3-1a0ea765-14d91e96428ee0f5/screens/timer/components/timer-tap-recovery-pill.tsx) below top notch.
+  - Subdued pill (`backgroundColor: colors.neutral[900]`, `borderColor: colors.neutral[800]`, `Geist Mono` 12px).
+  - Smooth spring slide down, visible for 1200ms, then fades out over 300ms.
 
 ---
 
