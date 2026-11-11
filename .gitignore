@@ -61,6 +61,8 @@ modules/**/android/build/
 # output
 *.apk
 *.aab
+*.tar.gz
+build/
 benchmark/
 
 # pnpm skills symlinks

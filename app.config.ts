@@ -230,6 +230,14 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     "./plugins/with-profileable",
+    [
+      "./plugins/with-abi-splits",
+      {
+        architectures: ["arm64-v8a", "armeabi-v7a", "x86_64"],
+        enabled: Env.EXPO_PUBLIC_APP_ENV === "production",
+        universalApk: true,
+      },
+    ],
   ],
   scheme: Env.EXPO_PUBLIC_SCHEME,
   slug: "cron",
