@@ -1,0 +1,3 @@
+- Initial release with interval, AMRAP, EMOM, For Time, and Stopwatch timers.
+- Low-latency audio cues and tactile feedback.
+- Distraction-free, offline design.

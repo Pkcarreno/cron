@@ -1,0 +1,4 @@
+- Support multi-architecture per-ABI release APKs (arm64-v8a, armeabi-v7a, x86_64, universal).
+- Reduced APK size below 30 MB for IzzyOnDroid and F-Droid inclusion.
+- Centralized local Android build outputs and automated release packaging.
+- Fastlane store metadata and graphics assets for FOSS catalog integration.
