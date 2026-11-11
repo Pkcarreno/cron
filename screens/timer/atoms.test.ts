@@ -7,6 +7,7 @@ import type { UICheckpoint } from "@/hooks/use-timer";
 import {
   resetTimerSessionAtom,
   timerCheckpointsAtom,
+  timerCheckpointsLoggedCountAtom,
   timerConfigAtom,
   timerContextBannerAtom,
   timerCurrentRoundAtom,
@@ -215,6 +216,16 @@ describe("Timer Atoms", () => {
       expect(store.get(timerSuccessfulPausesCountAtom)).toBe(1);
       store.set(timerSuccessfulPausesCountAtom, (prev) => prev + 1);
       expect(store.get(timerSuccessfulPausesCountAtom)).toBe(2);
+    });
+  });
+
+  describe("timerCheckpointsLoggedCountAtom", () => {
+    it("initializes with 0 checkpoints and tracks increments correctly", () => {
+      expect(store.get(timerCheckpointsLoggedCountAtom)).toBe(0);
+      store.set(timerCheckpointsLoggedCountAtom, (prev) => prev + 1);
+      expect(store.get(timerCheckpointsLoggedCountAtom)).toBe(1);
+      store.set(timerCheckpointsLoggedCountAtom, (prev) => prev + 1);
+      expect(store.get(timerCheckpointsLoggedCountAtom)).toBe(2);
     });
   });
 });

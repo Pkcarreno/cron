@@ -6,6 +6,7 @@ import { act } from "react-test-renderer";
 import { TimerMode } from "@/helpers/timer/factory";
 import { TimerPhase } from "@/helpers/timer/strategy";
 import {
+  timerCheckpointsLoggedCountAtom,
   timerConfigAtom,
   timerPhaseAtom,
   timerSuccessfulPausesCountAtom,
@@ -29,16 +30,17 @@ describe("TimerAmbientHint", () => {
     jest.useRealTimers();
   });
 
-  it("renders checkpoint-specific text when mode supports checkpoints (e.g. STOP_WATCH)", async () => {
+  it("renders checkpoint-specific text with pipe separator when mode supports checkpoints and both actions are new", async () => {
     const store = createStore();
     store.set(timerConfigAtom, { mode: TimerMode.STOP_WATCH });
     store.set(timerPhaseAtom, TimerPhase.WORK);
     store.set(timerSuccessfulPausesCountAtom, 0);
+    store.set(timerCheckpointsLoggedCountAtom, 0);
 
     const screen = await renderWithProviders(<TimerAmbientHint />, { store });
 
     expect(screen.getByTestId("timer-ambient-hint")).toBeTruthy();
-    expect(screen.getByText("HOLD TO PAUSE • DOUBLE-TAP FOR LAP")).toBeTruthy();
+    expect(screen.getByText("HOLD TO PAUSE | DOUBLE-TAP FOR LAP")).toBeTruthy();
   });
 
   it("renders non-checkpoint text when mode does not support checkpoints (e.g. FOR_TIME)", async () => {
@@ -56,11 +58,25 @@ describe("TimerAmbientHint", () => {
     expect(screen.getByText("HOLD ANYWHERE TO PAUSE")).toBeTruthy();
   });
 
-  it("does not render when successful pauses count reaches threshold (>= 3)", async () => {
+  it("renders checkpoint-only guidance when pause has been mastered but checkpoint has not", async () => {
     const store = createStore();
     store.set(timerConfigAtom, { mode: TimerMode.STOP_WATCH });
     store.set(timerPhaseAtom, TimerPhase.WORK);
     store.set(timerSuccessfulPausesCountAtom, 3);
+    store.set(timerCheckpointsLoggedCountAtom, 0);
+
+    const screen = await renderWithProviders(<TimerAmbientHint />, { store });
+
+    expect(screen.getByTestId("timer-ambient-hint")).toBeTruthy();
+    expect(screen.getByText("DOUBLE-TAP TO RECORD LAP")).toBeTruthy();
+  });
+
+  it("does not render when both pause and checkpoint thresholds are satisfied", async () => {
+    const store = createStore();
+    store.set(timerConfigAtom, { mode: TimerMode.STOP_WATCH });
+    store.set(timerPhaseAtom, TimerPhase.WORK);
+    store.set(timerSuccessfulPausesCountAtom, 3);
+    store.set(timerCheckpointsLoggedCountAtom, 3);
 
     const screen = await renderWithProviders(<TimerAmbientHint />, { store });
 

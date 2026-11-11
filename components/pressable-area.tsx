@@ -56,9 +56,14 @@ export const PressableArea = ({
     transform: [{ scale: scale.get() }],
   }));
 
-  const progressAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scaleX: holdProgress.get() }],
-  }));
+  const progressAnimatedStyle = useAnimatedStyle(() => {
+    const val =
+      holdProgress.value ??
+      (typeof holdProgress.get === "function" ? holdProgress.get() : 0);
+    return {
+      width: `${Math.min(100, Math.max(0, val * 100))}%`,
+    };
+  });
 
   const doubleTap = useTapGesture({
     enabled: Boolean(onDoublePress),
@@ -123,8 +128,10 @@ export const PressableArea = ({
   const composed = useExclusiveGestures(doubleTap, longPress, singleTap);
 
   return (
-    <Animated.View style={[styles.container, animatedStyle]}>
-      {children}
+    <View style={styles.container}>
+      <Animated.View style={[styles.container, animatedStyle]}>
+        {children}
+      </Animated.View>
 
       <Animated.View
         pointerEvents="none"
@@ -143,7 +150,7 @@ export const PressableArea = ({
           <View collapsable={false} style={styles.container} />
         </GestureDetector>
       </View>
-    </Animated.View>
+    </View>
   );
 };
 
@@ -156,8 +163,6 @@ const styles = StyleSheet.create({
     height: 2.5,
     left: 0,
     position: "absolute",
-    right: 0,
     top: 0,
-    transformOrigin: "left",
   },
 });

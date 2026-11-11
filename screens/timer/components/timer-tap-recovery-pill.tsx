@@ -1,3 +1,4 @@
+import { useAtomValue } from "jotai";
 import type { FC } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import type { SharedValue } from "react-native-reanimated";
@@ -5,15 +6,24 @@ import Animated, { useAnimatedStyle } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors } from "@/helpers/colors";
+import { timerFlagsAtom } from "@/screens/timer/atoms";
 
 export interface TimerTapRecoveryPillProps {
   progress: SharedValue<number>;
+  text?: string;
 }
 
 export const TimerTapRecoveryPill: FC<TimerTapRecoveryPillProps> = ({
   progress,
+  text,
 }) => {
   const insets = useSafeAreaInsets();
+  const flags = useAtomValue(timerFlagsAtom);
+
+  const defaultText = flags.hasCheckpointsBehavior
+    ? "Hold to pause | Double-tap for lap"
+    : "Hold to pause";
+  const displayText = text ?? defaultText;
 
   const animatedStyle = useAnimatedStyle(() => {
     const val =
@@ -32,7 +42,7 @@ export const TimerTapRecoveryPill: FC<TimerTapRecoveryPillProps> = ({
       testID="timer-tap-recovery-pill"
     >
       <View style={styles.pill}>
-        <Text style={styles.text}>Hold to pause</Text>
+        <Text style={styles.text}>{displayText}</Text>
       </View>
     </Animated.View>
   );

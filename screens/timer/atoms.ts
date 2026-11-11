@@ -71,6 +71,11 @@ export const timerSuccessfulPausesCountAtom = atomWithMMKV<number>(
   0
 );
 
+export const timerCheckpointsLoggedCountAtom = atomWithMMKV<number>(
+  "cron_checkpoints_logged_count",
+  0
+);
+
 /**
  * Derived selectors enforce Object.is memoization so 1 Hz second ticks do not invalidate
  * 1/60 Hz minute SVGs, notch headers, or context phase tags.

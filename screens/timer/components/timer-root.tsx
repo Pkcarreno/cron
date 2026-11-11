@@ -25,6 +25,7 @@ import {
   isPermissionAutoPauseBannerVisibleAtom,
   resetTimerSessionAtom,
   timerCheckpointsAtom,
+  timerCheckpointsLoggedCountAtom,
   timerConfigAtom,
   timerCurrentRoundAtom,
   timerDisplayTimeMsAtom,
@@ -96,6 +97,7 @@ export const TimerRoot: FC<TimerRootProps> = ({
   );
   const resetTimerSession = useSetAtom(resetTimerSessionAtom);
   const setSuccessfulPausesCount = useSetAtom(timerSuccessfulPausesCountAtom);
+  const setCheckpointsLoggedCount = useSetAtom(timerCheckpointsLoggedCountAtom);
 
   useTimerKeepAwake(status === TimerStatus.RUNNING);
 
@@ -264,8 +266,9 @@ export const TimerRoot: FC<TimerRootProps> = ({
   }, [controllerRef, setStatus, dismissPermissionBanner, resetTimerSession]);
 
   const recordCheckpoint = useCallback(() => {
+    setCheckpointsLoggedCount((prev) => prev + 1);
     controllerRef.current?.recordCheckpoint();
-  }, [controllerRef]);
+  }, [controllerRef, setCheckpointsLoggedCount]);
 
   const handleEndSession = useCallback(() => {
     setStatus(TimerStatus.FINISHED);

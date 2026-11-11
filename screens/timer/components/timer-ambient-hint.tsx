@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors } from "@/helpers/colors";
 import {
+  timerCheckpointsLoggedCountAtom,
   timerFlagsAtom,
   timerSuccessfulPausesCountAtom,
 } from "@/screens/timer/atoms";
@@ -19,18 +20,26 @@ export const AMBIENT_HINT_DISMISS_COUNT = 3;
 export const AMBIENT_HINT_DURATION_MS = 3200;
 
 export interface TimerAmbientHintProps {
+  maxCheckpointsCount?: number;
   maxPausesCount?: number;
 }
 
 export const TimerAmbientHint: FC<TimerAmbientHintProps> = ({
+  maxCheckpointsCount = AMBIENT_HINT_DISMISS_COUNT,
   maxPausesCount = AMBIENT_HINT_DISMISS_COUNT,
 }) => {
   const insets = useSafeAreaInsets();
   const flags = useAtomValue(timerFlagsAtom);
   const successfulPausesCount = useAtomValue(timerSuccessfulPausesCountAtom);
+  const checkpointsLoggedCount = useAtomValue(timerCheckpointsLoggedCountAtom);
   const opacity = useSharedValue(0);
 
-  const shouldRender = successfulPausesCount < maxPausesCount;
+  const needsPauseHint = successfulPausesCount < maxPausesCount;
+  const needsCheckpointHint =
+    flags.hasCheckpointsBehavior &&
+    checkpointsLoggedCount < maxCheckpointsCount;
+
+  const shouldRender = needsPauseHint || needsCheckpointHint;
 
   useEffect(() => {
     if (!shouldRender) {
@@ -56,9 +65,14 @@ export const TimerAmbientHint: FC<TimerAmbientHintProps> = ({
     return null;
   }
 
-  const hintText = flags.hasCheckpointsBehavior
-    ? "HOLD TO PAUSE • DOUBLE-TAP FOR LAP"
-    : "HOLD ANYWHERE TO PAUSE";
+  let hintText = "HOLD ANYWHERE TO PAUSE";
+  if (flags.hasCheckpointsBehavior) {
+    if (needsPauseHint && needsCheckpointHint) {
+      hintText = "HOLD TO PAUSE | DOUBLE-TAP FOR LAP";
+    } else if (needsCheckpointHint) {
+      hintText = "DOUBLE-TAP TO RECORD LAP";
+    }
+  }
 
   return (
     <Animated.View
