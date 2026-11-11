@@ -42,8 +42,6 @@ yarn-error.*
 
 # local temporary directory
 .tmp/
-.tmp/*
-!.tmp/.gitkeep
 .worktrees/
 
 # local mise overrides
