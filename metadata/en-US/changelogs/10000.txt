@@ -1,0 +1,6 @@
+- Major 1.0.0 milestone release with significant performance and reliability improvements:
+- Massive app size reduction: Optimized multi-architecture builds down to ~40 MB with R8 bytecode shrinking and pruned dependencies.
+- Vectorial SVG timer display: Crisp, reflow-free numbers with integrated OLED burn-in protection.
+- Enhanced precision thumbwheel: Snappy, dual-channel value syncing and fluid scrolling without ghosting.
+- Modern edge-to-edge menu: Native blurred floating action dock and direct-manipulation tab switcher.
+- Robust background reliability: Live Android notification controls, screen keep-awake safeguards, and seamless audio ducking that respects your workout music.
