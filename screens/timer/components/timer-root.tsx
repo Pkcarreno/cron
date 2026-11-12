@@ -25,6 +25,7 @@ import {
   isPermissionAutoPauseBannerVisibleAtom,
   resetTimerSessionAtom,
   timerCheckpointsAtom,
+  timerCheckpointsLoggedCountAtom,
   timerConfigAtom,
   timerCurrentRoundAtom,
   timerDisplayTimeMsAtom,
@@ -33,6 +34,7 @@ import {
   timerPhaseAtom,
   timerStartedAtAtom,
   timerStatusAtom,
+  timerSuccessfulPausesCountAtom,
   timerTotalRoundsAtom,
 } from "@/screens/timer/atoms";
 import { OledBurnInProtector } from "@/screens/timer/components/oled-burn-in-protector";
@@ -94,6 +96,8 @@ export const TimerRoot: FC<TimerRootProps> = ({
     isPermissionAutoPauseBannerVisibleAtom
   );
   const resetTimerSession = useSetAtom(resetTimerSessionAtom);
+  const setSuccessfulPausesCount = useSetAtom(timerSuccessfulPausesCountAtom);
+  const setCheckpointsLoggedCount = useSetAtom(timerCheckpointsLoggedCountAtom);
 
   useTimerKeepAwake(status === TimerStatus.RUNNING);
 
@@ -114,6 +118,8 @@ export const TimerRoot: FC<TimerRootProps> = ({
   const startedAtRef = useRef<Date | null>(startedAt);
   const endedAtRef = useRef<Date | null>(endedAt);
   const checkpointsRef = useRef<UICheckpoint[]>(checkpoints);
+  const hasPausedInSessionRef = useRef(false);
+  const hasLoggedCheckpointInSessionRef = useRef(false);
 
   useEffect(() => {
     startedAtRef.current = startedAt;
@@ -243,9 +249,13 @@ export const TimerRoot: FC<TimerRootProps> = ({
   }, [setIsPermissionBannerVisible]);
 
   const pause = useCallback(() => {
+    if (!hasPausedInSessionRef.current) {
+      hasPausedInSessionRef.current = true;
+      setSuccessfulPausesCount((prev) => prev + 1);
+    }
     setStatus(TimerStatus.PAUSED);
     controllerRef.current?.pause();
-  }, [controllerRef, setStatus]);
+  }, [controllerRef, setStatus, setSuccessfulPausesCount]);
 
   const start = useCallback(() => {
     dismissPermissionBanner();
@@ -254,6 +264,8 @@ export const TimerRoot: FC<TimerRootProps> = ({
   }, [controllerRef, setStatus, dismissPermissionBanner]);
 
   const reset = useCallback(() => {
+    hasPausedInSessionRef.current = false;
+    hasLoggedCheckpointInSessionRef.current = false;
     dismissPermissionBanner();
     setStatus(TimerStatus.READY);
     controllerRef.current?.reset();
@@ -261,10 +273,16 @@ export const TimerRoot: FC<TimerRootProps> = ({
   }, [controllerRef, setStatus, dismissPermissionBanner, resetTimerSession]);
 
   const recordCheckpoint = useCallback(() => {
+    if (!hasLoggedCheckpointInSessionRef.current) {
+      hasLoggedCheckpointInSessionRef.current = true;
+      setCheckpointsLoggedCount((prev) => prev + 1);
+    }
     controllerRef.current?.recordCheckpoint();
-  }, [controllerRef]);
+  }, [controllerRef, setCheckpointsLoggedCount]);
 
   const handleEndSession = useCallback(() => {
+    hasPausedInSessionRef.current = false;
+    hasLoggedCheckpointInSessionRef.current = false;
     setStatus(TimerStatus.FINISHED);
   }, [setStatus]);
 

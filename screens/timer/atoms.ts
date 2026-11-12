@@ -12,6 +12,7 @@ import {
 } from "@/helpers/timer/utils/formatter";
 import type { TimerFlags, UICheckpoint } from "@/hooks/use-timer";
 import { TimerStatus } from "@/hooks/use-timer";
+import { atomWithMMKV } from "@/stores/storage";
 
 export interface ContextBannerState {
   label: string | number | undefined;
@@ -25,13 +26,14 @@ export const getTimerFlags = (
   phase: TimerPhase
 ): TimerFlags => {
   const isPreparing = phase === TimerPhase.PREPARATION;
+  const supportsCheckpoints =
+    config.mode === TimerMode.STOP_WATCH || config.mode === TimerMode.AMRAP;
 
   return {
-    hasCheckpointsBehavior:
-      !isPreparing &&
-      (config.mode === TimerMode.STOP_WATCH || config.mode === TimerMode.AMRAP),
+    hasCheckpointsBehavior: !isPreparing && supportsCheckpoints,
     isPreparing,
     showsMinuteDigits: !isPreparing,
+    supportsCheckpoints,
   };
 };
 
@@ -64,6 +66,16 @@ export const timerEndedAtAtom = atom<Date | null>(null);
 export const isLowBatteryAtom = atom<boolean>(false);
 
 export const isPermissionAutoPauseBannerVisibleAtom = atom<boolean>(false);
+
+export const timerSuccessfulPausesCountAtom = atomWithMMKV<number>(
+  "cron_successful_pauses_count",
+  0
+);
+
+export const timerCheckpointsLoggedCountAtom = atomWithMMKV<number>(
+  "cron_checkpoints_logged_count",
+  0
+);
 
 /**
  * Derived selectors enforce Object.is memoization so 1 Hz second ticks do not invalidate

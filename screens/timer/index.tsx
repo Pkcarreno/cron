@@ -4,6 +4,7 @@ import { SummaryFace } from "./components/summary-face";
 import { ContextBannerSvg } from "./components/svg/context-banner-svg";
 import { MinutesSvg } from "./components/svg/minutes-svg";
 import { SecondsSvg } from "./components/svg/seconds-svg";
+import { TimerAmbientHint } from "./components/timer-ambient-hint";
 import {
   TimerContextBanner,
   TimerDisplay,
@@ -14,8 +15,10 @@ import {
 import { TimerGestureOverlay } from "./components/timer-gesture-overlay";
 import { TimerHeader } from "./components/timer-header";
 import { TimerRoot } from "./components/timer-root";
+import { TimerTapRecoveryPill } from "./components/timer-tap-recovery-pill";
 
 export const Timer = Object.assign(TimerRoot, {
+  AmbientHint: TimerAmbientHint,
   ContextBanner: TimerContextBanner,
   ContextBannerSvg,
   Display: TimerDisplay,
@@ -30,6 +33,7 @@ export const Timer = Object.assign(TimerRoot, {
   Seconds: TimerSeconds,
   SecondsSvg,
   Summary: SummaryFace,
+  TapRecoveryPill: TimerTapRecoveryPill,
 });
 
 export type { TimerRootProps } from "./components/timer-root";

@@ -10,10 +10,12 @@ import * as ForegroundModule from "@/modules/cron-foreground-service";
 import { Timer } from "@/screens/timer";
 import {
   timerCheckpointsAtom,
+  timerCheckpointsLoggedCountAtom,
   timerContextBannerAtom,
   timerMinutesStrAtom,
   timerModeAbbrAtom,
   timerSecondsStrAtom,
+  timerSuccessfulPausesCountAtom,
 } from "@/screens/timer/atoms";
 import { FeedbackService } from "@/services/audio/feedback-service";
 import { isBackgroundAudioOnlyAllowedAtom } from "@/stores/settings";
@@ -56,9 +58,11 @@ jest.mock("@/components/pressable-area", () => {
     PressableArea: ({
       children,
       onLongPress,
+      onDoublePress,
     }: {
       children: React.ReactNode;
       onLongPress?: () => void;
+      onDoublePress?: () => void;
     }) =>
       ReactMock.createElement(
         View,
@@ -67,6 +71,10 @@ jest.mock("@/components/pressable-area", () => {
         ReactMock.createElement(Pressable, {
           onPress: onLongPress,
           testID: "pressable-area",
+        }),
+        ReactMock.createElement(Pressable, {
+          onPress: onDoublePress,
+          testID: "pressable-area-double",
         })
       ),
   };
@@ -124,6 +132,8 @@ describe("Timer screen audio lifecycle", () => {
       fireEvent.press(pressable);
     });
 
+    expect(store.get(timerSuccessfulPausesCountAtom)).toBe(1);
+
     // Summary screen should now display "Back to menu" button
     const backButton = screen.getByText("Back to menu");
     expect(backButton).toBeTruthy();
@@ -139,6 +149,89 @@ describe("Timer screen audio lifecycle", () => {
     });
 
     expect(mockDispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("increments learning count atoms at most once per workout session across repeated gestures", async () => {
+    const store = createStore();
+    store.set(timerSuccessfulPausesCountAtom, 0);
+    store.set(timerCheckpointsLoggedCountAtom, 0);
+    const screen = await renderWithProviders(<Timer />, { store });
+
+    // Fast-forward past preparation countdown into active workout phase
+    await act(() => {
+      jest.advanceTimersByTime(11_000);
+    });
+
+    const pausePressable = screen.getByTestId("pressable-area");
+    const doubleTapPressable = screen.getByTestId("pressable-area-double");
+
+    // First checkpoint in this session
+    await act(() => {
+      fireEvent.press(doubleTapPressable);
+    });
+    expect(store.get(timerCheckpointsLoggedCountAtom)).toBe(1);
+
+    // Second checkpoint in the same session should NOT increment again
+    await act(() => {
+      fireEvent.press(doubleTapPressable);
+    });
+    expect(store.get(timerCheckpointsLoggedCountAtom)).toBe(1);
+
+    // First pause in this session
+    await act(() => {
+      fireEvent.press(pausePressable);
+    });
+    expect(store.get(timerSuccessfulPausesCountAtom)).toBe(1);
+
+    // Resume session
+    const resumeButton = screen.getByText("Resume session");
+    await act(() => {
+      fireEvent.press(resumeButton);
+    });
+
+    // Second pause in same session should NOT increment again
+    const resumedPausePressable = screen.getByTestId("pressable-area");
+    await act(() => {
+      fireEvent.press(resumedPausePressable);
+    });
+    expect(store.get(timerSuccessfulPausesCountAtom)).toBe(1);
+
+    // End session (returns to menu / resets session flags)
+    const backButton = screen.getByText("Back to menu");
+    await act(() => {
+      fireEvent.press(backButton);
+    });
+
+    await act(() => {
+      screen.unmount();
+    });
+
+    // Simulate next distinct workout session
+    const nextScreen = await renderWithProviders(<Timer />, { store });
+    await act(() => {
+      jest.advanceTimersByTime(11_000);
+    });
+
+    const nextDoubleTapPressable = nextScreen.getByTestId(
+      "pressable-area-double"
+    );
+    const nextPausePressable = nextScreen.getByTestId("pressable-area");
+
+    // Checkpoint in Session 2 increments to 2
+    await act(() => {
+      fireEvent.press(nextDoubleTapPressable);
+    });
+    expect(store.get(timerCheckpointsLoggedCountAtom)).toBe(2);
+
+    // Pause in Session 2 increments to 2
+    await act(() => {
+      fireEvent.press(nextPausePressable);
+    });
+    expect(store.get(timerSuccessfulPausesCountAtom)).toBe(2);
+
+    await act(() => {
+      nextScreen.unmount();
+    });
   });
 
   describe("Compound Component architecture", () => {
