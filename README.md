@@ -11,6 +11,10 @@ Features:
   - INTERVALS: alternating work/rest rounds
   - STOP WATCH: open-ended with checkpoint logging
 - Big numbers, easy-to-read timer face
+- Background execution with live chronometer notification and playback controls (Android)
+- Sound cues with transient audio ducking (lowers background music during beeps)
+- Active OLED burn-in protection for long workouts
+- Keeps screen awake while timer is running
 
 ## usage
 
@@ -35,6 +39,8 @@ On the timer screen there are only 2 interactions:
 
 - long press: pauses the timer and lets you finish (or resume) the timer.
 - double tap: (only in AMRAP & STOP WATCH timers) registers a new checkpoint.
+
+Workouts continue running in the background if the app is minimized or the screen is locked.
 
 ## motivation
 
