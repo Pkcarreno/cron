@@ -36,8 +36,7 @@ export const TimerAmbientHint: FC<TimerAmbientHintProps> = ({
 
   const needsPauseHint = successfulPausesCount < maxPausesCount;
   const needsCheckpointHint =
-    flags.hasCheckpointsBehavior &&
-    checkpointsLoggedCount < maxCheckpointsCount;
+    flags.supportsCheckpoints && checkpointsLoggedCount < maxCheckpointsCount;
 
   const shouldRender = needsPauseHint || needsCheckpointHint;
 
@@ -66,7 +65,7 @@ export const TimerAmbientHint: FC<TimerAmbientHintProps> = ({
   }
 
   let hintText = "HOLD ANYWHERE TO PAUSE";
-  if (flags.hasCheckpointsBehavior) {
+  if (flags.supportsCheckpoints) {
     if (needsPauseHint && needsCheckpointHint) {
       hintText = "HOLD TO PAUSE | DOUBLE-TAP FOR LAP";
     } else if (needsCheckpointHint) {

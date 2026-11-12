@@ -37,6 +37,7 @@ export interface TimerFlags {
   isPreparing: boolean;
   showsMinuteDigits: boolean;
   hasCheckpointsBehavior: boolean;
+  supportsCheckpoints: boolean;
 }
 
 export interface UICheckpoint extends CheckpointData {
@@ -56,13 +57,14 @@ export interface TimerEventHandlers {
 
 const getTimerFlags = (config: TimerConfig, phase: TimerPhase): TimerFlags => {
   const isPreparing = phase === TimerPhase.PREPARATION;
+  const supportsCheckpoints =
+    config.mode === TimerMode.STOP_WATCH || config.mode === TimerMode.AMRAP;
 
   return {
-    hasCheckpointsBehavior:
-      !isPreparing &&
-      (config.mode === TimerMode.STOP_WATCH || config.mode === TimerMode.AMRAP),
+    hasCheckpointsBehavior: !isPreparing && supportsCheckpoints,
     isPreparing,
     showsMinuteDigits: !isPreparing,
+    supportsCheckpoints,
   };
 };
 

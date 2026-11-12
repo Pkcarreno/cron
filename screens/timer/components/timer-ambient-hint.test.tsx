@@ -43,6 +43,22 @@ describe("TimerAmbientHint", () => {
     expect(screen.getByText("HOLD TO PAUSE | DOUBLE-TAP FOR LAP")).toBeTruthy();
   });
 
+  it("renders checkpoint guidance during PREPARATION countdown phase in AMRAP mode", async () => {
+    const store = createStore();
+    store.set(timerConfigAtom, {
+      durationMs: 600_000,
+      mode: TimerMode.AMRAP,
+    });
+    store.set(timerPhaseAtom, TimerPhase.PREPARATION);
+    store.set(timerSuccessfulPausesCountAtom, 0);
+    store.set(timerCheckpointsLoggedCountAtom, 0);
+
+    const screen = await renderWithProviders(<TimerAmbientHint />, { store });
+
+    expect(screen.getByTestId("timer-ambient-hint")).toBeTruthy();
+    expect(screen.getByText("HOLD TO PAUSE | DOUBLE-TAP FOR LAP")).toBeTruthy();
+  });
+
   it("renders non-checkpoint text when mode does not support checkpoints (e.g. FOR_TIME)", async () => {
     const store = createStore();
     store.set(timerConfigAtom, {

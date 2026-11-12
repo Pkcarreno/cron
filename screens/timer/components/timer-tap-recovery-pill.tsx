@@ -20,7 +20,7 @@ export const TimerTapRecoveryPill: FC<TimerTapRecoveryPillProps> = ({
   const insets = useSafeAreaInsets();
   const flags = useAtomValue(timerFlagsAtom);
 
-  const defaultText = flags.hasCheckpointsBehavior
+  const defaultText = flags.supportsCheckpoints
     ? "Hold to pause | Double-tap for lap"
     : "Hold to pause";
   const displayText = text ?? defaultText;

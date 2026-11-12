@@ -22,6 +22,7 @@ describe("TimerFace", () => {
           hasCheckpointsBehavior: false,
           isPreparing: false,
           showsMinuteDigits: true,
+          supportsCheckpoints: false,
         }}
         hours=""
         lap={undefined}
@@ -47,6 +48,7 @@ describe("TimerFace", () => {
           hasCheckpointsBehavior: false,
           isPreparing: false,
           showsMinuteDigits: true,
+          supportsCheckpoints: false,
         }}
         hours="1"
         lap={1}
@@ -96,6 +98,7 @@ describe("TimerFace", () => {
           hasCheckpointsBehavior: false,
           isPreparing: false,
           showsMinuteDigits: true,
+          supportsCheckpoints: false,
         }}
         hours=""
         lap={undefined}
@@ -121,6 +124,7 @@ describe("TimerFace", () => {
           hasCheckpointsBehavior: false,
           isPreparing: false,
           showsMinuteDigits: true,
+          supportsCheckpoints: false,
         }}
         hours=""
         lap={undefined}
@@ -156,6 +160,7 @@ describe("TimerFace", () => {
           hasCheckpointsBehavior: false,
           isPreparing: true,
           showsMinuteDigits: false,
+          supportsCheckpoints: false,
         }}
         hours=""
         lap={undefined}
@@ -194,6 +199,7 @@ describe("TimerFace", () => {
           hasCheckpointsBehavior: false,
           isPreparing: false,
           showsMinuteDigits: true,
+          supportsCheckpoints: false,
         }}
         hours=""
         lap={undefined}
@@ -239,6 +245,7 @@ describe("TimerFace", () => {
           hasCheckpointsBehavior: false,
           isPreparing: false,
           showsMinuteDigits: true,
+          supportsCheckpoints: false,
         }}
         hours=""
         lap={undefined}
