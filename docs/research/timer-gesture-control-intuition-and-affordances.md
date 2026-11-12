@@ -190,8 +190,12 @@ Rather than relying on a single trick, the optimal UX combines **Patterns A, B, 
 
 - **Location**: Rendered inside [`TimerGestureOverlay`](file:///home/pk/.t3/worktrees/cron/t3-1a0ea765-14d91e96428ee0f5/screens/timer/components/timer-gesture-overlay.tsx) centered along the bottom safe area inset.
 - **Copy**:
-  - Both pause and lap unlearned: `"HOLD TO PAUSE | DOUBLE-TAP FOR LAP"`
-  - Pause learned, lap unlearned: `"DOUBLE-TAP TO RECORD LAP"`
+  - Unlearned pause and checkpoints:
+    - AMRAP: `"HOLD TO PAUSE | DOUBLE-TAP FOR ROUND"`
+    - STOP_WATCH: `"HOLD TO PAUSE | DOUBLE-TAP FOR LAP"`
+  - Pause learned, checkpoints unlearned:
+    - AMRAP: `"DOUBLE-TAP TO RECORD ROUND"`
+    - STOP_WATCH: `"DOUBLE-TAP TO RECORD LAP"`
   - Non-checkpoint modes (For Time, Tabata, EMOM): `"HOLD ANYWHERE TO PAUSE"`
 - **Typography & Color**: `fontFamily: 'Geist Mono'`, `fontSize: 11`, `letterSpacing: 1.2`, `color: colors.neutral[500]`.
 - **Motion**:
@@ -221,7 +225,8 @@ Rather than relying on a single trick, the optimal UX combines **Patterns A, B, 
 - **Trigger**: On unassigned single tap while running, `PressableArea` invokes `onUnassignedTap`.
 - **Debounce**: 1500ms debounce prevents visual churn during accidental touch bursts.
 - **Copy**:
-  - For checkpoint-capable modes (`hasCheckpointsBehavior`): `"Hold to pause | Double-tap for lap"`
+  - For AMRAP: `"Hold to pause | Double-tap for round"`
+  - For STOP_WATCH: `"Hold to pause | Double-tap for lap"`
   - For non-checkpoint modes: `"Hold to pause"`
 - **Visual Presentation**:
   - Rendered in [`TimerTapRecoveryPill`](file:///home/pk/.t3/worktrees/cron/t3-1a0ea765-14d91e96428ee0f5/screens/timer/components/timer-tap-recovery-pill.tsx) below top notch.

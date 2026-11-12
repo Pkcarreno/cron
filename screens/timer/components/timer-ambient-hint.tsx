@@ -10,8 +10,10 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors } from "@/helpers/colors";
+import { TimerMode } from "@/helpers/timer/factory";
 import {
   timerCheckpointsLoggedCountAtom,
+  timerConfigAtom,
   timerFlagsAtom,
   timerSuccessfulPausesCountAtom,
 } from "@/screens/timer/atoms";
@@ -30,6 +32,7 @@ export const TimerAmbientHint: FC<TimerAmbientHintProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const flags = useAtomValue(timerFlagsAtom);
+  const config = useAtomValue(timerConfigAtom);
   const successfulPausesCount = useAtomValue(timerSuccessfulPausesCountAtom);
   const checkpointsLoggedCount = useAtomValue(timerCheckpointsLoggedCountAtom);
   const opacity = useSharedValue(0);
@@ -64,12 +67,13 @@ export const TimerAmbientHint: FC<TimerAmbientHintProps> = ({
     return null;
   }
 
+  const checkpointLabel = config.mode === TimerMode.AMRAP ? "ROUND" : "LAP";
   let hintText = "HOLD ANYWHERE TO PAUSE";
   if (flags.supportsCheckpoints) {
     if (needsPauseHint && needsCheckpointHint) {
-      hintText = "HOLD TO PAUSE | DOUBLE-TAP FOR LAP";
+      hintText = `HOLD TO PAUSE | DOUBLE-TAP FOR ${checkpointLabel}`;
     } else if (needsCheckpointHint) {
-      hintText = "DOUBLE-TAP TO RECORD LAP";
+      hintText = `DOUBLE-TAP TO RECORD ${checkpointLabel}`;
     }
   }
 

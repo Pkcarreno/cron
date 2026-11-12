@@ -6,7 +6,8 @@ import Animated, { useAnimatedStyle } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors } from "@/helpers/colors";
-import { timerFlagsAtom } from "@/screens/timer/atoms";
+import { TimerMode } from "@/helpers/timer/factory";
+import { timerConfigAtom, timerFlagsAtom } from "@/screens/timer/atoms";
 
 export interface TimerTapRecoveryPillProps {
   progress: SharedValue<number>;
@@ -19,9 +20,11 @@ export const TimerTapRecoveryPill: FC<TimerTapRecoveryPillProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const flags = useAtomValue(timerFlagsAtom);
+  const config = useAtomValue(timerConfigAtom);
 
+  const checkpointLabel = config.mode === TimerMode.AMRAP ? "round" : "lap";
   const defaultText = flags.supportsCheckpoints
-    ? "Hold to pause | Double-tap for lap"
+    ? `Hold to pause | Double-tap for ${checkpointLabel}`
     : "Hold to pause";
   const displayText = text ?? defaultText;
 

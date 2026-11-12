@@ -47,9 +47,12 @@ We adopt a **Three-Tier Progressive Affordance Architecture** with **Distinct Se
 ### 2.1. Three-Tier Progressive Affordance Hierarchy
 
 1. **Tier 1 — Ambient Monospace Ghost Guide ([`TimerAmbientHint`](file:///home/pk/.t3/worktrees/cron/t3-1a0ea765-14d91e96428ee0f5/screens/timer/components/timer-ambient-hint.tsx))**:
-   - Rendered at the bottom safe area inset during the first 3.2 seconds of workout entry.
+   - Rendered at the bottom safe area inset during the first 3.2 seconds of workout entry (including during the preparation countdown phase).
    - Low-contrast neutral typography (`Geist Mono`, 11px, `colors.neutral[500]`, opacity `0.8 -> 0`).
-   - Uses pipe separator (`|`) matching Cron's monospaced typography (`"HOLD TO PAUSE | DOUBLE-TAP FOR LAP"`).
+   - Uses pipe separator (`|`) and mode-specific vocabulary matching Cron's glossary:
+     - `AMRAP`: `"HOLD TO PAUSE | DOUBLE-TAP FOR ROUND"`
+     - `STOP_WATCH`: `"HOLD TO PAUSE | DOUBLE-TAP FOR LAP"`
+     - Non-checkpoint modes: `"HOLD ANYWHERE TO PAUSE"`
    - Zero layout shift: positioned absolutely over the gesture layer without altering SVG digit boundaries (ADR 0008).
 
 2. **Tier 2 — Real-Time Hold Tension ([`PressableArea`](file:///home/pk/.t3/worktrees/cron/t3-1a0ea765-14d91e96428ee0f5/components/pressable-area.tsx))**:
@@ -60,7 +63,10 @@ We adopt a **Three-Tier Progressive Affordance Architecture** with **Distinct Se
 3. **Tier 3 — Reactive Error Recovery ([`TimerTapRecoveryPill`](file:///home/pk/.t3/worktrees/cron/t3-1a0ea765-14d91e96428ee0f5/screens/timer/components/timer-tap-recovery-pill.tsx))**:
    - Single taps trigger `onUnassignedTap` with an immediate 1500ms debounce guard.
    - Renders a floating pill (`colors.neutral[900]`, border `colors.neutral[800]`) below the notch for 1200ms.
-   - Context-aware copy: displays `"Hold to pause | Double-tap for lap"` in checkpoint-enabled modes, and `"Hold to pause"` in non-checkpoint modes.
+   - Context-aware copy adhering to domain terminology:
+     - `AMRAP`: `"Hold to pause | Double-tap for round"`
+     - `STOP_WATCH`: `"Hold to pause | Double-tap for lap"`
+     - Non-checkpoint modes: `"Hold to pause"`
 
 ---
 
@@ -78,7 +84,7 @@ To ensure guidance retires only when true cross-session proficiency is achieved:
    - Logging 20 rounds in a single AMRAP only increments the checkpoint counter by **+1** (1 session of experience).
    - Pausing 5 times in a single workout only increments the pause counter by **+1**.
    - Requires interacting with the gestures across **3 distinct workout sessions** before the ambient guide permanently dissolves.
-   - When pause is mastered ($\ge 3$) but laps are not ($< 3$), the ambient guide dynamically sharpens to: `"DOUBLE-TAP TO RECORD LAP"`.
+   - When pause is mastered ($\ge 3$) but laps/rounds are not ($< 3$), the ambient guide dynamically sharpens to: `"DOUBLE-TAP TO RECORD ROUND"` (AMRAP) or `"DOUBLE-TAP TO RECORD LAP"` (Stopwatch).
 
 ---
 
