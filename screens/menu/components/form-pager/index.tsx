@@ -121,7 +121,17 @@ export {
   MENU_HEADER_METRICS,
 } from "./metrics";
 export { FormPagerTabBar } from "./tab-bar";
-export * from "./types";
+export type {
+  FormInsets,
+  FormPagerContextValue,
+  FormPagerDockProps,
+  FormPagerHeaderProps,
+  FormPagerProps,
+  FormPagerTabBarProps,
+  FormPagerViewportProps,
+  FormTabOption,
+  TabTransitionOptions,
+} from "./types";
 export { useFormPager } from "./use-form-pager";
 export { FormPagerViewport } from "./viewport";
 
