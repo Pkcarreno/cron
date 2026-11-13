@@ -8,6 +8,7 @@ import type {
 } from "react-native";
 import { Pressable, StyleSheet } from "react-native";
 import Animated, {
+  createAnimatedComponent,
   interpolateColor,
   useAnimatedStyle,
   useSharedValue,
@@ -16,7 +17,7 @@ import Animated, {
 
 import { colors } from "@/helpers/colors";
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+const AnimatedPressable = createAnimatedComponent(Pressable);
 
 export interface SwitchProps extends Omit<
   PressableProps,

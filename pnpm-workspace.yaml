@@ -10,3 +10,5 @@ overrides:
 permissions:
   ultracite:
     skills: true
+minimumReleaseAgeExclude:
+  - expo@58.0.25
