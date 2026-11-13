@@ -1,4 +1,5 @@
 import * as Haptics from "expo-haptics";
+import type { Store } from "jotai/vanilla";
 import { createStore } from "jotai/vanilla";
 
 import { TimerController } from "@/helpers/timer/controller";
@@ -22,7 +23,7 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
   };
   let impactAsyncSpy: jest.SpyInstance;
   let notificationAsyncSpy: jest.SpyInstance;
-  let testStore: ReturnType<typeof createStore>;
+  let testStore: Store;
 
   beforeEach(() => {
     jest.clearAllMocks();
