@@ -1,4 +1,8 @@
-import type { SheetDetent } from "@lodev09/react-native-true-sheet";
+import type {
+  DidDismissEvent,
+  SheetDetent,
+  TrueSheetProps,
+} from "@lodev09/react-native-true-sheet";
 import { TrueSheet } from "@lodev09/react-native-true-sheet";
 import React, {
   createContext,
@@ -15,12 +19,31 @@ import type {
   ViewProps,
   TextProps,
   GestureResponderEvent,
+  StyleProp,
+  ViewStyle,
 } from "react-native";
 import { Pressable, View, StyleSheet } from "react-native";
 
 import { colors } from "@/helpers/colors";
 
 import { Text } from "./text";
+
+export type {
+  SheetDetent,
+  TrueSheetProps,
+  TrueSheetMethods,
+  GrabberOptions,
+  DetentChangeEvent,
+  DragBeginEvent,
+  DragChangeEvent,
+  DragEndEvent,
+  PositionChangeEvent,
+  DidDismissEvent,
+  WillDismissEvent,
+  DidPresentEvent,
+  WillPresentEvent,
+  DismissAttemptEvent,
+} from "@lodev09/react-native-true-sheet";
 
 interface SheetContextType {
   handleDismissed: () => void;
@@ -62,7 +85,43 @@ export const Sheet: React.FC<SheetProps> = ({
   const prevOpenRef = useRef<boolean>(defaultOpen);
   const isInternalDismissRef = useRef<boolean>(false);
 
-  useImperativeHandle(ref, () => sheetRef.current as TrueSheet, []);
+  useImperativeHandle(
+    ref,
+    () =>
+      ({
+        dismiss: (...args: Parameters<TrueSheet["dismiss"]>) =>
+          sheetRef.current?.dismiss(...args) ?? Promise.resolve(),
+        dismissStack: (...args: Parameters<TrueSheet["dismissStack"]>) =>
+          sheetRef.current?.dismissStack(...args) ?? Promise.resolve(),
+        present: (...args: Parameters<TrueSheet["present"]>) =>
+          sheetRef.current?.present(...args) ?? Promise.resolve(),
+        resize: (...args: Parameters<TrueSheet["resize"]>) =>
+          sheetRef.current?.resize(...args) ?? Promise.resolve(),
+      }) as unknown as TrueSheet,
+    []
+  );
+
+  useEffect(() => {
+    if (!ref) {
+      return;
+    }
+    const methods = {
+      dismiss: (...args: Parameters<TrueSheet["dismiss"]>) =>
+        sheetRef.current?.dismiss(...args) ?? Promise.resolve(),
+      dismissStack: (...args: Parameters<TrueSheet["dismissStack"]>) =>
+        sheetRef.current?.dismissStack(...args) ?? Promise.resolve(),
+      present: (...args: Parameters<TrueSheet["present"]>) =>
+        sheetRef.current?.present(...args) ?? Promise.resolve(),
+      resize: (...args: Parameters<TrueSheet["resize"]>) =>
+        sheetRef.current?.resize(...args) ?? Promise.resolve(),
+    } as unknown as TrueSheet;
+
+    if (typeof ref === "function") {
+      ref(methods);
+    } else {
+      (ref as React.RefObject<TrueSheet | null>).current = methods;
+    }
+  }, [ref]);
 
   const handleSetOpen = useCallback(
     (newOpen: boolean) => {
@@ -158,8 +217,12 @@ export const SheetTrigger: React.FC<SheetTriggerProps> = ({
   );
 };
 
-export interface SheetContentProps extends Omit<ViewProps, "ref"> {
+export interface SheetContentProps extends Omit<
+  TrueSheetProps,
+  "ref" | "children" | "detents"
+> {
   children: React.ReactNode;
+  contentContainerStyle?: StyleProp<ViewStyle>;
   detents?: SheetDetent[];
   enableDynamicSizing?: boolean;
   onDismiss?: () => void;
@@ -168,11 +231,17 @@ export interface SheetContentProps extends Omit<ViewProps, "ref"> {
 
 export const SheetContent: React.FC<SheetContentProps> = ({
   children,
+  contentContainerStyle,
   detents,
   enableDynamicSizing = true,
   onDismiss,
   ref,
   style,
+  cornerRadius = 24,
+  backgroundColor = colors.neutral[800],
+  grabber = true,
+  grabberOptions,
+  onDidDismiss,
   ...props
 }) => {
   const { sheetRef, handleDismissed } = useSheetContext();
@@ -187,6 +256,14 @@ export const SheetContent: React.FC<SheetContentProps> = ({
     return [0.5, 0.9] as SheetDetent[];
   }, [detents, enableDynamicSizing]);
 
+  const resolvedGrabberOptions = useMemo(
+    () => ({
+      color: colors.neutral[600],
+      ...grabberOptions,
+    }),
+    [grabberOptions]
+  );
+
   useEffect(() => {
     if (!ref) {
       return;
@@ -198,27 +275,29 @@ export const SheetContent: React.FC<SheetContentProps> = ({
     }
   }, [ref, sheetRef]);
 
-  const handleDidDismiss = useCallback(() => {
-    handleDismissed();
-    if (onDismiss) {
-      onDismiss();
-    }
-  }, [handleDismissed, onDismiss]);
+  const handleDidDismiss = useCallback(
+    (event?: DidDismissEvent) => {
+      handleDismissed();
+      onDismiss?.();
+      onDidDismiss?.(event ?? ({ nativeEvent: null } as DidDismissEvent));
+    },
+    [handleDismissed, onDismiss, onDidDismiss]
+  );
 
   return (
     <TrueSheet
       ref={sheetRef}
       detents={resolvedDetents}
-      cornerRadius={24}
-      backgroundColor={colors.neutral[800]}
-      grabber={true}
-      grabberOptions={{
-        color: colors.neutral[600],
-      }}
+      cornerRadius={cornerRadius}
+      backgroundColor={backgroundColor}
+      grabber={grabber}
+      grabberOptions={resolvedGrabberOptions}
       onDidDismiss={handleDidDismiss}
       {...props}
     >
-      <View style={[styles.contentContainer, style]}>{children}</View>
+      <View style={[styles.contentContainer, style, contentContainerStyle]}>
+        {children}
+      </View>
     </TrueSheet>
   );
 };

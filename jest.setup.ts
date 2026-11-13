@@ -59,16 +59,29 @@ jest.mock("@lodev09/react-native-true-sheet", () => {
   const { View } = require("react-native");
 
   class TrueSheet extends ReactMock.Component<any, any> {
+    static lastProps: any = undefined;
+
     present: any = jest.fn((...args: any[]): Promise<any> =>
       TrueSheet.prototype.present.apply(this, args)
     );
     dismiss: any = jest.fn((...args: any[]): Promise<any> =>
       TrueSheet.prototype.dismiss.apply(this, args)
     );
+    resize: any = jest.fn((...args: any[]): Promise<any> =>
+      TrueSheet.prototype.resize.apply(this, args)
+    );
+    dismissStack: any = jest.fn((...args: any[]): Promise<any> =>
+      TrueSheet.prototype.dismissStack.apply(this, args)
+    );
     render() {
+      TrueSheet.lastProps = this.props;
       return ReactMock.createElement(
         View,
-        { style: this.props.style },
+        {
+          testID: this.props.testID ?? "mock-true-sheet",
+          ...this.props,
+          style: this.props.style,
+        },
         this.props.children
       );
     }
@@ -76,8 +89,24 @@ jest.mock("@lodev09/react-native-true-sheet", () => {
 
   TrueSheet.prototype.present = jest.fn(() => Promise.resolve());
   TrueSheet.prototype.dismiss = jest.fn(() => Promise.resolve());
+  TrueSheet.prototype.resize = jest.fn(() => Promise.resolve());
+  TrueSheet.prototype.dismissStack = jest.fn(() => Promise.resolve());
 
-  return { TrueSheet };
+  return {
+    TrueSheet,
+    TrueSheetOverlay: ({ children, ...rest }: any) =>
+      ReactMock.createElement(View, rest, children),
+    TrueSheetPeek: ({ children, ...rest }: any) =>
+      ReactMock.createElement(View, rest, children),
+    TrueSheetProvider: ({ children }: any) => children,
+    useTrueSheet: () => ({
+      dismiss: jest.fn(() => Promise.resolve()),
+      dismissAll: jest.fn(() => Promise.resolve()),
+      dismissStack: jest.fn(() => Promise.resolve()),
+      present: jest.fn(() => Promise.resolve()),
+      resize: jest.fn(() => Promise.resolve()),
+    }),
+  };
 });
 
 jest.mock("react-native-pager-view", () => {
