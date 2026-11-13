@@ -62,8 +62,8 @@
     "valibot": "^1.5.0"
   },
   "devDependencies": {
-    "@commitlint/cli": "^20.5.3",
-    "@commitlint/config-conventional": "^20.5.3",
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-conventional": "^21.2.4",
     "@expo/dom-webview": "~58.0.2",
     "@expo/metro-runtime": "~58.0.17",
     "@testing-library/react-native": "^14.1.0",
