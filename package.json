@@ -49,7 +49,7 @@
     "jotai": "^3.0.2",
     "react": "19.3.0",
     "react-native": "0.88.1",
-    "react-native-audio-api": "^0.13.6",
+    "react-native-audio-api": "^1.0.0",
     "react-native-gesture-handler": "~3.3.0",
     "react-native-mmkv": "^4.3.2",
     "react-native-nitro-modules": "^0.37.2",

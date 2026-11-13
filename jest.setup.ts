@@ -44,7 +44,7 @@ jest.mock("react-native-audio-api", () => {
       ...actual.AudioManager,
       observeAudioInterruptions: jest.fn(),
       setAudioSessionActivity: jest.fn(() => Promise.resolve()),
-      setAudioSessionOptions: jest.fn(),
+      setSystemOptions: jest.fn(),
     },
   };
 });

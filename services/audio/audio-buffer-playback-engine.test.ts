@@ -15,7 +15,7 @@ import { AudioManager } from "react-native-audio-api";
 import {
   AudioBufferPlaybackEngine,
   CANONICAL_SOUNDS,
-  WORKOUT_AUDIO_SESSION_OPTIONS,
+  WORKOUT_AUDIO_SYSTEM_OPTIONS,
 } from "@/services/audio/audio-buffer-playback-engine";
 import type { CanonicalSoundName } from "@/services/audio/audio-buffer-playback-engine";
 
@@ -124,20 +124,22 @@ describe("AudioBufferPlaybackEngine", () => {
       });
       expect(engine.isReady()).toBe(false);
 
-      expect(AudioManager.setAudioSessionOptions).toHaveBeenCalledTimes(1);
-      expect(AudioManager.setAudioSessionOptions).toHaveBeenCalledWith(
-        WORKOUT_AUDIO_SESSION_OPTIONS
+      expect(AudioManager.setSystemOptions).toHaveBeenCalledTimes(1);
+      expect(AudioManager.setSystemOptions).toHaveBeenCalledWith(
+        WORKOUT_AUDIO_SYSTEM_OPTIONS
       );
-      expect(AudioManager.setAudioSessionOptions).toHaveBeenCalledWith(
+      expect(AudioManager.setSystemOptions).toHaveBeenCalledWith(
         expect.objectContaining({
-          iosCategory: "playback",
-          iosMode: "default",
-          iosNotifyOthersOnDeactivation: true,
-          iosOptions: expect.arrayContaining([
-            "duckOthers",
-            "mixWithOthers",
-            "defaultToSpeaker",
-          ]),
+          ios: expect.objectContaining({
+            category: "playback",
+            mode: "default",
+            notifyOthersOnDeactivation: true,
+            options: expect.arrayContaining([
+              "duckOthers",
+              "mixWithOthers",
+              "defaultToSpeaker",
+            ]),
+          }),
         })
       );
       // Crucial: do not steal permanent audio focus on engine creation
@@ -148,7 +150,7 @@ describe("AudioBufferPlaybackEngine", () => {
       const mockWarn = jest.spyOn(console, "warn").mockImplementation(() => {});
       const errorThrowingManager = {
         ...AudioManager,
-        setAudioSessionOptions: jest.fn(() => {
+        setSystemOptions: jest.fn(() => {
           throw new Error("AVAudioSession error");
         }),
       } as unknown as typeof AudioManager;
