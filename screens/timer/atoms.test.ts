@@ -1,3 +1,4 @@
+import type { Store } from "jotai";
 import { createStore } from "jotai";
 
 import { colors } from "@/helpers/colors";
@@ -19,11 +20,13 @@ import {
   timerStartedAtAtom,
   timerSuccessfulPausesCountAtom,
 } from "@/screens/timer/atoms";
+import { storage } from "@/stores/storage";
 
 describe("Timer Atoms", () => {
-  let store: ReturnType<typeof createStore>;
+  let store: Store;
 
   beforeEach(() => {
+    storage.clearAll();
     store = createStore();
   });
 
@@ -217,6 +220,30 @@ describe("Timer Atoms", () => {
       store.set(timerSuccessfulPausesCountAtom, (prev) => prev + 1);
       expect(store.get(timerSuccessfulPausesCountAtom)).toBe(2);
     });
+
+    it("persists timerSuccessfulPausesCountAtom in MMKV and restores it across store restarts", () => {
+      const firstStore = createStore();
+      const unsub = firstStore.sub(timerSuccessfulPausesCountAtom, () => {});
+
+      expect(firstStore.get(timerSuccessfulPausesCountAtom)).toBe(0);
+      firstStore.set(timerSuccessfulPausesCountAtom, 3);
+      expect(firstStore.get(timerSuccessfulPausesCountAtom)).toBe(3);
+
+      unsub();
+
+      expect(
+        JSON.parse(storage.getString("cron_successful_pauses_count") ?? "0")
+      ).toBe(3);
+
+      const restartedStore = createStore();
+      const unsubRestart = restartedStore.sub(
+        timerSuccessfulPausesCountAtom,
+        () => {}
+      );
+
+      expect(restartedStore.get(timerSuccessfulPausesCountAtom)).toBe(3);
+      unsubRestart();
+    });
   });
 
   describe("timerCheckpointsLoggedCountAtom", () => {
@@ -226,6 +253,30 @@ describe("Timer Atoms", () => {
       expect(store.get(timerCheckpointsLoggedCountAtom)).toBe(1);
       store.set(timerCheckpointsLoggedCountAtom, (prev) => prev + 1);
       expect(store.get(timerCheckpointsLoggedCountAtom)).toBe(2);
+    });
+
+    it("persists timerCheckpointsLoggedCountAtom in MMKV and restores it across store restarts", () => {
+      const firstStore = createStore();
+      const unsub = firstStore.sub(timerCheckpointsLoggedCountAtom, () => {});
+
+      expect(firstStore.get(timerCheckpointsLoggedCountAtom)).toBe(0);
+      firstStore.set(timerCheckpointsLoggedCountAtom, 5);
+      expect(firstStore.get(timerCheckpointsLoggedCountAtom)).toBe(5);
+
+      unsub();
+
+      expect(
+        JSON.parse(storage.getString("cron_checkpoints_logged_count") ?? "0")
+      ).toBe(5);
+
+      const restartedStore = createStore();
+      const unsubRestart = restartedStore.sub(
+        timerCheckpointsLoggedCountAtom,
+        () => {}
+      );
+
+      expect(restartedStore.get(timerCheckpointsLoggedCountAtom)).toBe(5);
+      unsubRestart();
     });
   });
 });

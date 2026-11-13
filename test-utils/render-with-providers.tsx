@@ -6,6 +6,7 @@ import type {
 } from "@testing-library/react-native";
 import { act, render, renderHook } from "@testing-library/react-native";
 import { Provider } from "jotai/react";
+import type { Store } from "jotai/vanilla";
 import { createStore } from "jotai/vanilla";
 import React from "react";
 import { StyleSheet } from "react-native";
@@ -27,7 +28,7 @@ const styles = StyleSheet.create({
 export interface TestProvidersProps {
   children: React.ReactNode;
   initialMetrics?: Metrics;
-  store: ReturnType<typeof createStore>;
+  store: Store;
 }
 
 export const TestProviders = ({
@@ -47,11 +48,11 @@ export interface RenderWithProvidersOptions extends Omit<
   "wrapper"
 > {
   initialMetrics?: Metrics;
-  store?: ReturnType<typeof createStore>;
+  store?: Store;
 }
 
 export type RenderWithProvidersResult = RenderResult & {
-  store: ReturnType<typeof createStore>;
+  store: Store;
 };
 
 export const renderWithProviders = async (
@@ -86,14 +87,14 @@ export interface RenderHookWithProvidersOptions<Props> extends Omit<
   "wrapper"
 > {
   initialMetrics?: Metrics;
-  store?: ReturnType<typeof createStore>;
+  store?: Store;
 }
 
 export type RenderHookWithProvidersResult<Result, Props> = RenderHookResult<
   Result,
   Props
 > & {
-  store: ReturnType<typeof createStore>;
+  store: Store;
 };
 
 export const renderHookWithProviders = async <Result, Props>(

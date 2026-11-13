@@ -1,4 +1,5 @@
 import { atomWithStorage, createJSONStorage } from "jotai/utils";
+import type { Store } from "jotai/vanilla";
 import { getDefaultStore } from "jotai/vanilla";
 import { createMMKV } from "react-native-mmkv";
 
@@ -49,4 +50,4 @@ export const atomWithMMKV = <T>(key: string, initialValue: T) =>
     { getOnInit: true }
   );
 
-export const store = getDefaultStore();
+export const store: Store = getDefaultStore();
