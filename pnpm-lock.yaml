@@ -222,8 +222,8 @@ importers:
         specifier: ~58.0.7
         version: 58.0.7(expo@58.0.25)(react-native@0.88.1(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(supports-color@8.1.1)
       jotai:
-        specifier: ^2.19.1
-        version: 2.19.1(@babel/core@7.29.0(supports-color@8.1.1))(@babel/template@7.29.7)(@types/react@19.3.0)(react@19.3.0)
+        specifier: ^3.0.2
+        version: 3.0.2(@types/react@19.3.0)(react@19.3.0)
       react:
         specifier: 19.3.0
         version: 19.3.0
@@ -286,8 +286,8 @@ importers:
         specifier: ~19.3.0
         version: 19.3.0
       '@types/react-test-renderer':
-        specifier: ^19.3.0
-        version: 19.3.0
+        specifier: ^19.3.1
+        version: 19.3.1
       expo-atlas:
         specifier: ^0.5.0
         version: 0.5.0(expo@58.0.25)(supports-color@8.1.1)
@@ -310,8 +310,8 @@ importers:
         specifier: ^0.2.43
         version: 0.2.43(oxlint@1.93.0)
       react-test-renderer:
-        specifier: 19.3.0
-        version: 19.3.0(react@19.3.0)
+        specifier: 19.3.1
+        version: 19.3.1(react@19.3.0)
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
@@ -2206,8 +2206,8 @@ packages:
     peerDependencies:
       '@types/react': '*'
 
-  '@types/react-test-renderer@19.3.0':
-    resolution: {integrity: sha512-TX4p2D4Z2oigM3SXU7+QyLSUnSR0vR1S1Pfxm/qFL9nHQ3jclgi6ioGoWQmlIr1DeKRVmPJrmNlhgM0JlWlLUg==}
+  '@types/react-test-renderer@19.3.1':
+    resolution: {integrity: sha512-9AwMfeBOcXsN5kC4oAauNTOKEwqLHtc69tkJC2CihQ5fCELDwzfQvookvtyaxm6i+vc5LLD0V5OLB8arzY8Smw==}
 
   '@types/react@19.3.0':
     resolution: {integrity: sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg==}
@@ -3732,19 +3732,13 @@ packages:
     resolution: {integrity: sha512-ekilCSN1jwRvIbgeg/57YFh8qQDNbwDb9xT/qu2DAHbFFZUicIl4ygVaAvzveMhMVr3LnpSKTNnwt8PoOfmKhQ==}
     hasBin: true
 
-  jotai@2.19.1:
-    resolution: {integrity: sha512-sqm9lVZiqBHZH8aSRk32DSiZDHY3yUIlulXYn9GQj7/LvoUdYXSMti7ZPJGo+6zjzKFt5a25k/I6iBCi43PJcw==}
-    engines: {node: '>=12.20.0'}
+  jotai@3.0.2:
+    resolution: {integrity: sha512-1h+H6BQN+D048zv8hRGVeNxghxRLFZCB+l2WhFe7RhRiF0JlC8516G2BtRUXhPvMQTGB9OHst2N/BW9aNpp5aA==}
+    engines: {node: '>=22.12.0'}
     peerDependencies:
-      '@babel/core': '>=7.0.0'
-      '@babel/template': '>=7.0.0'
-      '@types/react': '>=17.0.0'
-      react: '>=17.0.0'
+      '@types/react': '>=18.0.0'
+      react: '>=18.0.0'
     peerDependenciesMeta:
-      '@babel/core':
-        optional: true
-      '@babel/template':
-        optional: true
       '@types/react':
         optional: true
       react:
@@ -4554,10 +4548,10 @@ packages:
     resolution: {integrity: sha512-jCvmsr+1IUSMUyzOkRcvnVbX3ZYC6g9TDrDbFuFmRDq7PD4yaGbLKNQL6k2jnArV8hjYxh7hVhAZB6s9HDGpZA==}
     engines: {node: '>=0.10.0'}
 
-  react-test-renderer@19.3.0:
-    resolution: {integrity: sha512-AUxgv+hRbqjRgx4xVwiWL6cvDDKPAva1VWLXQIMoevqQn9us//C5TX9LEnBGH47D0zvJpjwjxb1umzgOMvE8Wg==}
+  react-test-renderer@19.3.1:
+    resolution: {integrity: sha512-YcNewwmnZMd0wTb2nkb4hQ58NmX/u1hW2OJsNpen8CnV+jNkmEjYd1R6wJrOMSgb8bIF5HAJv4iL+S3PwNptOA==}
     peerDependencies:
-      react: ^19.3.0
+      react: ^19.3.1
 
   react@19.3.0:
     resolution: {integrity: sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog==}
@@ -7353,7 +7347,7 @@ snapshots:
     dependencies:
       '@types/react': 19.3.0
 
-  '@types/react-test-renderer@19.3.0':
+  '@types/react-test-renderer@19.3.1':
     dependencies:
       '@types/react': 19.3.0
 
@@ -9156,10 +9150,8 @@ snapshots:
 
   jiti@2.6.1: {}
 
-  jotai@2.19.1(@babel/core@7.29.0(supports-color@8.1.1))(@babel/template@7.29.7)(@types/react@19.3.0)(react@19.3.0):
+  jotai@3.0.2(@types/react@19.3.0)(react@19.3.0):
     optionalDependencies:
-      '@babel/core': 7.29.0(supports-color@8.1.1)
-      '@babel/template': 7.29.7
       '@types/react': 19.3.0
       react: 19.3.0
 
@@ -9947,7 +9939,7 @@ snapshots:
 
   react-native-gesture-handler@3.3.0(react-native@0.88.1(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0):
     dependencies:
-      '@types/react-test-renderer': 19.3.0
+      '@types/react-test-renderer': 19.3.1
       invariant: 2.2.4
       react: 19.3.0
       react-native: 0.88.1(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1)
@@ -10075,7 +10067,7 @@ snapshots:
 
   react-refresh@0.14.2: {}
 
-  react-test-renderer@19.3.0(react@19.3.0):
+  react-test-renderer@19.3.1(react@19.3.0):
     dependencies:
       react: 19.3.0
       react-is: 19.3.1
