@@ -78,7 +78,7 @@
     "oxlint": "^1.93.0",
     "oxlint-plugin-react-native": "^0.2.43",
     "react-test-renderer": "19.3.0",
-    "tsx": "^4.21.0",
+    "tsx": "^4.23.15",
     "typescript": "~6.0.3",
     "ultracite": "^8.1.1"
   },
