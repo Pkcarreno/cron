@@ -17,6 +17,7 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
     dispose: jest.Mock;
     playSound: jest.Mock;
     prepare: jest.Mock;
+    prepareDucking: jest.Mock;
     stop: jest.Mock;
     stopAudio: jest.Mock;
     warmUp: jest.Mock;
@@ -33,6 +34,7 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
       dispose: jest.fn(() => Promise.resolve()),
       playSound: jest.fn(),
       prepare: jest.fn(() => Promise.resolve()),
+      prepareDucking: jest.fn(() => Promise.resolve()),
       stop: stopMock,
       stopAudio: stopMock,
       warmUp: jest.fn(),
@@ -373,8 +375,8 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
       jest.useFakeTimers();
       controller.start();
 
-      // At 1500ms: 500ms lookahead triggers TRANSITION_APPROACHING
-      jest.advanceTimersByTime(1500);
+      // At 1000ms: 1000ms lookahead before countdown beep at 2000ms triggers TRANSITION_APPROACHING
+      jest.advanceTimersByTime(1000);
       expect(mockAudioEngine.warmUp).toHaveBeenCalledTimes(1);
 
       controller.dispose();
@@ -395,8 +397,50 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
       jest.useFakeTimers();
       controller.start();
 
-      jest.advanceTimersByTime(1500);
+      jest.advanceTimersByTime(1000);
       expect(mockAudioEngine.warmUp).not.toHaveBeenCalled();
+
+      controller.dispose();
+      jest.useRealTimers();
+    });
+
+    it("forwards DUCKING_APPROACHING event to audioEngine.prepareDucking() when sound is enabled", () => {
+      const strategy = new IntervalStrategy(2000, 1000, 1);
+      const controller = new TimerController(strategy, 5000);
+
+      const service = new FeedbackService({
+        audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
+        store: testStore,
+      });
+      service.attach(controller);
+
+      jest.useFakeTimers();
+      controller.start();
+
+      // At 1850ms: 150ms ducking lookahead before countdown beep at 2000ms triggers DUCKING_APPROACHING
+      jest.advanceTimersByTime(1850);
+      expect(mockAudioEngine.prepareDucking).toHaveBeenCalledTimes(1);
+
+      controller.dispose();
+      jest.useRealTimers();
+    });
+
+    it("does not trigger prepareDucking when sound is disabled", () => {
+      testStore.set(isSoundEnabledAtom, false);
+      const strategy = new IntervalStrategy(2000, 1000, 1);
+      const controller = new TimerController(strategy, 5000);
+
+      const service = new FeedbackService({
+        audioEngine: mockAudioEngine as unknown as AudioBufferPlaybackEngine,
+        store: testStore,
+      });
+      service.attach(controller);
+
+      jest.useFakeTimers();
+      controller.start();
+
+      jest.advanceTimersByTime(1850);
+      expect(mockAudioEngine.prepareDucking).not.toHaveBeenCalled();
 
       controller.dispose();
       jest.useRealTimers();
@@ -558,12 +602,16 @@ describe("FeedbackService & Audio-Haptic Coordination", () => {
       controller.handleAppStateChange("background");
 
       // In preparation phase (5000ms):
-      // DAC prewarm at 500ms (1500ms before countdown beeps)
-      jest.advanceTimersByTime(500);
+      // DAC prewarm at 1000ms (1000ms before countdown beeps at 2000ms)
+      jest.advanceTimersByTime(1000);
       expect(mockAudioEngine.warmUp).toHaveBeenCalledTimes(1);
 
+      // Ducking at 1850ms (150ms before countdown beeps at 2000ms)
+      jest.advanceTimersByTime(850);
+      expect(mockAudioEngine.prepareDucking).toHaveBeenCalledTimes(1);
+
       // Countdown beeps at 2000ms (3), 3000ms (2), 4000ms (1)
-      jest.advanceTimersByTime(1500);
+      jest.advanceTimersByTime(150);
       expect(mockAudioEngine.playSound).toHaveBeenCalledWith(
         CANONICAL_SOUNDS.COUNTDOWN_BEEP
       );

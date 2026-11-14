@@ -522,7 +522,7 @@ describe("AudioBufferPlaybackEngine", () => {
       jest.useRealTimers();
     });
 
-    it("pre-warms the audio pipeline on warmUp and resumes suspended context", async () => {
+    it("pre-warms the audio pipeline on warmUp in silence without claiming audio focus", async () => {
       jest.useFakeTimers();
       mockAudioContext.state = "suspended";
       const engine = new AudioBufferPlaybackEngine({
@@ -532,10 +532,26 @@ describe("AudioBufferPlaybackEngine", () => {
       await engine.prepare();
       engine.warmUp();
 
+      // AudioContext resumed to warm Oboe hardware stream in silence
+      expect(mockAudioContext.resume).toHaveBeenCalledTimes(1);
+      // Audio focus is NOT claimed so background music is not ducked
+      expect(AudioManager.observeAudioInterruptions).not.toHaveBeenCalled();
+
+      jest.useRealTimers();
+    });
+
+    it("requests transient ducking focus on prepareDucking", async () => {
+      jest.useFakeTimers();
+      const engine = new AudioBufferPlaybackEngine({
+        audioContextFactory: () => mockAudioContext as never,
+      });
+
+      await engine.prepare();
+      engine.prepareDucking();
+
       expect(AudioManager.observeAudioInterruptions).toHaveBeenCalledWith(
         "gainTransientMayDuck"
       );
-      expect(mockAudioContext.resume).toHaveBeenCalledTimes(1);
 
       // Safety timeout releases focus if no cue fires within 3000ms
       jest.advanceTimersByTime(3000);

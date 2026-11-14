@@ -692,8 +692,9 @@ describe("timerController", () => {
       expect(onReset).toHaveBeenCalledTimes(1);
     });
 
-    it("emits TRANSITION_APPROACHING lookahead event 500ms before countdown and phase transitions", () => {
+    it("emits TRANSITION_APPROACHING and DUCKING_APPROACHING lookahead events before countdown and phase transitions", () => {
       const onApproachingTransition = jest.fn();
+      const onApproachingDucking = jest.fn();
       const onBeep = jest.fn();
       const onGo = jest.fn();
       const onPhaseChange = jest.fn();
@@ -706,38 +707,54 @@ describe("timerController", () => {
         TimerEventType.TRANSITION_APPROACHING,
         onApproachingTransition
       );
+      controller.on(TimerEventType.DUCKING_APPROACHING, onApproachingDucking);
       controller.on(TimerEventType.BEEP, onBeep);
       controller.on(TimerEventType.GO, onGo);
       controller.on(TimerEventType.PHASE_CHANGE, onPhaseChange);
 
       controller.start();
 
-      // At 1400ms: no transition approaching yet (3600ms remaining prep)
-      jest.advanceTimersByTime(1400);
+      // At 900ms: no transition approaching yet (4100ms remaining prep, first cue is at 2000ms)
+      jest.advanceTimersByTime(900);
       expect(onApproachingTransition).not.toHaveBeenCalled();
+      expect(onApproachingDucking).not.toHaveBeenCalled();
 
-      // At 1500ms: 500ms lookahead sees 3000ms remaining prep -> emits TRANSITION_APPROACHING
+      // At 1000ms: 1000ms lookahead sees 3000ms countdown threshold at 2000ms -> emits TRANSITION_APPROACHING
       jest.advanceTimersByTime(100);
       expect(onApproachingTransition).toHaveBeenCalledTimes(1);
+      expect(onApproachingDucking).not.toHaveBeenCalled();
+
+      // At 1850ms: 150ms lookahead sees 3000ms countdown threshold at 2000ms -> emits DUCKING_APPROACHING
+      jest.advanceTimersByTime(850);
+      expect(onApproachingDucking).toHaveBeenCalledTimes(1);
 
       // At 2000ms: Countdown beep (3) emits
-      jest.advanceTimersByTime(500);
+      jest.advanceTimersByTime(150);
       expect(onBeep).toHaveBeenCalledWith(3);
 
-      // Advance to 4500ms (500ms before GO)
-      jest.advanceTimersByTime(2500);
+      // Advance to 4000ms (1000ms before GO at 5000ms)
+      jest.advanceTimersByTime(2000);
       expect(onApproachingTransition).toHaveBeenCalledTimes(2);
 
+      // Advance to 4850ms (150ms before GO at 5000ms)
+      jest.advanceTimersByTime(850);
+      expect(onApproachingDucking).toHaveBeenCalledTimes(2);
+
       // At 5000ms: GO emits
-      jest.advanceTimersByTime(500);
+      jest.advanceTimersByTime(150);
       expect(onGo).toHaveBeenCalledTimes(1);
 
-      // In WORK phase (2000ms): at 1500ms into work (6500ms total), 500ms lookahead sees REST phase transition
-      jest.advanceTimersByTime(1500);
+      // In WORK phase (2000ms, from 5000ms to 7000ms):
+      // At 6000ms (1000ms into work, 1000ms before REST): 1000ms lookahead sees REST phase transition
+      jest.advanceTimersByTime(1000);
       expect(onApproachingTransition).toHaveBeenCalledTimes(3);
 
+      // At 6850ms (150ms before REST): 150ms lookahead sees REST transition
+      jest.advanceTimersByTime(850);
+      expect(onApproachingDucking).toHaveBeenCalledTimes(3);
+
       // At 7000ms: REST phase emits
-      jest.advanceTimersByTime(500);
+      jest.advanceTimersByTime(150);
       expect(onPhaseChange).toHaveBeenCalledWith(TimerPhase.REST);
     });
 
@@ -778,28 +795,25 @@ describe("timerController", () => {
 
       controller.start();
 
-      // At 500ms: remaining 3500ms, future 3000ms -> TRANSITION_APPROACHING fires
-      jest.advanceTimersByTime(500);
+      // At 50ms (first tick): warmup is at 4000 - 3000 - 1000 = 0ms -> TRANSITION_APPROACHING fires on start
+      jest.advanceTimersByTime(50);
       expect(onApproachingTransition).toHaveBeenCalledTimes(1);
 
       // At 1000ms: beep(3)
-      jest.advanceTimersByTime(500);
+      jest.advanceTimersByTime(950);
       expect(onBeep).toHaveBeenCalledWith(3);
 
       // At 2000ms: beep(2)
       jest.advanceTimersByTime(1000);
       expect(onBeep).toHaveBeenCalledWith(2);
 
-      // At 3000ms: beep(1)
+      // At 3000ms: beep(1) and 1000ms before GO (4000ms) -> TRANSITION_APPROACHING fires
       jest.advanceTimersByTime(1000);
       expect(onBeep).toHaveBeenCalledWith(1);
-
-      // At 3500ms: 500ms before GO -> TRANSITION_APPROACHING fires
-      jest.advanceTimersByTime(500);
       expect(onApproachingTransition).toHaveBeenCalledTimes(2);
 
       // At 4000ms: GO fires
-      jest.advanceTimersByTime(500);
+      jest.advanceTimersByTime(1000);
       expect(onGo).toHaveBeenCalledTimes(1);
       expect(onBeep).toHaveBeenCalledTimes(3);
     });
@@ -912,15 +926,17 @@ describe("timerController", () => {
       expect(goSpy).toHaveBeenCalledTimes(1);
     });
 
-    it("pre-warms audio DAC ~1500 ms before countdown beeps trigger to prevent cold-start clipping", () => {
+    it("pre-warms audio DAC ~1000 ms and ducks ~150 ms before countdown beeps trigger to prevent cold-start clipping", () => {
       const strategy = new UpStrategy(10_000);
       const controller = new TimerController(strategy, 5000);
 
       const warmupSpy = jest.fn();
+      const duckingSpy = jest.fn();
       const beepSpy = jest.fn();
       const goSpy = jest.fn();
 
       controller.on(TimerEventType.TRANSITION_APPROACHING, warmupSpy);
+      controller.on(TimerEventType.DUCKING_APPROACHING, duckingSpy);
       controller.on(TimerEventType.BEEP, beepSpy);
       controller.on(TimerEventType.GO, goSpy);
 
@@ -928,13 +944,19 @@ describe("timerController", () => {
       controller.handleAppStateChange("background");
 
       // In 5000ms prep with countdown beeps at 2000ms (3s left), 3000ms, 4000ms:
-      // Audio DAC prewarm triggers at 500ms (5000 - 4500 = 500ms, exactly 1500ms before beep 3)
-      jest.advanceTimersByTime(500);
+      // Audio DAC prewarm triggers at 1000ms (5000 - 4000 = 1000ms, exactly 1000ms before beep 3)
+      jest.advanceTimersByTime(1000);
       expect(warmupSpy).toHaveBeenCalledTimes(1);
+      expect(duckingSpy).not.toHaveBeenCalled();
       expect(beepSpy).not.toHaveBeenCalled();
 
-      // At 2000ms: beep(3) fires (exactly 1500ms after warmup)
-      jest.advanceTimersByTime(1500);
+      // At 1850ms: ducking engages (exactly 150ms before beep 3)
+      jest.advanceTimersByTime(850);
+      expect(duckingSpy).toHaveBeenCalledTimes(1);
+      expect(beepSpy).not.toHaveBeenCalled();
+
+      // At 2000ms: beep(3) fires (exactly 150ms after ducking)
+      jest.advanceTimersByTime(150);
       expect(beepSpy).toHaveBeenCalledWith(3);
 
       // At 3000ms: beep(2) fires
@@ -1004,7 +1026,7 @@ describe("timerController", () => {
       controller.start();
       controller.handleAppStateChange("background");
 
-      // Advance 300ms into 5s prep (4700ms remaining, warmup is at 500ms so it hasn't fired yet)
+      // Advance 300ms into 5s prep (4700ms remaining, warmup is at 1000ms so it hasn't fired yet)
       jest.advanceTimersByTime(300);
 
       // Pause while in background
@@ -1021,12 +1043,12 @@ describe("timerController", () => {
       controller.start();
       expect(controller.getScheduledMilestones()).not.toBeNull();
 
-      // Warmup at 4700 - 4500 = 200ms from resume
-      jest.advanceTimersByTime(200);
+      // Warmup at 4700 - 4000 = 700ms from resume
+      jest.advanceTimersByTime(700);
       expect(warmupSpy).toHaveBeenCalledTimes(1);
 
-      // Countdown beep 3 at 4700 - 3000 = 1700ms from resume (+1500ms)
-      jest.advanceTimersByTime(1500);
+      // Countdown beep 3 at 4700 - 3000 = 1700ms from resume (+1000ms)
+      jest.advanceTimersByTime(1000);
       expect(beepSpy).toHaveBeenCalledWith(3);
     });
 

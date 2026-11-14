@@ -263,6 +263,7 @@ describe("useTimer integration", () => {
         detach: jest.fn(),
         dispose: jest.fn(),
         prepare: jest.fn(() => Promise.resolve()),
+        prepareDucking: jest.fn(),
         stop: jest.fn(),
         trigger: jest.fn(),
         warmUp: jest.fn(),
