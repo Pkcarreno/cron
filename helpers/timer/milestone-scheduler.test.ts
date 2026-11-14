@@ -8,6 +8,7 @@ import {
 } from "@jest/globals";
 
 import {
+  AUDIO_DUCKING_LEAD_TIME_MS,
   AUDIO_WARMUP_LEAD_TIME_MS,
   calculatePhaseMilestones,
   MilestoneScheduler,
@@ -29,7 +30,7 @@ describe("milestoneScheduler", () => {
   });
 
   describe("calculatePhaseMilestones", () => {
-    it("calculates exact target timestamps for warmup, countdown beeps, and transition", () => {
+    it("calculates exact target timestamps for warmup, ducking, countdown beeps, and transition", () => {
       const now = 10_000;
       const phaseDurationMs = 20_000;
       const phaseRemainingMs = 20_000;
@@ -64,16 +65,24 @@ describe("milestoneScheduler", () => {
         },
       ]);
 
-      // Audio DAC pre-warms ~1500 ms before countdown beeps trigger (30000 - 3000 - 1500 = 25500)
-      expect(milestones.warmupTimestampMs).toBe(25_500);
-      expect(milestones.warmupDelayMs).toBe(15_500);
+      // Audio DAC pre-warms ~1000 ms before countdown beeps trigger (30000 - 3000 - 1000 = 26000)
+      expect(milestones.warmupTimestampMs).toBe(26_000);
+      expect(milestones.warmupDelayMs).toBe(16_000);
       expect(
         milestones.countdownBeeps[0].targetTimestampMs -
           milestones.warmupTimestampMs
       ).toBe(AUDIO_WARMUP_LEAD_TIME_MS);
+
+      // Audio ducking engages ~150 ms before countdown beeps trigger (30000 - 3000 - 150 = 26850)
+      expect(milestones.duckingTimestampMs).toBe(26_850);
+      expect(milestones.duckingDelayMs).toBe(16_850);
+      expect(
+        milestones.countdownBeeps[0].targetTimestampMs -
+          milestones.duckingTimestampMs
+      ).toBe(AUDIO_DUCKING_LEAD_TIME_MS);
     });
 
-    it("pre-warms ~1500 ms before transition when countdown beeps are not configured", () => {
+    it("pre-warms ~1000 ms and ducks ~150 ms before transition when countdown beeps are not configured", () => {
       const now = 0;
       const phaseDurationMs = 10_000;
       const phaseRemainingMs = 10_000;
@@ -87,15 +96,18 @@ describe("milestoneScheduler", () => {
 
       expect(milestones.targetTimestampMs).toBe(10_000);
       expect(milestones.countdownBeeps).toEqual([]);
-      // Warmup at target - 1500ms
-      expect(milestones.warmupTimestampMs).toBe(8500);
-      expect(milestones.warmupDelayMs).toBe(8500);
+      // Warmup at target - 1000ms
+      expect(milestones.warmupTimestampMs).toBe(9000);
+      expect(milestones.warmupDelayMs).toBe(9000);
+      // Ducking at target - 150ms
+      expect(milestones.duckingTimestampMs).toBe(9850);
+      expect(milestones.duckingDelayMs).toBe(9850);
     });
 
     it("clamps warmup delay to 0 when remaining time is already inside the warmup window", () => {
       const now = 1000;
       const phaseDurationMs = 5000;
-      // Only 2.5s left (warmup at -4500ms is in the past)
+      // Only 2.5s left (warmup at -4000ms is in the past)
       const phaseRemainingMs = 2500;
 
       const milestones = calculatePhaseMilestones({
@@ -136,20 +148,25 @@ describe("milestoneScheduler", () => {
 
       expect(milestones.targetTimestampMs).toBe(2000);
       expect(milestones.countdownBeeps).toEqual([]);
-      // Warmup at 2000 - 1500 = 500ms
-      expect(milestones.warmupTimestampMs).toBe(500);
-      expect(milestones.warmupDelayMs).toBe(500);
+      // Warmup at 2000 - 1000 = 1000ms
+      expect(milestones.warmupTimestampMs).toBe(1000);
+      expect(milestones.warmupDelayMs).toBe(1000);
+      // Ducking at 2000 - 150 = 1850ms
+      expect(milestones.duckingTimestampMs).toBe(1850);
+      expect(milestones.duckingDelayMs).toBe(1850);
     });
   });
 
   describe("MilestoneScheduler execution", () => {
-    it("dispatches warmup, countdown beeps, and transition single-shot timers accurately", () => {
+    it("dispatches warmup, ducking, countdown beeps, and transition single-shot timers accurately", () => {
       const onWarmup = jest.fn();
+      const onDucking = jest.fn();
       const onCountdownBeep = jest.fn();
       const onTransition = jest.fn();
 
       const scheduler = new MilestoneScheduler({
         onCountdownBeep,
+        onDucking,
         onTransition,
         onWarmup,
       });
@@ -164,17 +181,24 @@ describe("milestoneScheduler", () => {
 
       scheduler.scheduleMilestones(milestones, now);
 
-      // 5 single-shot timers scheduled (warmup, 3 beeps, transition) without polling
-      expect(scheduler.getScheduledTimeoutCount()).toBe(5);
+      // 6 single-shot timers scheduled (warmup, ducking, 3 beeps, transition) without polling
+      expect(scheduler.getScheduledTimeoutCount()).toBe(6);
 
-      // Advance to warmup (at 10000 - 4500 = 5500ms)
-      jest.advanceTimersByTime(5500);
+      // Advance to warmup (at 10000 - 4000 = 6000ms)
+      jest.advanceTimersByTime(6000);
       expect(onWarmup).toHaveBeenCalledTimes(1);
+      expect(onDucking).not.toHaveBeenCalled();
       expect(onCountdownBeep).not.toHaveBeenCalled();
       expect(onTransition).not.toHaveBeenCalled();
 
-      // Advance to beep 3 (at 7000ms -> +1500ms)
-      jest.advanceTimersByTime(1500);
+      // Advance to ducking (at 10000 - 3150 = 6850ms -> +850ms)
+      jest.advanceTimersByTime(850);
+      expect(onDucking).toHaveBeenCalledTimes(1);
+      expect(onCountdownBeep).not.toHaveBeenCalled();
+      expect(onTransition).not.toHaveBeenCalled();
+
+      // Advance to beep 3 (at 7000ms -> +150ms)
+      jest.advanceTimersByTime(150);
       expect(onCountdownBeep).toHaveBeenCalledWith(3);
 
       // Advance to beep 2 (at 8000ms -> +1000ms)
@@ -193,11 +217,13 @@ describe("milestoneScheduler", () => {
 
     it("cancels all pending timeouts on clearMilestones without firing callbacks", () => {
       const onWarmup = jest.fn();
+      const onDucking = jest.fn();
       const onCountdownBeep = jest.fn();
       const onTransition = jest.fn();
 
       const scheduler = new MilestoneScheduler({
         onCountdownBeep,
+        onDucking,
         onTransition,
         onWarmup,
       });
@@ -210,7 +236,7 @@ describe("milestoneScheduler", () => {
       });
 
       scheduler.scheduleMilestones(milestones, 0);
-      expect(scheduler.getScheduledTimeoutCount()).toBe(5);
+      expect(scheduler.getScheduledTimeoutCount()).toBe(6);
 
       scheduler.clearMilestones();
       expect(scheduler.getScheduledTimeoutCount()).toBe(0);
@@ -218,6 +244,7 @@ describe("milestoneScheduler", () => {
 
       jest.advanceTimersByTime(20_000);
       expect(onWarmup).not.toHaveBeenCalled();
+      expect(onDucking).not.toHaveBeenCalled();
       expect(onCountdownBeep).not.toHaveBeenCalled();
       expect(onTransition).not.toHaveBeenCalled();
     });
@@ -241,12 +268,14 @@ describe("milestoneScheduler", () => {
       };
 
       const onWarmup = jest.fn();
+      const onDucking = jest.fn();
       const onCountdownBeep = jest.fn();
       const onTransition = jest.fn();
 
       const scheduler = new MilestoneScheduler(
         {
           onCountdownBeep,
+          onDucking,
           onTransition,
           onWarmup,
         },
@@ -267,15 +296,23 @@ describe("milestoneScheduler", () => {
       expect(onWarmup).toHaveBeenCalledTimes(1);
 
       // Advance timers past warmup delay - should not double trigger warmup
-      jest.advanceTimersByTime(6000);
+      jest.advanceTimersByTime(6500);
       expect(onWarmup).toHaveBeenCalledTimes(1);
+
+      // Trigger native ducking
+      triggerNativeMilestone({ type: "ducking" });
+      expect(onDucking).toHaveBeenCalledTimes(1);
+
+      // Advance timers past ducking delay (6850ms) - should not double trigger ducking
+      jest.advanceTimersByTime(400);
+      expect(onDucking).toHaveBeenCalledTimes(1);
 
       // Trigger native beep 3
       triggerNativeMilestone({ secondRemaining: 3, type: "beep" });
       expect(onCountdownBeep).toHaveBeenCalledWith(3);
 
       // Advance timers past beep 3 (7000ms) but before beep 2 (8000ms) - should not double trigger beep 3
-      jest.advanceTimersByTime(1500);
+      jest.advanceTimersByTime(500);
       expect(onCountdownBeep).toHaveBeenCalledTimes(1);
 
       // Trigger native transition

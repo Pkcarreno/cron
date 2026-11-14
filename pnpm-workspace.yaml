@@ -12,3 +12,5 @@ permissions:
     skills: true
 minimumReleaseAgeExclude:
   - expo@58.0.25
+patchedDependencies:
+  react-native-audio-api: patches/react-native-audio-api.patch

@@ -1,0 +1,80 @@
+diff --git a/android/src/main/cpp/audioapi/android/AndroidDecoding.cpp b/android/src/main/cpp/audioapi/android/AndroidDecoding.cpp
+index d7ecf4debfb88a62754bb186e4a5592ebf242077..b603053d34e131ad1f56bb80fa52c1424d5fc6a2 100644
+--- a/android/src/main/cpp/audioapi/android/AndroidDecoding.cpp
++++ b/android/src/main/cpp/audioapi/android/AndroidDecoding.cpp
+@@ -237,6 +237,7 @@ struct AndroidDecoderState {
+   std::unique_ptr<r8b::MultiChannelResampler> resampler;
+   std::unique_ptr<AudioBuffer> resampleIn;
+   std::unique_ptr<AudioBuffer> resampleOut;
++  int resamplerDrainFramesLeft = -1;
+ 
+   // Decoding is a chain of short bursts on threads in two processes; none of
+   // them stays busy long enough for the CPU governor to raise clocks, which
+@@ -317,6 +318,7 @@ void setupResamplerIfNeeded(AndroidDecoderState &state) {
+       static_cast<size_t>(std::max(1, state.resampler->getMaxOutLen())),
+       state.channels,
+       static_cast<float>(state.outputRate));
++  state.resamplerDrainFramesLeft = -1;
+ }
+ 
+ // Applies MediaCodec output format. When rate/channels change vs track metadata
+@@ -555,6 +557,32 @@ size_t produceResampled(AndroidDecoderState &state) {
+     const int channels = state.channels;
+     const size_t availIn = availableFrames(state.nativeLeftover, state.nativeCursor, channels);
+     if (availIn == 0) {
++      if (state.outputEnded) {
++        if (state.resamplerDrainFramesLeft < 0) {
++          state.resamplerDrainFramesLeft = state.resampler->getInLenBeforeOutStart();
++        }
++        if (state.resamplerDrainFramesLeft <= 0) {
++          return 0; // Codec fully drained and resampler flushed: genuine EOF.
++        }
++        const auto inFrames = static_cast<int>(std::min<size_t>(
++            static_cast<size_t>(state.resamplerDrainFramesLeft), RESAMPLE_MAX_IN_FRAMES));
++        state.resampleIn->zero(0, static_cast<size_t>(inFrames));
++        state.resamplerDrainFramesLeft -= inFrames;
++
++        const int outFrames =
++            state.resampler->process(*state.resampleIn, inFrames, *state.resampleOut);
++        if (outFrames <= 0) {
++          continue;
++        }
++
++        compactConsumed(state.outLeftover, state.outCursor);
++        const size_t base = state.outLeftover.size();
++        state.outLeftover.resize(
++            base + static_cast<size_t>(outFrames) * static_cast<size_t>(channels));
++        state.resampleOut->interleaveTo(
++            state.outLeftover.data() + base, static_cast<size_t>(outFrames));
++        return static_cast<size_t>(outFrames);
++      }
+       return 0; // Codec fully drained and no leftover: genuine EOF.
+     }
+ 
+@@ -933,6 +961,7 @@ decoding::DecoderResult AndroidDecoder::seekToTime(double seconds) {
+   state.inputEnded = false;
+   state.outputEnded = false;
+   state.tryAgainAfterEos = 0;
++  state.resamplerDrainFramesLeft = -1;
+ 
+   // Reset resampler state so pre-seek samples don't smear into the new position.
+   if (state.resampler != nullptr) {
+diff --git a/common/cpp/audioapi/dsp/r8brain/Resampler.hpp b/common/cpp/audioapi/dsp/r8brain/Resampler.hpp
+index 8a470770e9b01acbd1e3a41e81918335b07d9f1f..a2527f7f34f05cb7bb72beb1cd811b05e855a0f5 100644
+--- a/common/cpp/audioapi/dsp/r8brain/Resampler.hpp
++++ b/common/cpp/audioapi/dsp/r8brain/Resampler.hpp
+@@ -29,6 +29,14 @@ class BaseResampler {
+     return resamplers_[0]->getMaxOutLen(0);
+   }
+ 
++  /** @return Number of zero input samples required to completely flush the resampler at EOF. */
++  [[nodiscard]] int getInLenBeforeOutStart() const {
++    if (resamplers_.empty()) {
++      return 0;
++    }
++    return resamplers_[0]->getInLenBeforeOutPos(0);
++  }
++
+  private:
+   std::vector<std::unique_ptr<CDSPResampler24>> resamplers_;
+   std::vector<std::vector<double>> inputBuffers_;

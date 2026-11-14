@@ -179,23 +179,43 @@ export class AudioBufferPlaybackEngine {
   }
 
   /**
-   * Pre-warms the hardware stream and requests ducking 500ms before an upcoming cue.
-   * Ensures the DAC and audio thread are fully stable and background audio is smoothly
-   * ducked without cold-start clicks, pops, or buffer underruns.
+   * Pre-warms the hardware stream ~1000ms before an upcoming cue in silence.
+   * Resumes the native AudioContext (waking AAudio/Oboe DAC and audio thread)
+   * strictly WITHOUT requesting system audio focus, so background music is not ducked.
    */
   public warmUp(): void {
     if (!this.isSoundEnabled()) {
       return;
     }
 
-    this.requestAudioFocus();
-
     const audioContext = this.getAudioContext();
     if (audioContext.state === "suspended") {
       void audioContext.resume();
     }
 
+    this.cancelScheduledRelease();
     // Safety timeout in case no cue follows (e.g. paused immediately after warmup)
+    this.idleSleepTimeout = setTimeout(() => {
+      this.idleSleepTimeout = null;
+      if (this.activeSources.size === 0 && !this.isFocusHeld) {
+        void this.suspend();
+      }
+    }, AUDIO_IDLE_SLEEP_MS * 2);
+  }
+
+  /**
+   * Requests transient audio focus with ducking ~150ms before an upcoming cue.
+   * Smoothly attenuates external background music (e.g. Spotify) before playback begins.
+   */
+  public prepareDucking(): void {
+    if (!this.isSoundEnabled()) {
+      return;
+    }
+
+    this.requestAudioFocus();
+
+    this.cancelScheduledRelease();
+    // Safety timeout in case no cue follows (e.g. paused immediately after ducking)
     this.idleSleepTimeout = setTimeout(() => {
       this.idleSleepTimeout = null;
       if (this.activeSources.size === 0) {

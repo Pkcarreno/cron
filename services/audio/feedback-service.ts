@@ -72,6 +72,7 @@ export interface FeedbackServiceInterface {
   detach: () => void;
   dispose: () => void;
   prepare: () => Promise<void>;
+  prepareDucking: () => void;
   stop: () => void;
   trigger: (cue: FeedbackCue) => void;
   warmUp: () => void;
@@ -197,6 +198,9 @@ export class FeedbackService implements FeedbackServiceInterface {
       controller.on(TimerEventType.TRANSITION_APPROACHING, () => {
         this.warmUp();
       }),
+      controller.on(TimerEventType.DUCKING_APPROACHING, () => {
+        this.prepareDucking();
+      }),
       controller.on(TimerEventType.BEEP, () => {
         this.trigger(FeedbackCue.COUNTDOWN);
       }),
@@ -297,6 +301,15 @@ export class FeedbackService implements FeedbackServiceInterface {
   public warmUp(): void {
     if (this.isSoundEnabled) {
       this.audioEngine.warmUp();
+    }
+  }
+
+  /**
+   * Requests transient audio ducking ahead of upcoming cues to smoothly attenuate background audio.
+   */
+  public prepareDucking(): void {
+    if (this.isSoundEnabled) {
+      this.audioEngine.prepareDucking();
     }
   }
 

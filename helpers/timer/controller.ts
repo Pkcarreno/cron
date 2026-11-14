@@ -8,6 +8,8 @@ import type {
 import { TimerMode } from "@/helpers/timer/factory";
 import type { PhaseMilestones } from "@/helpers/timer/milestone-scheduler";
 import {
+  AUDIO_DUCKING_LEAD_TIME_MS,
+  AUDIO_WARMUP_LEAD_TIME_MS,
   calculatePhaseMilestones,
   MilestoneScheduler,
 } from "@/helpers/timer/milestone-scheduler";
@@ -34,6 +36,7 @@ export enum TimerEventType {
   UI_TICK = "UI_TICK",
   CHECKPOINT = "CHECKPOINT",
   TRANSITION_APPROACHING = "TRANSITION_APPROACHING",
+  DUCKING_APPROACHING = "DUCKING_APPROACHING",
   AUTO_PAUSE_PERMISSION_DENIED = "AUTO_PAUSE_PERMISSION_DENIED",
 }
 
@@ -65,6 +68,7 @@ export interface TimerEventMap {
   [TimerEventType.UI_TICK]: [state: TimerState];
   [TimerEventType.CHECKPOINT]: [lastCheckpoint: CheckpointData];
   [TimerEventType.TRANSITION_APPROACHING]: [];
+  [TimerEventType.DUCKING_APPROACHING]: [];
   [TimerEventType.AUTO_PAUSE_PERMISSION_DENIED]: [];
 }
 
@@ -107,6 +111,9 @@ export class TimerController {
   private currentAppState: AppStateStatus = "active";
   private appStateSubscription: { remove: () => void } | null = null;
   private hasEmittedApproachingTransition = false;
+  private hasEmittedApproachingDucking = false;
+  private hasEmittedPrepCountdownWarmup = false;
+  private hasEmittedPrepCountdownDucking = false;
   private isBackgroundAudioOnlyAllowed = false;
   private wasAutoPausedDueToPermission = false;
 
@@ -125,6 +132,7 @@ export class TimerController {
     [TimerEventType.UI_TICK]: [],
     [TimerEventType.CHECKPOINT]: [],
     [TimerEventType.TRANSITION_APPROACHING]: [],
+    [TimerEventType.DUCKING_APPROACHING]: [],
     [TimerEventType.AUTO_PAUSE_PERMISSION_DENIED]: [],
   };
 
@@ -142,7 +150,12 @@ export class TimerController {
         : new MilestoneScheduler({
             onCountdownBeep: (secondRemaining: number) => {
               this.hasEmittedApproachingTransition = false;
+              this.hasEmittedApproachingDucking = false;
               this.emit(TimerEventType.BEEP, secondRemaining);
+            },
+            onDucking: () => {
+              this.hasEmittedApproachingDucking = true;
+              this.emit(TimerEventType.DUCKING_APPROACHING);
             },
             onTransition: () => {
               this.handleBackgroundTransition();
@@ -492,58 +505,130 @@ export class TimerController {
     this.dispatchDriverUpdate();
   }
 
-  private detectApproachingTransition(
+  private isApproachingStateTrigger(
+    leadTimeMs: number,
     tickEvent: TickEvent,
     currentState: TimerState
-  ) {
-    if (this.hasEmittedApproachingTransition || currentState.isFinished) {
+  ): boolean {
+    const futureTick: TickEvent = {
+      deltaMs: tickEvent.deltaMs,
+      totalElapsedMs:
+        tickEvent.totalElapsedMs + leadTimeMs - this.preparationTimeMs,
+    };
+    const futureState = this.strategy.calculateState(futureTick);
+    return (
+      futureState.phase !== currentState.phase ||
+      (futureState.currentRound !== currentState.currentRound &&
+        futureState.currentRound > 0) ||
+      (!currentState.isFinished && futureState.isFinished)
+    );
+  }
+
+  private detectPreparationApproaching(tickEvent: TickEvent): void {
+    if (this.preparationTimeMs < 3000) {
+      if (!this.hasEmittedApproachingTransition) {
+        this.hasEmittedApproachingTransition = true;
+        this.emit(TimerEventType.TRANSITION_APPROACHING);
+      }
+      if (!this.hasEmittedApproachingDucking) {
+        this.hasEmittedApproachingDucking = true;
+        this.emit(TimerEventType.DUCKING_APPROACHING);
+      }
       return;
     }
 
-    const LOOKAHEAD_MS = 500;
-    const futureElapsedMs = tickEvent.totalElapsedMs + LOOKAHEAD_MS;
+    const firstAudioTimeMs = this.preparationTimeMs - 3000;
+
+    // Countdown prewarm & ducking
+    if (!this.hasEmittedPrepCountdownWarmup) {
+      const warmupThresholdMs = Math.max(
+        0,
+        firstAudioTimeMs - AUDIO_WARMUP_LEAD_TIME_MS
+      );
+      if (tickEvent.totalElapsedMs >= warmupThresholdMs) {
+        this.hasEmittedPrepCountdownWarmup = true;
+        this.emit(TimerEventType.TRANSITION_APPROACHING);
+      }
+    }
+
+    if (!this.hasEmittedPrepCountdownDucking) {
+      const duckingThresholdMs = Math.max(
+        0,
+        firstAudioTimeMs - AUDIO_DUCKING_LEAD_TIME_MS
+      );
+      if (tickEvent.totalElapsedMs >= duckingThresholdMs) {
+        this.hasEmittedPrepCountdownDucking = true;
+        this.emit(TimerEventType.DUCKING_APPROACHING);
+      }
+    }
+
+    // End-of-preparation transition to WORK
+    const currentRemainingPrep =
+      this.preparationTimeMs - tickEvent.totalElapsedMs;
+
+    if (
+      currentRemainingPrep <= AUDIO_WARMUP_LEAD_TIME_MS &&
+      !this.hasEmittedApproachingTransition
+    ) {
+      this.hasEmittedApproachingTransition = true;
+      this.emit(TimerEventType.TRANSITION_APPROACHING);
+    }
+
+    if (
+      currentRemainingPrep <= AUDIO_DUCKING_LEAD_TIME_MS &&
+      !this.hasEmittedApproachingDucking
+    ) {
+      this.hasEmittedApproachingDucking = true;
+      this.emit(TimerEventType.DUCKING_APPROACHING);
+    }
+  }
+
+  private detectActiveWorkoutApproaching(
+    tickEvent: TickEvent,
+    currentState: TimerState
+  ): void {
+    if (
+      !this.hasEmittedApproachingTransition &&
+      this.isApproachingStateTrigger(
+        AUDIO_WARMUP_LEAD_TIME_MS,
+        tickEvent,
+        currentState
+      )
+    ) {
+      this.hasEmittedApproachingTransition = true;
+      this.emit(TimerEventType.TRANSITION_APPROACHING);
+    }
+
+    if (
+      !this.hasEmittedApproachingDucking &&
+      this.isApproachingStateTrigger(
+        AUDIO_DUCKING_LEAD_TIME_MS,
+        tickEvent,
+        currentState
+      )
+    ) {
+      this.hasEmittedApproachingDucking = true;
+      this.emit(TimerEventType.DUCKING_APPROACHING);
+    }
+  }
+
+  private detectApproachingTransition(
+    tickEvent: TickEvent,
+    currentState: TimerState
+  ): void {
+    if (
+      this.isVisualUpdatesPaused ||
+      (this.hasEmittedApproachingTransition &&
+        this.hasEmittedApproachingDucking) ||
+      currentState.isFinished
+    ) {
+      return;
+    }
 
     if (currentState.phase === TimerPhase.PREPARATION) {
-      const currentRemainingPrep =
-        this.preparationTimeMs - tickEvent.totalElapsedMs;
-      const futureRemainingPrep = this.preparationTimeMs - futureElapsedMs;
-      const countdownThreshold = Math.min(this.preparationTimeMs, 3000);
-
-      // 500ms before countdown begins, or immediately on first tick if prep <= 3000ms
-      if (
-        (currentRemainingPrep > countdownThreshold &&
-          futureRemainingPrep <= countdownThreshold) ||
-        (currentRemainingPrep <= countdownThreshold &&
-          tickEvent.totalElapsedMs <= LOOKAHEAD_MS)
-      ) {
-        this.hasEmittedApproachingTransition = true;
-        this.emit(TimerEventType.TRANSITION_APPROACHING);
-        return;
-      }
-
-      // 500ms before preparation ends and WORK begins
-      if (currentRemainingPrep > 0 && futureRemainingPrep <= 0) {
-        this.hasEmittedApproachingTransition = true;
-        this.emit(TimerEventType.TRANSITION_APPROACHING);
-      }
+      this.detectPreparationApproaching(tickEvent);
     } else {
-      const adjustedFutureTick: TickEvent = {
-        deltaMs: tickEvent.deltaMs,
-        totalElapsedMs: futureElapsedMs - this.preparationTimeMs,
-      };
-      const futureState = this.strategy.calculateState(adjustedFutureTick);
-
-      const isPhaseEnding = futureState.phase !== currentState.phase;
-      const isRoundEnding =
-        futureState.currentRound !== currentState.currentRound &&
-        futureState.currentRound > 0;
-      const isSessionFinishing =
-        !currentState.isFinished && futureState.isFinished;
-
-      if (isPhaseEnding || isRoundEnding || isSessionFinishing) {
-        this.hasEmittedApproachingTransition = true;
-        this.emit(TimerEventType.TRANSITION_APPROACHING);
-      }
+      this.detectActiveWorkoutApproaching(tickEvent, currentState);
     }
   }
 
@@ -558,6 +643,7 @@ export class TimerController {
     // detect completion
     if (!oldState.isFinished && newState.isFinished) {
       this.hasEmittedApproachingTransition = false;
+      this.hasEmittedApproachingDucking = false;
       if (this.liveActivityDriver) {
         this.dispatchDriverAction(async () => {
           await this.liveActivityDriver?.stop();
@@ -574,6 +660,9 @@ export class TimerController {
       newState.phase === TimerPhase.WORK
     ) {
       this.hasEmittedApproachingTransition = false;
+      this.hasEmittedApproachingDucking = false;
+      this.hasEmittedPrepCountdownWarmup = false;
+      this.hasEmittedPrepCountdownDucking = false;
       this.emit(TimerEventType.GO);
       this.dispatchDriverUpdate();
       return;
@@ -591,12 +680,14 @@ export class TimerController {
       newState.currentRound > 0
     ) {
       this.hasEmittedApproachingTransition = false;
+      this.hasEmittedApproachingDucking = false;
       this.emit(TimerEventType.ROUND_CHANGE, newState.currentRound);
       hasChanged = true;
     }
 
     if (oldState.phase !== newState.phase && !newState.isFinished) {
       this.hasEmittedApproachingTransition = false;
+      this.hasEmittedApproachingDucking = false;
       this.emit(TimerEventType.PHASE_CHANGE, newState.phase);
       hasChanged = true;
     }
@@ -615,7 +706,6 @@ export class TimerController {
     const newSeconds = Math.ceil(newState.displayTimeMs / 1000);
 
     if (oldSeconds !== newSeconds && newSeconds <= 3 && newSeconds > 0) {
-      this.hasEmittedApproachingTransition = false;
       this.emit(TimerEventType.BEEP, newSeconds);
     }
   }
@@ -642,6 +732,7 @@ export class TimerController {
       [TimerEventType.UI_TICK]: [],
       [TimerEventType.CHECKPOINT]: [],
       [TimerEventType.TRANSITION_APPROACHING]: [],
+      [TimerEventType.DUCKING_APPROACHING]: [],
       [TimerEventType.AUTO_PAUSE_PERMISSION_DENIED]: [],
     };
   }
@@ -722,6 +813,7 @@ export class TimerController {
     this.emit(TimerEventType.START);
     this.engine.start();
     if (this.isVisualUpdatesPaused) {
+      this.engine.pauseLoop();
       this.scheduleBackgroundMilestones();
     }
     this.dispatchDriverStartOrResume();
@@ -729,6 +821,9 @@ export class TimerController {
 
   public pause() {
     this.hasEmittedApproachingTransition = false;
+    this.hasEmittedApproachingDucking = false;
+    this.hasEmittedPrepCountdownWarmup = false;
+    this.hasEmittedPrepCountdownDucking = false;
     this.milestoneScheduler.clearMilestones();
     if (this.isVisualUpdatesPaused && this.engine.getIsRunning()) {
       this.catchUp();
@@ -756,6 +851,9 @@ export class TimerController {
 
   public reset() {
     this.hasEmittedApproachingTransition = false;
+    this.hasEmittedApproachingDucking = false;
+    this.hasEmittedPrepCountdownWarmup = false;
+    this.hasEmittedPrepCountdownDucking = false;
     this.milestoneScheduler.clearMilestones();
     this.wasAutoPausedDueToPermission = false;
     this.emit(TimerEventType.RESET);
@@ -851,6 +949,7 @@ export class TimerController {
 
   private handleBackgroundTransition(): void {
     this.hasEmittedApproachingTransition = false;
+    this.hasEmittedApproachingDucking = false;
     this.catchUp();
 
     if (this.previousState?.isFinished) {

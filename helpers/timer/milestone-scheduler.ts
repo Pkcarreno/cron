@@ -2,7 +2,8 @@
  * Constants governing deterministic target-based milestone scheduling.
  * ADR 0010: Prewarm wakes DAC ~1500 ms before cues; Countdown window spans 3000 ms.
  */
-export const AUDIO_WARMUP_LEAD_TIME_MS = 1500;
+export const AUDIO_WARMUP_LEAD_TIME_MS = 1000;
+export const AUDIO_DUCKING_LEAD_TIME_MS = 150;
 export const COUNTDOWN_WINDOW_MS = 3000;
 
 export interface CountdownBeepMilestoneItem {
@@ -13,6 +14,8 @@ export interface CountdownBeepMilestoneItem {
 
 export interface PhaseMilestones {
   countdownBeeps: CountdownBeepMilestoneItem[];
+  duckingDelayMs: number;
+  duckingTimestampMs: number;
   phaseDurationMs: number;
   phaseRemainingMs: number;
   targetTimestampMs: number;
@@ -35,12 +38,13 @@ export interface NativeMilestoneScheduleItem {
 
 export interface NativeMilestoneSchedulePayload {
   countdownBeeps?: NativeMilestoneScheduleItem[];
+  duckingDelayMs?: number;
   transitionDelayMs: number;
   warmupDelayMs?: number;
 }
 
 export interface NativeMilestoneEvent {
-  type: "warmup" | "beep" | "transition";
+  type: "warmup" | "ducking" | "beep" | "transition";
   secondRemaining?: number;
 }
 
@@ -90,19 +94,25 @@ export const calculatePhaseMilestones = (
     }
   }
 
-  // Prewarm milestone:
-  // If countdown beeps are configured, pre-warms ~1500 ms before countdown beeps trigger (target - 4500 ms)
-  // preventing cold-start clipping on the first beep.
-  // If no countdown beeps, pre-warms ~1500 ms before the transition cue (target - 1500 ms).
+  // Prewarm & Ducking milestones:
+  // If countdown beeps are configured, pre-warms ~1000 ms and ducks ~150 ms before countdown beeps trigger
+  // (target - 3000 ms - leadTime) preventing cold-start clipping and providing acoustic lead-in.
+  // If no countdown beeps, pre-warms ~1000 ms and ducks ~150 ms before the transition cue (target - leadTime).
   const theoreticalCountdownStartMs = targetTimestampMs - COUNTDOWN_WINDOW_MS;
-  const warmupTimestampMs = hasCountdownBeeps
-    ? theoreticalCountdownStartMs - AUDIO_WARMUP_LEAD_TIME_MS
-    : targetTimestampMs - AUDIO_WARMUP_LEAD_TIME_MS;
+  const firstAudioTargetMs = hasCountdownBeeps
+    ? theoreticalCountdownStartMs
+    : targetTimestampMs;
+
+  const warmupTimestampMs = firstAudioTargetMs - AUDIO_WARMUP_LEAD_TIME_MS;
+  const duckingTimestampMs = firstAudioTargetMs - AUDIO_DUCKING_LEAD_TIME_MS;
 
   const warmupDelayMs = Math.max(0, warmupTimestampMs - now);
+  const duckingDelayMs = Math.max(0, duckingTimestampMs - now);
 
   return {
     countdownBeeps,
+    duckingDelayMs,
+    duckingTimestampMs,
     phaseDurationMs: options.phaseDurationMs,
     phaseRemainingMs: options.phaseRemainingMs,
     targetTimestampMs,
@@ -114,6 +124,7 @@ export const calculatePhaseMilestones = (
 
 export interface MilestoneSchedulerCallbacks {
   onCountdownBeep: (secondRemaining: number) => void;
+  onDucking?: () => void;
   onTransition: () => void;
   onWarmup: () => void;
 }
@@ -132,6 +143,7 @@ export class MilestoneScheduler {
 
   private triggeredBeeps = new Set<number>();
   private hasTriggeredWarmup = false;
+  private hasTriggeredDucking = false;
   private hasTriggeredTransition = false;
 
   constructor(
@@ -166,6 +178,13 @@ export class MilestoneScheduler {
         if (!this.hasTriggeredWarmup) {
           this.hasTriggeredWarmup = true;
           this.callbacks.onWarmup();
+        }
+        break;
+      }
+      case "ducking": {
+        if (!this.hasTriggeredDucking) {
+          this.hasTriggeredDucking = true;
+          this.callbacks.onDucking?.();
         }
         break;
       }
@@ -207,6 +226,7 @@ export class MilestoneScheduler {
     this.activeMilestones = milestones;
     this.triggeredBeeps.clear();
     this.hasTriggeredWarmup = false;
+    this.hasTriggeredDucking = false;
     this.hasTriggeredTransition = false;
 
     // 1. Dispatch native background scheduling if bridge is configured (e.g. Android Handler loop)
@@ -216,6 +236,7 @@ export class MilestoneScheduler {
           delayMs: Math.max(0, beep.targetTimestampMs - now),
           secondRemaining: beep.secondRemaining,
         })),
+        duckingDelayMs: Math.max(0, milestones.duckingTimestampMs - now),
         transitionDelayMs: Math.max(0, milestones.transitionTimestampMs - now),
         warmupDelayMs: Math.max(0, milestones.warmupTimestampMs - now),
       });
@@ -235,7 +256,20 @@ export class MilestoneScheduler {
       this.activeTimeouts.add(timerId);
     }
 
-    // 2.2 Countdown beep timers
+    // 2.2 Ducking timer
+    if (now < milestones.transitionTimestampMs && this.callbacks.onDucking) {
+      const duckingDelay = Math.max(0, milestones.duckingTimestampMs - now);
+      const timerId = setTimeout(() => {
+        this.activeTimeouts.delete(timerId);
+        if (!this.hasTriggeredDucking) {
+          this.hasTriggeredDucking = true;
+          this.callbacks.onDucking?.();
+        }
+      }, duckingDelay);
+      this.activeTimeouts.add(timerId);
+    }
+
+    // 2.3 Countdown beep timers
     for (const beep of milestones.countdownBeeps) {
       const beepDelay = Math.max(0, beep.targetTimestampMs - now);
       const timerId = setTimeout(() => {
@@ -248,7 +282,7 @@ export class MilestoneScheduler {
       this.activeTimeouts.add(timerId);
     }
 
-    // 2.3 Transition timer
+    // 2.4 Transition timer
     const transitionDelay = Math.max(0, milestones.transitionTimestampMs - now);
     const timerId = setTimeout(() => {
       this.activeTimeouts.delete(timerId);
