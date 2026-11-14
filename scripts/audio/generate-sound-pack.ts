@@ -2,7 +2,8 @@ import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-export const SAMPLE_RATE = 44_100;
+export const SAMPLE_RATE = 48_000;
+export const TAIL_PADDING_SEC = 0.05;
 export const DEFAULT_AUDIO_DIR = path.resolve(
   process.cwd(),
   "assets/audio/default"
@@ -15,6 +16,30 @@ export interface GeneratedSoundSummary {
   byteSize: number;
   peakDbFs: number;
 }
+
+/**
+ * Appends silent zero-amplitude PCM samples to the tail of an audio buffer.
+ * Defends against polyphase FIR resampler pipeline latency (e.g. Voxengo r8brain in
+ * AndroidDecoding) on hardware running at non-standard sample rates.
+ *
+ * @param samples - Float32 audio samples.
+ * @param paddingDurationSec - Duration of silence to append in seconds (default: 0.05s / 50ms).
+ * @param sampleRate - Sampling frequency in Hz (default: 48,000 Hz).
+ * @returns Padded Float32Array signal.
+ */
+export const appendTailPadding = (
+  samples: Float32Array,
+  paddingDurationSec = TAIL_PADDING_SEC,
+  sampleRate = SAMPLE_RATE
+): Float32Array => {
+  const paddingSamples = Math.round(sampleRate * paddingDurationSec);
+  if (paddingSamples <= 0) {
+    return samples;
+  }
+  const padded = new Float32Array(samples.length + paddingSamples);
+  padded.set(samples, 0);
+  return padded;
+};
 
 /**
  * Removes direct current (DC) offset by centering the signal on a zero mean.
@@ -104,7 +129,7 @@ export const applyCosineTaper = (
  * Encodes Float32 audio samples into an uncompressed 16-bit Mono PCM RIFF WAVE buffer.
  *
  * @param samples - Normalized Float32 audio samples.
- * @param sampleRate - Sampling frequency in Hz (default: 44,100 Hz).
+ * @param sampleRate - Sampling frequency in Hz (default: 48,000 Hz).
  * @returns Node.js Buffer containing valid RIFF WAVE binary data.
  */
 export const encodeWav = (
@@ -177,7 +202,8 @@ export const synthesizeCountdownBeep = (): Float32Array => {
   // Remove DC bias first so taper converges cleanly to exact zero without step discontinuity
   const centered = removeDcOffset(raw);
   const tapered = applyCosineTaper(centered, taperSamples);
-  return normalizeAudio(tapered, 0.98);
+  const normalized = normalizeAudio(tapered, 0.98);
+  return appendTailPadding(normalized);
 };
 
 /**
@@ -203,7 +229,8 @@ export const synthesizeGo = (): Float32Array => {
   // Remove DC bias before tapering to guarantee absolute zero at boundaries
   const centered = removeDcOffset(raw);
   const tapered = applyCosineTaper(centered, taperSamples);
-  return normalizeAudio(tapered, 0.98);
+  const normalized = normalizeAudio(tapered, 0.98);
+  return appendTailPadding(normalized);
 };
 
 /**
@@ -239,7 +266,8 @@ export const synthesizeRest = (): Float32Array => {
   // Center prior to taper to preserve zeroed boundaries
   const centered = removeDcOffset(raw);
   const tapered = applyCosineTaper(centered, taperSamples);
-  return normalizeAudio(tapered, 0.98);
+  const normalized = normalizeAudio(tapered, 0.98);
+  return appendTailPadding(normalized);
 };
 
 /**
@@ -273,7 +301,7 @@ export const synthesizeRoundChange = (): Float32Array => {
   buffer.set(normalizedChirp, 0);
   buffer.set(normalizedChirp, toneSamples + silenceSamples);
 
-  return buffer;
+  return appendTailPadding(buffer);
 };
 
 /**
@@ -321,11 +349,11 @@ export const synthesizeFinish = (): Float32Array => {
 
   buffer.set(createBlast(blast3Samples), offset);
 
-  return buffer;
+  return appendTailPadding(buffer);
 };
 
 /**
- * Generates the canonical sound pack of 5 uncompressed 16-bit Mono PCM .wav files at 44.1 kHz.
+ * Generates the canonical sound pack of 5 uncompressed 16-bit Mono PCM .wav files at 48.0 kHz.
  *
  * @param outputDir - Destination directory (default: assets/audio/default).
  * @returns Array of metadata for each generated asset.

@@ -171,8 +171,8 @@ importers:
   .:
     dependencies:
       '@lodev09/react-native-true-sheet':
-        specifier: ^3.11.18
-        version: 3.11.18(a7acea6bd095d54b9c0aec458d71dcd1)
+        specifier: ^4.1.0
+        version: 4.1.0(d0bb4207dd616cc05426b300a3b81813)
       cron-foreground-service:
         specifier: file:./modules/cron-foreground-service
         version: file:modules/cron-foreground-service
@@ -231,8 +231,8 @@ importers:
         specifier: 0.88.1
         version: 0.88.1(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1)
       react-native-audio-api:
-        specifier: ^0.13.6
-        version: 0.13.6(react-native-worklets@0.13.0(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(react-native@0.88.1(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)(supports-color@8.1.1))(react-native@0.88.1(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)
+        specifier: ^1.0.0
+        version: 1.0.0(react-native@0.88.1(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)
       react-native-gesture-handler:
         specifier: ~3.3.0
         version: 3.3.0(react-native@0.88.1(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)
@@ -1438,26 +1438,35 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@lodev09/react-native-true-sheet@3.11.18':
-    resolution: {integrity: sha512-Rf2Eux/8DcwtK16qLrWiLy+8lG3+jLQAVlaT3ZaK1T+Rq7+ZowY48TXEmvW7ewKkz72DU+sdrxn8475u/ih4Tw==}
+  '@lodev09/react-native-true-sheet@4.1.0':
+    resolution: {integrity: sha512-0gM3KX2+kz8jZGzhUUKV6ykbddMh5c/EO0AItOsgI74xH6ey8F52klYHu89NH6EHBktgVt1KHDGqP/sqEEmGFA==}
     peerDependencies:
       '@radix-ui/react-dialog': '>=1'
       '@radix-ui/react-presence': '>=1'
-      '@react-navigation/core': '>=7'
+      '@react-navigation/native': '>=7.3.0'
+      expo-router: '>=57.0.0'
       react: '*'
-      react-native: '*'
-      react-native-reanimated: '>=4'
-      react-native-worklets: '*'
+      react-dom: 19.3.0
+      react-native: '>=0.82.0'
+      react-native-reanimated: '>=4.1.0'
+      react-native-worklets: '>=0.5.0'
+      standard-navigation: '>=0.0.9'
     peerDependenciesMeta:
       '@radix-ui/react-dialog':
         optional: true
       '@radix-ui/react-presence':
         optional: true
-      '@react-navigation/core':
+      '@react-navigation/native':
+        optional: true
+      expo-router:
+        optional: true
+      react-dom:
         optional: true
       react-native-reanimated:
         optional: true
       react-native-worklets:
+        optional: true
+      standard-navigation:
         optional: true
 
   '@napi-rs/wasm-runtime@1.2.5':
@@ -4444,16 +4453,13 @@ packages:
   react-is@19.3.1:
     resolution: {integrity: sha512-RRieF6IyxQBkcK6pP8xOHprLTPW6QjRkbGdImtqNme+/hYVwCZkLQLdlZGOhUqXwkS9IEynaGvPJtv6XB/cz0Q==}
 
-  react-native-audio-api@0.13.6:
-    resolution: {integrity: sha512-055JlxTaajdzcJCzyd+xnH1pJawNkt2NZ3RNoI2vv1QxYRh257W/dcDky/qf4/VMEFdpZFuFfVW1hv75OEh3gA==}
+  react-native-audio-api@1.0.0:
+    resolution: {integrity: sha512-fIU3g2gJ2FxPOeWaPXrog3BsGZ5QMLTIUOiviPdGo7EO3O0fsrhnoV5bmkrFk9aYwo4psC6LDDb9Cg+xzD2nOA==}
+    engines: {node: '>=22.0.0'}
     hasBin: true
     peerDependencies:
       react: '*'
       react-native: '*'
-      react-native-worklets: '>= 0.7.0'
-    peerDependenciesMeta:
-      react-native-worklets:
-        optional: true
 
   react-native-drawer-layout@4.2.12:
     resolution: {integrity: sha512-qYmntEctkMSodN7pnC2llV21nswImLFPHJeT3PJXSJqZdU4jzDATR8iVi66sXkrtoOLJ2+EvXxgd7sMMpV4ViA==}
@@ -6725,12 +6731,14 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@lodev09/react-native-true-sheet@3.11.18(a7acea6bd095d54b9c0aec458d71dcd1)':
+  '@lodev09/react-native-true-sheet@4.1.0(d0bb4207dd616cc05426b300a3b81813)':
     dependencies:
       react: 19.3.0
       react-native: 0.88.1(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1)
     optionalDependencies:
       '@radix-ui/react-presence': 1.1.5(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      expo-router: 58.0.31(263227fce4d9930bf1ab9dda5576f5ce)
+      react-dom: 19.3.0(react@19.3.0)
       react-native-reanimated: 4.7.1(react-native-worklets@0.13.0(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(react-native@0.88.1(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)(supports-color@8.1.1))(react-native@0.88.1(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)
       react-native-worklets: 0.13.0(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(react-native@0.88.1(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)(supports-color@8.1.1)
 
@@ -9920,13 +9928,11 @@ snapshots:
 
   react-is@19.3.1: {}
 
-  react-native-audio-api@0.13.6(react-native-worklets@0.13.0(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(react-native@0.88.1(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)(supports-color@8.1.1))(react-native@0.88.1(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0):
+  react-native-audio-api@1.0.0(react-native@0.88.1(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0):
     dependencies:
       react: 19.3.0
       react-native: 0.88.1(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1)
-      semver: 7.7.4
-    optionalDependencies:
-      react-native-worklets: 0.13.0(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(react-native@0.88.1(@babel/core@7.29.0(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.0(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)(supports-color@8.1.1)
+      semver: 7.8.5
 
   react-native-drawer-layout@4.2.12(f7998f6d8dfba5ae47c7f39ea9377e29):
     dependencies:

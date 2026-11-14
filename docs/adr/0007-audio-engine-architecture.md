@@ -2,7 +2,7 @@
 
 - **Status**: Accepted
 - **Date**: October 2026
-- **Context**: React Native 0.88.0, Expo SDK 58 (`58.0.16`), New Architecture (Fabric & TurboModules), React 19 (`19.3.0`), `react-native-audio-api` (`0.13.6`), CoreAudio (iOS), AAudio/Oboe (Android)
+- **Context**: React Native 0.88.1, Expo SDK 58 (`58.0.25`), New Architecture (Fabric & TurboModules), React 19 (`19.3.0`), `react-native-audio-api` (`^1.0.0`), CoreAudio (iOS), AAudio/Oboe (Android)
 
 ## Context
 
@@ -64,6 +64,15 @@ We replace real-time synthetic oscillators with an in-memory **AudioBufferSource
 - Deprecated and removed legacy oscillator services (`WebAudioOscillatorService`, `NullAudioFeedbackService`, and `helpers/playback-service.ts`) without dead code leftovers.
 - Removed legacy `AudioFeedbackService` interface and `audioService` props in favor of direct `FeedbackService` observer attachment.
 
+### 7. Zero-Resampling 48.0 kHz Pipeline & Defensive Tail Padding (v1.0.0 Upgrade)
+
+- `react-native-audio-api` v1.0.0 introduced a native Android decoding pipeline (`AndroidDecoding.cpp`) using Voxengo r8brain (`r8b::CDSPResampler24`) to resample assets to the hardware device sample rate (standard 48,000 Hz in modern Android / AAudio / Oboe).
+- Polyphase FIR filters exhibit an internal pipeline latency (group delay) of ~1,700 samples. When decoding assets sampled at 44.1 kHz, premature EOF handling truncates the final ~38.5 ms of audio, amputating the second chirp in compact cues like `round_change.wav` (140 ms).
+- Rather than maintaining brittle upstream C++ patches via `pnpm patch`, we adopt a **Zero-Resampling Pipeline**:
+  - All canonical WAV assets are synthesized natively at **48,000 Hz (48.0 kHz)** via `scripts/audio/generate-sound-pack.ts`.
+  - On standard Android hardware (48.0 kHz), `state.nativeRate == state.outputRate` bypasses `r8b::MultiChannelResampler` entirely during decoding, eliminating resampling latency and runtime CPU overhead during `prepare()`.
+  - **Defensive Tail Padding**: Every synthesized asset includes 50 ms of zero-amplitude silence appended to its tail. Even if an atypical hardware output rate activates the FIR resampler, the group delay drains purely from the padding silence, ensuring 100% preservation of all acoustic tone bursts across any device.
+
 ## Consequences
 
 ### Positive
@@ -71,7 +80,8 @@ We replace real-time synthetic oscillators with an in-memory **AudioBufferSource
 - **Deterministic Cadence**: Microsecond hardware audio clock accuracy on iOS and Android. Zero timing jitter from Hermes event loop load.
 - **Gym-Grade Audibility**: Mastered canonical WAV assets at 2.4 kHz – 3.2 kHz pierce loud ambient noise and cut through background music via automatic ducking.
 - **Silent Mode Compliance**: Cues reliably fire through speakers even if the athlete forgot to flip off the phone's silent switch.
+- **Maintainable Zero-Resampling Architecture**: Bypasses Android DSP resampling in runtime without requiring custom C++ patches or build tooling workarounds.
 
 ### Negative / Trade-offs
 
-- **Memory Footprint**: ~150 KB of uncompressed PCM Float32 audio data held in native memory when the audio engine is prepared.
+- **Memory Footprint**: ~180 KB of uncompressed PCM Float32 audio data held in native memory when the audio engine is prepared (slightly increased due to 48.0 kHz sampling and 50 ms tail padding).

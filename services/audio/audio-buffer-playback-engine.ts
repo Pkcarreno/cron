@@ -2,7 +2,7 @@ import type {
   AudioBuffer,
   AudioBufferSourceNode,
   DecodeDataInput,
-  SessionOptions,
+  SystemOptions,
 } from "react-native-audio-api";
 import { AudioContext, AudioManager } from "react-native-audio-api";
 
@@ -32,14 +32,16 @@ export const CANONICAL_AUDIO_ASSETS: Record<CanonicalSoundName, number> = {
 };
 
 /**
- * Audio session options for workout timers.
+ * Audio system options for workout timers.
  * Keeps cues audible when the silent switch is active and lowers background music volume.
  */
-export const WORKOUT_AUDIO_SESSION_OPTIONS: SessionOptions = {
-  iosCategory: "playback",
-  iosMode: "default",
-  iosNotifyOthersOnDeactivation: true,
-  iosOptions: ["duckOthers", "mixWithOthers", "defaultToSpeaker"],
+export const WORKOUT_AUDIO_SYSTEM_OPTIONS: SystemOptions = {
+  ios: {
+    category: "playback",
+    mode: "default",
+    notifyOthersOnDeactivation: true,
+    options: ["duckOthers", "mixWithOthers", "defaultToSpeaker"],
+  },
 };
 
 export const AUDIO_DRAIN_TIME_MS = 200;
@@ -51,7 +53,7 @@ export interface AudioBufferPlaybackEngineOptions {
   audioContextFactory?: () => AudioContext;
   audioManager?: typeof AudioManager;
   isSoundEnabled?: () => boolean;
-  sessionOptions?: SessionOptions;
+  systemOptions?: SystemOptions;
 }
 
 /**
@@ -67,7 +69,7 @@ export class AudioBufferPlaybackEngine {
   private readonly audioManager: typeof AudioManager;
   private readonly assets: Record<CanonicalSoundName, DecodeDataInput>;
   private readonly isSoundEnabled: () => boolean;
-  private readonly sessionOptions: SessionOptions;
+  private readonly systemOptions: SystemOptions;
 
   private readonly soundBuffers = new Map<CanonicalSoundName, AudioBuffer>();
   private readonly activeSources = new Set<AudioBufferSourceNode>();
@@ -83,8 +85,7 @@ export class AudioBufferPlaybackEngine {
     this.audioContextFactory = options?.audioContextFactory;
     this.audioManager = options?.audioManager ?? AudioManager;
     this.isSoundEnabled = options?.isSoundEnabled ?? (() => true);
-    this.sessionOptions =
-      options?.sessionOptions ?? WORKOUT_AUDIO_SESSION_OPTIONS;
+    this.systemOptions = options?.systemOptions ?? WORKOUT_AUDIO_SYSTEM_OPTIONS;
 
     this.configureAudioSession();
   }
@@ -108,8 +109,8 @@ export class AudioBufferPlaybackEngine {
 
   public configureAudioSession(): void {
     try {
-      if (typeof this.audioManager.setAudioSessionOptions === "function") {
-        this.audioManager.setAudioSessionOptions(this.sessionOptions);
+      if (typeof this.audioManager.setSystemOptions === "function") {
+        this.audioManager.setSystemOptions(this.systemOptions);
       }
     } catch (error) {
       console.warn(
@@ -300,8 +301,6 @@ export class AudioBufferPlaybackEngine {
           this.scheduleCompletionDrain(sound);
         }
       };
-      source.onEnded = cleanup;
-      // @ts-expect-error fallback for mock compatibility
       // oxlint-disable-next-line unicorn/prefer-add-event-listener
       source.onended = cleanup;
 
