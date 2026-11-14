@@ -4,6 +4,8 @@ import path from "node:path";
 import {
   DEFAULT_AUDIO_DIR,
   SAMPLE_RATE,
+  TAIL_PADDING_SEC,
+  appendTailPadding,
   applyCosineTaper,
   encodeWav,
   generateSoundPack,
@@ -60,9 +62,27 @@ describe("Audio DSP & Sound Pack Generator", () => {
     });
   });
 
+  describe("appendTailPadding", () => {
+    it("appends specified duration of zero samples to signal", () => {
+      const buffer = new Float32Array([0.5, 0.5]);
+      const padded = appendTailPadding(buffer, 0.001, 1000);
+
+      expect(padded.length).toBe(3);
+      expect(padded[0]).toBe(0.5);
+      expect(padded[1]).toBe(0.5);
+      expect(padded[2]).toBe(0);
+    });
+
+    it("returns original samples if padding duration is zero or negative", () => {
+      const buffer = new Float32Array([0.5, 0.5]);
+      const padded = appendTailPadding(buffer, 0);
+      expect(padded).toBe(buffer);
+    });
+  });
+
   describe("encodeWav", () => {
-    it("produces valid 44-byte RIFF WAVE header for 16-bit mono 44.1kHz audio", () => {
-      const sampleCount = 441;
+    it("produces valid 44-byte RIFF WAVE header for 16-bit mono 48.0kHz audio", () => {
+      const sampleCount = 480;
       const samples = new Float32Array(sampleCount).fill(0.5);
       const wavBuffer = encodeWav(samples, SAMPLE_RATE);
 
@@ -76,8 +96,8 @@ describe("Audio DSP & Sound Pack Generator", () => {
       expect(wavBuffer.readUInt32LE(16)).toBe(16);
       expect(wavBuffer.readUInt16LE(20)).toBe(1);
       expect(wavBuffer.readUInt16LE(22)).toBe(1);
-      expect(wavBuffer.readUInt32LE(24)).toBe(44_100);
-      expect(wavBuffer.readUInt32LE(28)).toBe(88_200);
+      expect(wavBuffer.readUInt32LE(24)).toBe(48_000);
+      expect(wavBuffer.readUInt32LE(28)).toBe(96_000);
       expect(wavBuffer.readUInt16LE(32)).toBe(2);
       expect(wavBuffer.readUInt16LE(34)).toBe(16);
 
@@ -87,57 +107,79 @@ describe("Audio DSP & Sound Pack Generator", () => {
   });
 
   describe("Sound Synthesizers", () => {
-    it("synthesizes countdown_beep with 120 ms duration and tapered zero boundary", () => {
+    it("synthesizes countdown_beep with 170 ms duration (120ms active + 50ms tail padding)", () => {
       const audio = synthesizeCountdownBeep();
-      const expectedSampleCount = Math.round(SAMPLE_RATE * 0.12);
+      const expectedSampleCount = Math.round(
+        SAMPLE_RATE * (0.12 + TAIL_PADDING_SEC)
+      );
 
       expect(audio.length).toBe(expectedSampleCount);
       const maxPeak = Math.max(...[...audio].map(Math.abs));
       expect(maxPeak).toBeLessThanOrEqual(1);
       expect(audio[0]).toBeCloseTo(0, 4);
-      expect(audio.at(-1)).toBeCloseTo(0, 4);
+      expect(audio.at(-1)).toBe(0);
     });
 
-    it("synthesizes go with 700 ms duration and tapered zero boundary", () => {
+    it("synthesizes go with 750 ms duration (700ms active + 50ms tail padding)", () => {
       const audio = synthesizeGo();
-      const expectedSampleCount = Math.round(SAMPLE_RATE * 0.7);
+      const expectedSampleCount = Math.round(
+        SAMPLE_RATE * (0.7 + TAIL_PADDING_SEC)
+      );
 
       expect(audio.length).toBe(expectedSampleCount);
       const maxPeak = Math.max(...[...audio].map(Math.abs));
       expect(maxPeak).toBeLessThanOrEqual(1);
       expect(audio[0]).toBeCloseTo(0, 4);
-      expect(audio.at(-1)).toBeCloseTo(0, 4);
+      expect(audio.at(-1)).toBe(0);
     });
 
-    it("synthesizes rest with 350 ms duration and tapered zero boundary", () => {
+    it("synthesizes rest with 400 ms duration (350ms active + 50ms tail padding)", () => {
       const audio = synthesizeRest();
-      const expectedSampleCount = Math.round(SAMPLE_RATE * 0.35);
+      const expectedSampleCount = Math.round(
+        SAMPLE_RATE * (0.35 + TAIL_PADDING_SEC)
+      );
 
       expect(audio.length).toBe(expectedSampleCount);
       const maxPeak = Math.max(...[...audio].map(Math.abs));
       expect(maxPeak).toBeLessThanOrEqual(1);
       expect(audio[0]).toBeCloseTo(0, 4);
-      expect(audio.at(-1)).toBeCloseTo(0, 4);
+      expect(audio.at(-1)).toBe(0);
     });
 
-    it("synthesizes round_change with 140 ms dual-chirp duration and clean silence", () => {
+    it("synthesizes round_change with 190 ms duration (140ms dual-chirp + 50ms tail padding)", () => {
       const audio = synthesizeRoundChange();
-      const expectedSampleCount = Math.round(SAMPLE_RATE * 0.14);
+      const expectedSampleCount = Math.round(
+        SAMPLE_RATE * (0.14 + TAIL_PADDING_SEC)
+      );
 
       expect(audio.length).toBe(expectedSampleCount);
       const maxPeak = Math.max(...[...audio].map(Math.abs));
       expect(maxPeak).toBeLessThanOrEqual(1);
 
-      // Verify 40ms silence region around the midpoint is strictly zero
-      const midPoint = Math.floor(audio.length / 2);
-      expect(audio[midPoint]).toBe(0);
-      expect(audio[midPoint - 100]).toBe(0);
-      expect(audio[midPoint + 100]).toBe(0);
+      // Verify 40ms silence region around the active midpoint (70ms) is strictly zero
+      const activeMidPoint = Math.floor(Math.round(SAMPLE_RATE * 0.14) / 2);
+      expect(audio[activeMidPoint]).toBe(0);
+      expect(audio[activeMidPoint - 100]).toBe(0);
+      expect(audio[activeMidPoint + 100]).toBe(0);
+
+      // Verify second chirp (90ms-140ms) is fully intact and reaches target amplitude
+      const chirp2Start = Math.round(SAMPLE_RATE * 0.09);
+      const chirp2End = Math.round(SAMPLE_RATE * 0.14);
+      let maxChirp2Peak = 0;
+      for (let i = chirp2Start; i < chirp2End; i += 1) {
+        maxChirp2Peak = Math.max(maxChirp2Peak, Math.abs(audio[i]));
+      }
+      expect(maxChirp2Peak).toBeCloseTo(0.98, 2);
+
+      // Verify tail padding is silent
+      expect(audio.at(-1)).toBe(0);
     });
 
-    it("synthesizes finish with 1.5 s triple-blast sequence and clean silence pauses", () => {
+    it("synthesizes finish with 1550 ms duration (1.5s triple-blast + 50ms tail padding)", () => {
       const audio = synthesizeFinish();
-      const expectedSampleCount = Math.round(SAMPLE_RATE * 1.5);
+      const expectedSampleCount = Math.round(
+        SAMPLE_RATE * (1.5 + TAIL_PADDING_SEC)
+      );
 
       expect(audio.length).toBe(expectedSampleCount);
       const maxPeak = Math.max(...[...audio].map(Math.abs));
@@ -146,6 +188,7 @@ describe("Audio DSP & Sound Pack Generator", () => {
       // Verify silence between blast 1 (200ms) and blast 2 (200ms)
       const pause1Index = Math.round(SAMPLE_RATE * 0.275);
       expect(audio[pause1Index]).toBe(0);
+      expect(audio.at(-1)).toBe(0);
     });
   });
 
@@ -185,11 +228,11 @@ describe("Audio DSP & Sound Pack Generator", () => {
       ]);
 
       const expectedDurationsMs: Record<string, number> = {
-        "countdown_beep.wav": 120,
-        "finish.wav": 1500,
-        "go.wav": 700,
-        "rest.wav": 350,
-        "round_change.wav": 140,
+        "countdown_beep.wav": 170,
+        "finish.wav": 1550,
+        "go.wav": 750,
+        "rest.wav": 400,
+        "round_change.wav": 190,
       };
 
       for (const item of generatedFiles) {
@@ -200,14 +243,14 @@ describe("Audio DSP & Sound Pack Generator", () => {
         const buffer = fs.readFileSync(item.filePath);
         expect(buffer.subarray(0, 4).toString("ascii")).toBe("RIFF");
         expect(buffer.subarray(8, 12).toString("ascii")).toBe("WAVE");
-        expect(buffer.readUInt32LE(24)).toBe(44_100);
+        expect(buffer.readUInt32LE(24)).toBe(48_000);
         expect(buffer.readUInt16LE(22)).toBe(1);
         expect(buffer.readUInt16LE(34)).toBe(16);
 
         // Header duration check
         const dataBytes = buffer.readUInt32LE(40);
         const sampleCount = dataBytes / 2;
-        const durationSec = sampleCount / 44_100;
+        const durationSec = sampleCount / 48_000;
         expect(Math.round(durationSec * 1000)).toBe(
           expectedDurationsMs[fileName]
         );
@@ -217,11 +260,11 @@ describe("Audio DSP & Sound Pack Generator", () => {
 
   describe("Canonical assets in assets/audio/default/", () => {
     const canonicalFiles = [
-      { durationMs: 120, name: "countdown_beep.wav" },
-      { durationMs: 700, name: "go.wav" },
-      { durationMs: 350, name: "rest.wav" },
-      { durationMs: 140, name: "round_change.wav" },
-      { durationMs: 1500, name: "finish.wav" },
+      { durationMs: 170, name: "countdown_beep.wav" },
+      { durationMs: 750, name: "go.wav" },
+      { durationMs: 400, name: "rest.wav" },
+      { durationMs: 190, name: "round_change.wav" },
+      { durationMs: 1550, name: "finish.wav" },
     ];
 
     it.each(canonicalFiles)(
@@ -233,13 +276,13 @@ describe("Audio DSP & Sound Pack Generator", () => {
         const buffer = fs.readFileSync(filePath);
         expect(buffer.subarray(0, 4).toString("ascii")).toBe("RIFF");
         expect(buffer.subarray(8, 12).toString("ascii")).toBe("WAVE");
-        expect(buffer.readUInt32LE(24)).toBe(44_100);
+        expect(buffer.readUInt32LE(24)).toBe(48_000);
         expect(buffer.readUInt16LE(22)).toBe(1);
         expect(buffer.readUInt16LE(34)).toBe(16);
 
         const dataBytes = buffer.readUInt32LE(40);
         const sampleCount = dataBytes / 2;
-        const actualDurationMs = Math.round((sampleCount / 44_100) * 1000);
+        const actualDurationMs = Math.round((sampleCount / 48_000) * 1000);
         expect(actualDurationMs).toBe(durationMs);
       }
     );
