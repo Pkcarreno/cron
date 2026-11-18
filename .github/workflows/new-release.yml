@@ -35,15 +35,14 @@ jobs:
       - uses: ./.github/actions/setup-node-pnpm-install
 
       - name: Setup Expo and EAS
-        uses: expo/expo-github-action@main
+        uses: expo/expo-github-action@v8
         with:
           eas-version: latest
-          expo-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
-          packager: pnpm
+          packager: npm
 
       - name: Setup EAS local builds
-        run: pnpm install -g eas-cli-local-build-plugin
+        run: npm install -g eas-cli-local-build-plugin
 
       - name: Extract Version from package.json
         id: extract_version
