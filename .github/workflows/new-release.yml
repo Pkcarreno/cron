@@ -30,20 +30,19 @@ jobs:
           java-version: "17"
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - uses: ./.github/actions/setup-node-pnpm-install
 
       - name: Setup Expo and EAS
-        uses: expo/expo-github-action@main
+        uses: expo/expo-github-action@v8
         with:
           eas-version: latest
-          expo-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
-          packager: pnpm
+          packager: npm
 
       - name: Setup EAS local builds
-        run: pnpm install -g eas-cli-local-build-plugin
+        run: npm install -g eas-cli-local-build-plugin
 
       - name: Extract Version from package.json
         id: extract_version
@@ -66,7 +65,8 @@ jobs:
       - name: Prepare Release APKs
         run: |
           mkdir -p release-apks
-          for apk in android/app/build/outputs/apk/release/*.apk; do
+          tar -zxvf build-*.tar.gz
+          for apk in $(find . -name "*.apk" -not -path "./release-apks/*"); do
             filename=$(basename "$apk")
             case "$filename" in
               *arm64-v8a*)
@@ -84,9 +84,15 @@ jobs:
             esac
           done
           ls -la release-apks/
+          if [ -z "$(ls -A release-apks/*.apk 2>/dev/null)" ]; then
+            echo "Error: No APKs found in release-apks directory!"
+            exit 1
+          fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
           files: release-apks/*.apk
           generate_release_notes: true
+          fail_on_unmatched_files: true
